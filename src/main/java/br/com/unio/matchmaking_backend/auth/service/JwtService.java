@@ -1,5 +1,6 @@
 package br.com.unio.matchmaking_backend.auth.service;
 
+import br.com.unio.matchmaking_backend.auth.entity.Role;
 import br.com.unio.matchmaking_backend.auth.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -31,6 +32,7 @@ public class JwtService {
         Instant now = Instant.now();
         return Jwts.builder()
             .subject(user.getEmail())
+            .claim("userId", user.getId())
             .claim("role", user.getRole().name())
             .issuedAt(Date.from(now))
             .expiration(Date.from(now.plus(8, ChronoUnit.HOURS)))
@@ -40,6 +42,15 @@ public class JwtService {
 
     public String extractUsername(String token) {
         return getClaims(token).getSubject();
+    }
+
+    public Long extractUserId(String token) {
+        return getClaims(token).get("userId", Long.class);
+    }
+
+    public Role extractRole(String token) {
+        String role = getClaims(token).get("role", String.class);
+        return role == null ? null : Role.valueOf(role);
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {

@@ -111,6 +111,14 @@ A aplicação estará disponível em:
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 
+### Matching
+
+- `GET /api/matching/criteria-weights`
+- `PUT /api/matching/criteria-weights` (apenas ADMIN)
+- `GET /api/matching/recommendations`
+- `POST /api/matching/swipe`
+- `GET /api/matching/mutual`
+
 ### Registro de startup
 
 ```json

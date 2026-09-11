@@ -1,0 +1,304 @@
+# Decisões de Design — Scorecard de Matchmaking
+
+Documento de registro das decisões tomadas ao longo do projeto.
+Cada decisão tem: contexto, alternativas, escolha e justificativa.
+
+---
+
+## D001 — ScoreDimension é enum no MVP, não tabela
+
+**Contexto:** A primeira proposta modelava ScoreDimension como tabela com peso próprio.
+
+**Alternativas:**
+- (a) ScoreDimension como tabela com peso persistido
+- (b) ScoreDimension como enum, peso derivado dos critérios
+
+**Decisão:** (b)
+
+**Justificativa:** O peso não pertence à dimensão — pertence à policy, via critérios.
+Modelar como tabela com peso criaria duas fontes de verdade e impediria pesos
+diferentes por InvestorProfileType sem duplicar dimensões.
+
+**Impacto:** Peso da dimensão = soma dos pesos dos critérios ativos daquela dimensão
+dentro da policy ativa. Campo `weight` no payload é sempre calculado, nunca persistido.
+
+---
+
+## D002 — FeedbackEvent não tem FK para MatchScore
+
+**Contexto:** A primeira proposta relacionava FeedbackEvent a MatchScore.
+
+**Alternativas:**
+- (a) FeedbackEvent com FK para MatchScore
+- (b) FeedbackEvent referenciando investorId + startupId + scorePolicyId
+
+**Decisão:** (b)
+
+**Justificativa:** Se o score for recalculado, o feedback histórico não pode se perder.
+Feedback é sobre a decisão do investidor, não sobre uma linha específica de score.
+
+**Impacto:** FeedbackEvent referencia: investorId, startupId, scorePolicyId.
+
+---
+
+## D003 — MatchScoreFactor tem campo `dimension`
+
+**Contexto:** A primeira proposta não incluía `dimension` em MatchScoreFactor.
+
+**Alternativas:**
+- (a) MatchScoreFactor sem `dimension`
+- (b) MatchScoreFactor com `dimension`
+
+**Decisão:** (b)
+
+**Justificativa:** Sem isso não é possível montar o breakdown por dimensão,
+que é requisito explícito da regra de negócio (breakdown + top 3 + next step).
+
+**Impacto:** MatchScoreFactor passa a ter o campo `dimension` (enum ScoreDimension).
+
+---
+
+## D004 — Peso da dimensão é derivado, não persistido
+
+**Contexto:** Havia ambiguidade sobre como o peso da dimensão era calculado.
+
+**Alternativas:**
+- (a) Peso da dimensão = soma dos pesos dos critérios ativos
+- (b) Peso da dimensão = campo explícito na policy
+- (c) Peso da dimensão = fixo por enum
+
+**Decisão:** (a)
+
+**Justificativa:** Menos campos, menos bugs, coerente com "peso configurável por
+critério". O peso da dimensão vira consequência, não causa.
+
+**Impacto:** O peso da dimensão é sempre calculado no momento da leitura/uso,
+nunca persistido em tabela.
+
+---
+
+## D005 — Padronização de factors e top factors entre endpoints
+
+**Contexto:** Havia inconsistência entre os endpoints sobre onde os fatores
+apareciam (dentro de dimensão, no nível raiz, ou ambos).
+
+**Decisão:**
+- `dimensions[].factors[]` sempre presentes em explanation e calculate
+- `dimensions[].factors[]` opcional em recommendations (payload)
+- `topPositiveFactors[]` e `topAttentionFactors[]` sempre no nível raiz
+
+**Justificativa:** Evitar inconsistência de contrato entre endpoints.
+
+**Impacto:** Recommendations pode ter payload reduzido, mas sempre com top factors
+no nível raiz. Explanation e Calculate têm estrutura completa.
+
+---
+
+## D006 — POST /calculate sempre recalcula e atualiza
+
+**Contexto:** Não estava definido o que acontecia se já existisse MatchScore
+para o par (startup, investor, policy).
+
+**Decisão:**
+- Sempre recalcula e atualiza o MatchScore existente para (startup, investor, policy)
+- 201 Created se criou; 200 OK se atualizou
+- Campo `recalculated: boolean` no response
+- Sem versionamento de MatchScore no MVP
+
+**Justificativa:** Simplifica o MVP. Versionamento é Fase 2.
+
+**Impacto:** O MatchScore é sempre o mais recente para o par/policy. Não há
+histórico de scores no MVP.
+
+---
+
+## D007 — Desativação de policy em POST /policies
+
+**Contexto:** Não estava explícito o que acontecia com a policy anterior quando
+uma nova era criada com `active=true`.
+
+**Decisão:**
+- `active=true`: desativa a anterior (active=false) e ativa a nova
+- `active=false`: cria inativa, sem mexer na ativa
+- MatchScores antigos permanecem referenciando a policy antiga
+
+**Justificativa:** Coerente com "uma policy ativa por perfil" e com preservação
+de histórico de score.
+
+**Impacto:** Sempre existe no máximo uma policy ativa por InvestorProfileType.
+
+---
+
+## D008 — Deduplicação de feedback
+
+**Contexto:** Não havia regra clara sobre o que constituía feedback duplicado.
+
+**Decisão:**
+- Duplicata = mesmo investorId + startupId + scorePolicyId + action
+  nos últimos 5 minutos
+- Fora da janela, sempre registra (pode ser mudança de decisão)
+- Código de erro: FEEDBACK_DUPLICATE (409)
+
+**Justificativa:** Evita duplo-clique acidental sem bloquear mudança real de decisão.
+
+**Impacto:** Janela de 5 minutos é configurável mas fixa no MVP.
+
+---
+
+## D009 — Códigos de erro estruturados
+
+**Contexto:** Erros de negócio estavam sendo citados como texto livre, sem
+padronização para consumo programático pelo cliente.
+
+**Decisão:** Tabela global de códigos:
+- CRITICAL_CRITERION_VIOLATED (422)
+- POLICY_INACTIVE (422)
+- STARTUP_BLACKLISTED (403)
+- REQUIRED_DATA_MISSING (422)
+- SCORE_NOT_CALCULATED (404)
+- FEEDBACK_DUPLICATE (409)
+- POLICY_ALREADY_ACTIVE (409)
+- INVALID_INPUT (400)
+- POLICY_NOT_FOUND (404)
+- STARTUP_NOT_FOUND (404)
+- INVESTOR_NOT_FOUND (404)
+
+**Justificativa:** Cliente precisa consumir erros programaticamente, não por string.
+
+**Impacto:** Todos os endpoints do MVP retornam erros seguindo esse formato.
+
+---
+
+## D010 — Escopo do MVP travado
+
+**Contexto:** O escopo inicial estava ambicioso demais para um projeto acadêmico
+com prazo definido.
+
+**Decisão:**
+- 7 entidades: InvestorProfileType, ScoreDimension (enum), CriticalityLevel (enum),
+  ScorePolicy, ScoreCriterion, MatchScore, MatchScoreFactor
+- 3 serviços: ScoreCalculatorService, ExplanationService, RecommendationService
+- 6 endpoints REST
+- Feedback persistido sem recalibração
+- Versionamento simples (version + active) na policy
+
+**Justificativa:** Projeto acadêmico com potencial de produto. MVP enxuto, mas
+cobrindo a regra de negócio. Extensões ficam documentadas como trabalho futuro.
+
+**Impacto:** Itens fora do MVP estão em D011.
+
+---
+
+## D011 — Trabalho futuro (fora do MVP)
+
+**Contexto:** Várias capacidades foram identificadas como desejáveis, mas não
+cabem no MVP acadêmico.
+
+**Decisão:** Documentar como trabalho futuro:
+- Versionamento com rollback de policy
+- Overrides por setor/estágio
+- Blacklist/whitelist compostos
+- Recalibração em batch por feedback
+- MatchScoreCriterionEvaluation (auditoria por critério)
+- Dashboard analítico
+- Auditoria de política
+- Score temporal e histórico
+
+**Justificativa:** Mantém o MVP executável em prazo acadêmico sem perder a visão
+de produto. Vira seção de "limitações e trabalhos futuros" no TCC/artigo.
+
+**Impacto:** Nenhum código do MVP depende desses itens.
+
+---
+
+## D012 — Banco: H2 em dev + Testcontainers PostgreSQL em testes + PostgreSQL em prod
+
+**Contexto:** Havia dúvida entre paridade total (PostgreSQL em tudo) e
+leveza no desenvolvimento (H2).
+
+**Alternativas:**
+- (a) PostgreSQL em dev, testes e prod
+- (b) H2 em dev + Testcontainers PostgreSQL em testes + PostgreSQL em prod
+
+**Decisão:** (b)
+
+**Justificativa:** MVP acadêmico precisa de baixo atrito no dia a dia,
+mas os testes de integração devem ser fiéis ao banco real de produção.
+
+**Impacto:** Dev local não depende de Docker; testes de integração usam
+PostgreSQL real via Testcontainers; prod usa PostgreSQL.
+
+---
+
+## D013 — Stack: Java + Spring Boot
+
+**Contexto:** Havia dúvida entre Java e Kotlin como linguagem do módulo,
+dado que o backend atual (auth-and-profile-access-layer) já existe.
+
+**Decisão:** Java + Spring Boot, integrado ao backend existente.
+
+**Justificativa:** Alinhamento total com o que já existe; reduz risco
+e custo de setup. Kotlin traria concisão, mas mistura de linguagens
+aumentaria custo de manutenção em projeto acadêmico.
+
+**Impacto:** Módulo scorecard é um novo pacote dentro do projeto Java existente,
+não um projeto separado.
+
+---
+
+## D014 — Build tool: Maven
+
+**Contexto:** Havia dúvida entre Maven e Gradle para o build do módulo.
+
+**Decisão:** Maven.
+
+**Justificativa:** Padrão mais comum em projetos Spring corporativos/acadêmicos;
+previsível em CI; consistente com o que já existe no backend atual.
+
+**Impacto:** `pom.xml` na raiz; dependências do módulo adicionadas ao build existente.
+
+---
+
+## D015 — Estrutura de pacotes: híbrido feature-first + core compartilhado
+
+**Contexto:** Havia dúvida entre feature-first puro e híbrido com core compartilhado.
+
+**Decisão:** feature-first (scorecard.policy, scorecard.calculation,
+scorecard.explanation, scorecard.recommendation, scorecard.feedback)
++ core mínimo compartilhado (scorecard.common, scorecard.api).
+
+**Justificativa:** Preserva "package by feature" e evita duplicação
+em tipos transversais (enums, erros, utilitários).
+
+**Impacto:** Tipos transversais ficam em `scorecard.common`; contratos de API
+em `scorecard.api`; casos de uso ficam em pacotes por feature.
+
+---
+
+## D016 — Migrations: Flyway
+
+**Contexto:** Havia dúvida entre Flyway, Liquibase e migrations manuais.
+
+**Decisão:** Flyway.
+
+**Justificativa:** Simples, robusto, ótimo para versionamento SQL incremental;
+encaixe natural em CI com banco limpo. Liquibase seria overkill para o MVP.
+
+**Impacto:** Migrations em `src/main/resources/db/migration/`;
+nomenclatura `V1__descricao.sql`, `V2__descricao.sql`, etc.
+
+## D017 — Actuator: dependência obrigatória
+
+**Contexto:** `/actuator/health` retornava 403 mesmo com `permitAll()`
+configurado. Causa raiz: `spring-boot-starter-actuator` não estava no
+`pom.xml`. Sem ele, a rota não existe e o Spring Security responde 403
+via `/error` protegido.
+
+**Decisão:**
+- Adicionar `spring-boot-starter-actuator` ao `pom.xml`.
+- Expor `health,info` em `application.properties`.
+- Liberar `/actuator/**` na SecurityConfig.
+
+**Impacto:** `/actuator/health` responde 200. Futuras rotas inexistentes
+podem retornar 403 se `/error` estiver protegido; considerar liberar
+`/error` em dev.

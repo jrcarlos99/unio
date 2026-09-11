@@ -40,6 +40,10 @@ public class AuthService {
         }
 
         Role role = request.getRole();
+        if (role == Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Criação de administrador deve ser feita por bootstrap interno");
+        }
+
         User user = User.builder()
             .email(normalizedEmail)
             .passwordHash(passwordEncoder.encode(request.getPassword()))
