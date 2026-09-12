@@ -440,3 +440,24 @@ domínio do projeto.
   referência aos níveis `COMMON/OPTIONAL` fica substituída por esta decisão.
 - O refinamento das regras de cálculo/comportamento por nível fica para a
   Tarefa 8.
+
+## D024 — MatchScoreClassification: 5 faixas em português
+
+**Contexto:** O contrato v2 define 5 faixas de classificação
+(EXCELENTE, FORTE, MODERADO, FRACO, SEM_MATCH). O enum implementado
+na Tarefa 2 tinha 4 faixas em inglês (HIGH_COMPATIBILITY,
+MODERATE_COMPATIBILITY, LOW_COMPATIBILITY, NOT_RECOMMENDED).
+
+**Decisão:** Adotar os 5 valores do contrato v2:
+EXCELENTE (85-100), FORTE (70-84), MODERADO (55-69),
+FRACO (40-54), SEM_MATCH (0-39).
+
+**Justificativa:** O contrato v2 é a fonte de verdade da API pública.
+A regra de negócio original previa 5 faixas. O código ainda está em
+dev, sem dados em prod — é o momento certo de alinhar.
+
+**Impacto:**
+- MatchScoreClassification.java passa a ter 5 valores.
+- ScoreCalculatorService.classify() implementa 5 faixas.
+- Nenhuma migration necessária (coluna VARCHAR sem constraint).
+- Contrato v2 permanece inalterado (já estava correto).
