@@ -57,7 +57,11 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
   — concluída em 2026-09-12
 - [x] Bloco B — Policy e seed
   - [x] Tarefa 4 — Versionamento de policy (2026-09-12)
-  - [ ] Tarefa 5 — Gestão de critérios por policy (próxima)
+  - [x] Tarefa 5 — Gestão de critérios por policy (2026-09-12)
+  - [x] Tarefa 6 — Seed inicial (2026-09-12)
+  - [ ] Bloco C — Cálculo e explicabilidade (próximo)
+- [ ] Bloco C — Cálculo e explicabilidade
+  - [ ] Tarefa 7 — Pipeline do ScoreCalculatorService (próxima)
 - [x] Migração H2 → PostgreSQL em dev (2026-09-12)
 - [ ] Bloco C — Cálculo e explicabilidade
 - [ ] Bloco D — Recomendação e feedback
