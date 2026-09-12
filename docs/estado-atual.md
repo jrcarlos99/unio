@@ -64,12 +64,15 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
   - [x] Tarefa 7A — ScoreCalculatorService (2026-09-12)
   - [x] Tarefa 7B — ScorePersistenceService (2026-09-12)
   - [x] Tarefa 10 — ExplanationService (2026-09-12)
-  - [ ] Bloco D — Recomendação e feedback (próximo)
+  - [x] Bloco D — Recomendação e feedback (próximo)
 - [ ] Bloco E — Testes
 - [x] Migração H2 → PostgreSQL em dev (2026-09-12)
 - [ ] Bloco C — Cálculo e explicabilidade
 - [ ] Bloco D — Recomendação e feedback
 - [ ] Bloco E — Testes
+- [x] Tarefa 11 — RecommendationService (2026-09-12)
+- [x] Tarefa 11.5 — Endpoints de criação de perfil (2026-09-12)
+- [ ] Tarefa 12 — Endpoints REST do scorecard (próxima)
 
 ## Arquivos gerados na Tarefa 2
 
