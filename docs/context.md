@@ -41,11 +41,13 @@ Tarefa 0 — gerar estrutura de pastas, build e configuração.
 ## Regras desta conversa
 - Não gerar código sem OK explícito
 - Se algo for ambíguo, perguntar antes
-- Respeitar decisões D001–D016
+- Respeitar decisões D001–D018
+- Todo item de decisão usa tag 🟢/🟡/🔴 (ver docs/dominio.md);
+  só itens 🟢 viram prompt de código sem aviso explícito
 
 ## Arquivos de contexto adicionais
 - `AGENTS.md` (raiz) — instruções automáticas para o Copilot no IntelliJ
-- `docs/decisoes.md` — decisões detalhadas (D001–D016)
+- `docs/decisoes.md` — decisões detalhadas (D001–D018)
 - `docs/estado-atual.md` — progresso do projeto
 - `docs/implementacao/plano-tarefas.md` — 17 tarefas (Tarefa 0 a Tarefa 16)
 - `docs/contrato/contrato-v2.md` — contrato ativo da API

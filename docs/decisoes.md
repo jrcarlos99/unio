@@ -302,3 +302,120 @@ via `/error` protegido.
 **Impacto:** `/actuator/health` responde 200. Futuras rotas inexistentes
 podem retornar 403 se `/error` estiver protegido; considerar liberar
 `/error` em dev.
+
+## D018 — investorId e startupId são UUID
+
+**Contexto:** Ao modelar MatchScore, MatchScoreFactor (via FK) e
+FeedbackEvent na Tarefa 2, o tipo de investorId/startupId não estava
+definido — o backend existente (auth/profile) ainda não tinha isso fixado.
+
+**Alternativas:**
+- (a) Long (sequência incremental)
+- (b) UUID
+
+**Decisão:** (b)
+
+**Justificativa:** Evita acoplamento a sequência incremental entre módulos
+desenvolvidos de forma distribuída (auth/profile vs. scorecard); não expõe
+contagem de registros via IDs sequenciais em API pública; suporte nativo
+em PostgreSQL/H2/Testcontainers, coerente com D012.
+
+**Impacto:** investorId e startupId são UUID em MatchScore, MatchScoreFactor
+(indiretamente, via FK a MatchScore) e FeedbackEvent. Se o módulo de
+auth/profile já existente usar Long, será necessário um mapeamento/adapter
+na fronteira entre módulos.
+
+## D019 — PK técnica das entidades do scorecard é Long/IDENTITY
+
+**Contexto:** docs/dominio.md deixava o tipo do `id` de cada entidade em
+aberto ("UUID / Long"). O Copilot resolveu isso na Tarefa 2 usando Long com
+GenerationType.IDENTITY nas 5 entidades, de forma consistente.
+
+**Decisão:** PK técnica (id) = Long/IDENTITY em todas as entidades do
+scorecard. Diferente de D018, que trata apenas dos identificadores de
+negócio (investorId/startupId, vindos de outro módulo) — esses continuam
+UUID.
+
+**Justificativa:** Aceito por consistência já aplicada no código; Long
+autoincremental é suficiente para PK interna de tabela própria do módulo,
+sem necessidade de coordenação distribuída (diferente do caso de
+investorId/startupId, que cruzam módulos).
+
+**Impacto:** Nenhuma migration ainda depende disso além do que já foi
+implicitamente decidido pelo código; formalizado para constar no histórico.
+
+## D020 — Remoção do módulo `matching` (protótipo Tinder/swipe)
+
+**Contexto:** O pacote br.com.unio.matchmaking_backend.matching foi criado
+em conversa anterior, com o conceito original de matchmaking por swipe
+mútuo (estilo Tinder). A decisão de mudar para um modelo de scorecard
+explicável (estilo Serasa Score) foi tomada posteriormente, em conversa
+com o DeepSeek, e não havia sido registrada nos documentos de decisão
+formais (D001–D019) nem comunicada nesta conversa até a colisão de bean
+ter exposto o problema na Tarefa 3.5.
+
+**Decisão:** Remover completamente o pacote `matching` (controller, dto,
+repository, entity, service). `scorecard` é o substituto direto, não um
+módulo complementar.
+
+**Justificativa:** Manter os dois vivos gera colisões recorrentes de nome
+(bean `MatchScoreRepository`, entidade `MatchScore` duplicada) e confunde
+qualquer pessoa lendo o código sobre qual é o modelo de negócio vigente.
+
+**Impacto:** Erro "BeanDefinitionOverrideException" resolvido. Nenhuma
+funcionalidade do MVP scorecard depende de `matching`.
+
+## D021 — Migrations Flyway para tabelas do backend original (auth/profile)
+
+**Contexto:** O backend original (auth/profile) usava `ddl-auto=update`
+para criar suas tabelas em dev. Isso não é aceitável em prod e cria
+divergência entre ambientes. As migrations V7–V9 formalizam o schema
+de `users`, `startup_profiles` e `investor_profiles` via Flyway.
+
+**Decisão:** Adicionar V7, V8, V9 ao Flyway para essas três tabelas.
+A partir de agora, o schema do backend original também é gerenciado
+por migrations, não mais por `ddl-auto`.
+
+**Justificativa:** Paridade dev/test/prod; permite `ddl-auto=validate`
+em todos os profiles.
+
+**Impacto:** `ddl-auto=update` deixa de ser necessário. `validate` passa
+a ser o padrão em todos os profiles.
+
+## D022 — register cria apenas User; perfil é endpoint separado
+
+**Contexto:** `AuthService.register()` tentava criar User + Startup/Investor
+na mesma chamada. Quando o payload não trazia os campos do perfil, o banco
+estourava `NULL not allowed for column "SEGMENTO"` — erro mascarado como
+403 porque `/error` estava protegido.
+
+**Decisão:** `register` cria APENAS `User` (email, password, role).
+`Startup`/`Investor` serão criados em endpoint separado, quando necessário.
+
+**Justificativa:** Desacopla auth de profile. Reduz validação no register.
+Segue o contrato v2 (endpoints separados). Sem over-engineering: cada
+endpoint faz uma coisa.
+
+**Impacto:**
+- `AuthService.register()` simplificado.
+- `RegisterRequest` só com email, password, role.
+- Criação de perfil vira endpoint próprio (a implementar quando o MVP precisar).
+
+## D022 — register cria apenas User; perfil é endpoint separado
+
+**Contexto:** `AuthService.register()` tentava criar User + Startup/Investor
+na mesma chamada. Quando o payload não trazia os campos do perfil, o banco
+estourava `NULL not allowed for column "SEGMENTO"` — erro mascarado como
+403 porque `/error` estava protegido.
+
+**Decisão:** `register` cria APENAS `User` (email, password, role).
+`Startup`/`Investor` serão criados em endpoint separado, quando necessário.
+
+**Justificativa:** Desacopla auth de profile. Reduz validação no register.
+Segue o contrato v2 (endpoints separados). Sem over-engineering.
+
+**Impacto:**
+- `AuthService.register()` simplificado.
+- `RegisterRequest` só com email, password, role.
+- Criação de perfil vira endpoint próprio (a implementar quando o MVP precisar).
+- `/error` liberado em dev, expondo erros reais em vez de 403 mascarado.

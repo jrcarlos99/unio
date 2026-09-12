@@ -5,8 +5,6 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.math.BigDecimal;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,9 +13,9 @@ import lombok.Setter;
 
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class RegisterRequest {
 
     @NotBlank(message = "Email é obrigatório")
@@ -30,19 +28,4 @@ public class RegisterRequest {
 
     @NotNull(message = "Tipo de perfil é obrigatório")
     private Role role;
-
-    private String segmento;
-    private String estagio;
-    private String localizacao;
-    private String modeloNegocio;
-    private String mercadoAlvo;
-    private BigDecimal capitalProcurado;
-    private String pitchCanvas;
-
-    private List<String> segmentosInteresse;
-    private List<String> estagiosInteresse;
-    private BigDecimal ticketMinimo;
-    private BigDecimal ticketMaximo;
-    private String regiaoInteresse;
-    private String perfilRisco;
 }

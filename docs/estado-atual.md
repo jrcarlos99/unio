@@ -1,6 +1,6 @@
 # Estado Atual do Projeto — Scorecard de Matchmaking
 
-Última atualização: 2026-09-11
+Última atualização: 2026-09-12
 
 ## Resumo
 
@@ -9,20 +9,25 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Escopo travado do MVP
 
-- 7 entidades: InvestorProfileType (enum), ScoreDimension (enum),
-  CriticalityLevel (enum), ScorePolicy, ScoreCriterion, MatchScore,
-  MatchScoreFactor
+- 7 entidades documentadas em D010 + `FeedbackEvent` (ver nota em
+  `docs/dominio.md` seção 0 — pendente decidir se vira D019 fixando 8
+  entidades ou se mantém a contagem original)
 - 3 serviços: ScoreCalculatorService, ExplanationService, RecommendationService
 - 6 endpoints REST (contrato v2)
 - Feedback persistido sem recalibração
 - Versionamento simples (version + active) na policy
+- `investorId`/`startupId` como UUID em todas as entidades que referenciam
+  (D018)
+- Módulo `scorecard` é a ÚNICA implementação de matchmaking do projeto —
+  o protótipo anterior (`matching`, conceito swipe/Tinder) foi removido
+  por completo (D020)
 
 ## Documentos do projeto
 
-- `docs/decisoes.md` — 11 decisões de design (D001–D011)
+- `docs/decisoes.md` — decisões de design (D001–D018)
+- `docs/dominio.md` — especificação de domínio (Tarefa 1, ver pendências abaixo)
 - `docs/contrato/contrato-v2.md` — contrato ativo da API
 - `docs/implementacao/plano-tarefas.md` — 17 tarefas (Tarefa 0 a Tarefa 16)
-- `docs/dominio.md` — a ser criado na Tarefa 1
 
 ## Progresso
 
@@ -30,16 +35,94 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] Setup definido
 - [x] Bloco A — Fundação
   - [x] Tarefa 0 — Setup do projeto (concluída em 2026-09-11)
-  - [ ] Tarefa 1 — Especificação de domínio (próxima)
-- [ ] Bloco B — Policy e seed
+  - [x] Tarefa 1 — Especificação de domínio (`docs/dominio.md` criado em
+    2026-09-12; enums, entidades e invariantes documentados — ver
+    pendências abaixo antes de considerar 100% fechada)
+  - [x] Tarefa 2 — Modelar entidades persistentes (concluída em 2026-09-12
+    via Copilot; 5 entidades + 6 enums gerados, sem lógica de negócio —
+    **revisada campo a campo contra `docs/dominio.md` em 2026-09-12,
+    sem divergências**)
+  - [x] Tarefa 3 — Criar camada de repositórios e contratos de acesso
+    (concluída em 2026-09-12 via Copilot; 5 interfaces Spring Data JPA
+    geradas exatamente conforme prompt — revisadas contra D002, D006,
+    D008, sem divergências)
+  - [x] Tarefa 3.5 — Migrations e schema do banco (aplicada em 2026-09-12
+    via Copilot; V2–V6 criadas, revisadas contra as 5 entidades e D002/
+    D006/D008 — sem divergências. `mvn test` confirmado com **build
+    success, 0 failures, 0 erros, 0 skipped** após remoção do módulo
+    `matching` legado — ver D020)
+  - [x] Tarefa 3.6 — Migrations do backend original (V7–V9) + `validate` em dev
+      — concluída em 2026-09-12
+- [x] Tarefa 3.7 — Simplificação do register (só User); /error liberado
+  — concluída em 2026-09-12
+- [ ] Bloco B — Policy e seed (próximo, começando pela Tarefa 4)
 - [ ] Bloco C — Cálculo e explicabilidade
 - [ ] Bloco D — Recomendação e feedback
 - [ ] Bloco E — Testes
 
+## Arquivos gerados na Tarefa 2
+
+- `scorecard/common/InvestorProfileType.java`
+- `scorecard/common/ScoreDimension.java`
+- `scorecard/common/CriticalityLevel.java`
+- `scorecard/common/MatchScoreFactorType.java`
+- `scorecard/common/FeedbackAction.java`
+- `scorecard/common/MatchScoreClassification.java`
+- `scorecard/policy/ScorePolicy.java`
+- `scorecard/policy/ScoreCriterion.java`
+- `scorecard/calculation/MatchScore.java`
+- `scorecard/explanation/MatchScoreFactor.java`
+- `scorecard/feedback/FeedbackEvent.java`
+
+Pontos-chave aplicados (conforme relatado pelo Copilot):
+- `MatchScore` com `@Table(uniqueConstraints = ...)` para
+  `(investor_id, startup_id, score_policy_id)`
+- `MatchScore.classification` usa `MatchScoreClassification`
+- `MatchScoreFactor.dimension` usa `ScoreDimension`
+- `FeedbackEvent` sem relação com `MatchScore`; apenas `investorId`,
+  `startupId` e referência à `ScorePolicy`
+- Nenhum campo de peso de dimensão foi persistido
+- `ScorePolicy.version` e `ScorePolicy.active` como colunas simples
+
+## Achado importante — módulo `matching` legado (2026-09-12)
+
+Durante a validação da Tarefa 3.5, o `mvn test` falhou com
+`BeanDefinitionOverrideException` por colisão de nome entre
+`scorecard.calculation.MatchScoreRepository` (atual) e um
+`matching.repository.MatchScoreRepository` pré-existente. Investigação
+revelou um pacote inteiro `br.com.unio.matchmaking_backend.matching`
+(controller, dto, repository, entity, service) — protótipo de uma
+concepção anterior do matchmaking (estilo swipe/Tinder), criado em
+conversa anterior, anterior à decisão de migrar para o modelo de
+scorecard explicável (decisão tomada com o DeepSeek e não documentada
+formalmente até este ponto).
+
+**Ação tomada:** módulo `matching` removido por completo via `git rm -r`.
+Também foi encontrado um pacote vazio (`br.com.unio.matchmaking.scorecard`,
+sem `_backend`, sem nenhum arquivo `.java` dentro) — removido por ser
+resíduo sem conteúdo.
+
+**Resultado:** `mvn test` → build success, 0 failures, 0 erros, 0 skipped.
+
+Ver D020 em `docs/decisoes.md`.
+
+## Pendências abertas (não bloqueiam Tarefa 4)
+
+- [x] Revisar o código gerado das 5 entidades/6 enums contra `docs/dominio.md`
+  campo a campo — feito em 2026-09-12, sem divergências
+- [x] Validar/travar os valores dos 6 enums — confirmados idênticos ao
+  código, todos 🟢 DECIDIDO
+- [ ] Confirmar regra exata de como `CriticalityLevel.CRITICAL` afeta
+  `MatchScoreClassification` (necessário até a Tarefa 8, não bloqueia
+  repositórios/migrations)
+- [ ] Decidir se `FeedbackEvent` formaliza a contagem para "8 entidades"
+  (D020 se sim)
+
 ## Próximo passo
 
-Tarefa 0 — Setup do projeto.
-Aguardando definição de stack (Java/Spring? Kotlin? Outro?) antes de gerar código.
+Tarefa 4 — implementar fluxo de versionamento de policy (criação/ativação
+com apenas uma versão ativa por InvestorProfileType, D007). Bloco A
+(Fundação) está oficialmente encerrado.
 
 ## Fora do MVP (trabalho futuro)
 
