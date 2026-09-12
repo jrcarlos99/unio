@@ -2,6 +2,7 @@ package br.com.unio.matchmaking_backend.scorecard.policy;
 
 import br.com.unio.matchmaking_backend.scorecard.common.CriticalityLevel;
 import br.com.unio.matchmaking_backend.scorecard.common.ScoreDimension;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -33,6 +34,7 @@ public class ScoreCriterion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "score_policy_id", nullable = false)
     private ScorePolicy scorePolicy;

@@ -12,4 +12,7 @@ public interface MatchScoreRepository extends JpaRepository<MatchScore, Long> {
     List<MatchScore> findByInvestorId(UUID investorId);
 
     List<MatchScore> findByStartupId(UUID startupId);
+
+    Optional<MatchScore> findByInvestorIdAndStartupId(UUID investorId, UUID startupId);
+
 }

@@ -2,6 +2,7 @@ package br.com.unio.matchmaking_backend.scorecard.feedback;
 
 import br.com.unio.matchmaking_backend.scorecard.common.FeedbackAction;
 import br.com.unio.matchmaking_backend.scorecard.policy.ScorePolicy;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -40,6 +41,7 @@ public class FeedbackEvent {
     @Column(name = "startup_id", nullable = false)
     private UUID startupId;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "score_policy_id", nullable = false)
     private ScorePolicy scorePolicy;

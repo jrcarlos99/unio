@@ -1,6 +1,7 @@
 package br.com.unio.matchmaking_backend.scorecard.policy;
 
 import br.com.unio.matchmaking_backend.scorecard.common.InvestorProfileType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -48,6 +49,8 @@ public class ScorePolicy {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "scorePolicy", fetch = FetchType.LAZY)
-    private List<ScoreCriterion> criteria;
+    private List<ScoreCriterion> criteria = new java.util.ArrayList<>();
+
 }
