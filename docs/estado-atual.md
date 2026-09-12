@@ -56,8 +56,9 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] Tarefa 3.7 — Simplificação do register (só User); /error liberado
   — concluída em 2026-09-12
 - [x] Bloco B — Policy e seed
-  - [x] Tarefa 4 — Versionamento de policy (concluída em 2026-09-12)
+  - [x] Tarefa 4 — Versionamento de policy (2026-09-12)
   - [ ] Tarefa 5 — Gestão de critérios por policy (próxima)
+- [x] Migração H2 → PostgreSQL em dev (2026-09-12)
 - [ ] Bloco C — Cálculo e explicabilidade
 - [ ] Bloco D — Recomendação e feedback
 - [ ] Bloco E — Testes
