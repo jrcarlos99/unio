@@ -10,6 +10,7 @@ import br.com.unio.matchmaking_backend.scorecard.calculation.dto.CalculateRespon
 import br.com.unio.matchmaking_backend.scorecard.calculation.dto.ScorePersistenceResult;
 import br.com.unio.matchmaking_backend.scorecard.calculation.service.ScorePersistenceService;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,11 +35,14 @@ public class ScorecardCalculationController {
     public ResponseEntity<CalculateResponse> calculate(
             @Valid @RequestBody CalculateRequest request
     ) {
-        Startup startup = startupRepository.findById(request.getStartupId())
+        Long startupIdLong = toLong(request.getStartupId());
+        Long investorIdLong = toLong(request.getInvestorId());
+
+        Startup startup = startupRepository.findById(startupIdLong)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Startup não encontrada"));
 
-        Investor investor = investorRepository.findById(request.getInvestorId())
+        Investor investor = investorRepository.findById(investorIdLong)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Investidor não encontrado"));
 
@@ -61,5 +65,21 @@ public class ScorecardCalculationController {
         return ResponseEntity.status(result.isRecalculated()
                 ? HttpStatus.OK
                 : HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Converte um UUID "Long-encoded" (new UUID(0L, id)) de volta para Long.
+     */
+    private Long toLong(UUID uuid) {
+        if (uuid == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "UUID é obrigatório");
+        }
+        long msb = uuid.getMostSignificantBits();
+        long lsb = uuid.getLeastSignificantBits();
+        if (msb != 0L) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "UUID não corresponde a um ID de entidade");
+        }
+        return lsb;
     }
 }
