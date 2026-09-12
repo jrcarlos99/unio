@@ -4,6 +4,8 @@ import br.com.unio.matchmaking_backend.auth.entity.Role;
 import br.com.unio.matchmaking_backend.auth.entity.User;
 import br.com.unio.matchmaking_backend.auth.repository.UserRepository;
 import br.com.unio.matchmaking_backend.auth.service.AuthUser;
+import br.com.unio.matchmaking_backend.profile.dto.InvestorCreateRequest;
+import br.com.unio.matchmaking_backend.profile.dto.StartupCreateRequest;
 import br.com.unio.matchmaking_backend.profile.entity.Investor;
 import br.com.unio.matchmaking_backend.profile.entity.Startup;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
@@ -28,9 +30,13 @@ public class ProfileService {
     private final StartupRepository startupRepository;
     private final InvestorRepository investorRepository;
 
+    // ============================================================
+    // Leitura e atualização do perfil atual
+    // ============================================================
+
     public Map<String, Object> getCurrentProfile(AuthUser authUser) {
         User user = userRepository.findById(authUser.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         return switch (user.getRole()) {
             case STARTUP -> buildStartupProfile(user);
@@ -42,7 +48,7 @@ public class ProfileService {
     @Transactional
     public Map<String, Object> updateCurrentProfile(AuthUser authUser, Map<String, Object> payload) {
         User user = userRepository.findById(authUser.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         return switch (user.getRole()) {
             case STARTUP -> updateStartupProfile(user, payload);
@@ -51,9 +57,77 @@ public class ProfileService {
         };
     }
 
+    // ============================================================
+    // Tarefa 11.5 — Criação de perfil
+    // ============================================================
+
+    @Transactional
+    public Map<String, Object> createStartupProfile(AuthUser authUser, StartupCreateRequest request) {
+        User user = userRepository.findById(authUser.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+
+        if (user.getRole() != Role.STARTUP) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é do tipo STARTUP");
+        }
+
+        if (startupRepository.existsById(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Perfil Startup já existe");
+        }
+
+        Startup startup = Startup.builder()
+                .user(user)
+                .segmento(request.getSegmento())
+                .estagio(request.getEstagio())
+                .localizacao(request.getLocalizacao())
+                .modeloNegocio(request.getModeloNegocio())
+                .mercadoAlvo(request.getMercadoAlvo())
+                .capitalProcurado(request.getCapitalProcurado())
+                .pitchCanvas(request.getPitchCanvas())
+                .build();
+
+        startupRepository.save(startup);
+        return buildStartupProfile(user);
+    }
+
+    @Transactional
+    public Map<String, Object> createInvestorProfile(AuthUser authUser, InvestorCreateRequest request) {
+        User user = userRepository.findById(authUser.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+
+        if (user.getRole() != Role.INVESTOR) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é do tipo INVESTOR");
+        }
+
+        if (investorRepository.existsById(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Perfil Investor já existe");
+        }
+
+        if (request.getTicketMinimo().compareTo(request.getTicketMaximo()) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Ticket mínimo não pode ser maior que ticket máximo");
+        }
+
+        Investor investor = Investor.builder()
+                .user(user)
+                .segmentosInteresse(asCsv(request.getSegmentosInteresse()))
+                .estagiosInteresse(asCsv(request.getEstagiosInteresse()))
+                .ticketMinimo(request.getTicketMinimo())
+                .ticketMaximo(request.getTicketMaximo())
+                .regiaoInteresse(request.getRegiaoInteresse())
+                .perfilRisco(request.getPerfilRisco())
+                .build();
+
+        investorRepository.save(investor);
+        return buildInvestorProfile(user);
+    }
+
+    // ============================================================
+    // Builders internos (retorno)
+    // ============================================================
+
     private Map<String, Object> buildStartupProfile(User user) {
         Startup startup = startupRepository.findById(user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil Startup não encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil Startup não encontrado"));
 
         Map<String, Object> response = buildUserSummary(user);
         response.put("segmento", startup.getSegmento());
@@ -68,7 +142,7 @@ public class ProfileService {
 
     private Map<String, Object> buildInvestorProfile(User user) {
         Investor investor = investorRepository.findById(user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil Investor não encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil Investor não encontrado"));
 
         Map<String, Object> response = buildUserSummary(user);
         response.put("segmentosInteresse", parseStringList(investor.getSegmentosInteresse()));
@@ -89,9 +163,13 @@ public class ProfileService {
         return response;
     }
 
+    // ============================================================
+    // Updaters internos
+    // ============================================================
+
     private Map<String, Object> updateStartupProfile(User user, Map<String, Object> payload) {
         Startup startup = startupRepository.findById(user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil Startup não encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil Startup não encontrado"));
 
         if (payload.containsKey("segmento")) startup.setSegmento(String.valueOf(payload.get("segmento")));
         if (payload.containsKey("estagio")) startup.setEstagio(String.valueOf(payload.get("estagio")));
@@ -107,7 +185,7 @@ public class ProfileService {
 
     private Map<String, Object> updateInvestorProfile(User user, Map<String, Object> payload) {
         Investor investor = investorRepository.findById(user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil Investor não encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil Investor não encontrado"));
 
         if (payload.containsKey("segmentosInteresse")) investor.setSegmentosInteresse(asCsv(payload.get("segmentosInteresse")));
         if (payload.containsKey("estagiosInteresse")) investor.setEstagiosInteresse(asCsv(payload.get("estagiosInteresse")));
@@ -119,6 +197,10 @@ public class ProfileService {
         investorRepository.save(investor);
         return buildInvestorProfile(user);
     }
+
+    // ============================================================
+    // Utilitários
+    // ============================================================
 
     public List<Map<String, Object>> listUsers() {
         List<Map<String, Object>> users = new ArrayList<>();
@@ -147,12 +229,12 @@ public class ProfileService {
         }
         if (value instanceof List<?> list) {
             return list.stream()
-                .filter(Objects::nonNull)
-                .map(String::valueOf)
-                .map(String::trim)
-                .filter(item -> !item.isBlank())
-                .reduce((a, b) -> a + "," + b)
-                .orElse(null);
+                    .filter(Objects::nonNull)
+                    .map(String::valueOf)
+                    .map(String::trim)
+                    .filter(item -> !item.isBlank())
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse(null);
         }
         return String.valueOf(value);
     }
