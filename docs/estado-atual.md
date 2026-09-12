@@ -63,8 +63,8 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] Bloco C — Cálculo e explicabilidade
   - [x] Tarefa 7A — ScoreCalculatorService (2026-09-12)
   - [x] Tarefa 7B — ScorePersistenceService (2026-09-12)
-  - [ ] Tarefa 10 — ExplanationService (próxima)
-- [ ] Bloco D — Recomendação e feedback
+  - [x] Tarefa 10 — ExplanationService (2026-09-12)
+  - [ ] Bloco D — Recomendação e feedback (próximo)
 - [ ] Bloco E — Testes
 - [x] Migração H2 → PostgreSQL em dev (2026-09-12)
 - [ ] Bloco C — Cálculo e explicabilidade
