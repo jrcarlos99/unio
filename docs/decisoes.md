@@ -461,3 +461,31 @@ dev, sem dados em prod — é o momento certo de alinhar.
 - ScoreCalculatorService.classify() implementa 5 faixas.
 - Nenhuma migration necessária (coluna VARCHAR sem constraint).
 - Contrato v2 permanece inalterado (já estava correto).
+
+
+## D025 — Pendências técnicas do MVP
+
+**Contexto:** Durante as Tarefas 7A/7B, foram identificadas
+limitações que não bloqueiam o MVP, mas precisam ser resolvidas
+antes de virar produto.
+
+**Pendências:**
+
+1. `MODELO_NEGOCIO_FIT` retorna sempre 50 (neutro). O `Investor`
+   não tem campo `modeloNegocio`. Trabalho futuro: adicionar esse
+   campo ao perfil do investidor.
+
+2. `ScorePersistenceService.mapToProfileType()` está chumbado em
+   `ANGEL_INVESTOR`. O `Investor` não tem campo que mapeie para
+   `InvestorProfileType`. Trabalho futuro: adicionar esse campo
+   ou passar o tipo como parâmetro do endpoint.
+
+3. `investorId`/`startupId` em `MatchScore` são `UUID`, mas as
+   entidades `Startup`/`Investor` usam PK `Long`. A conversão é
+   `new UUID(0L, id)`. Trabalho futuro: alinhar tipos entre módulos.
+
+4. `MatchScoreFactor.factorLabel` recebe o `code` do critério, não
+   o `label` humano. Trabalho futuro: passar o label.
+
+**Impacto:** Nenhum desses itens bloqueia o cálculo ou a
+persistência. O MVP funciona com as limitações documentadas.
