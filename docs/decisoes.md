@@ -419,3 +419,24 @@ Segue o contrato v2 (endpoints separados). Sem over-engineering.
 - `RegisterRequest` só com email, password, role.
 - Criação de perfil vira endpoint próprio (a implementar quando o MVP precisar).
 - `/error` liberado em dev, expondo erros reais em vez de 403 mascarado.
+
+## D023 — CriticalityLevel com 4 níveis (CRITICAL, HIGH, MEDIUM, LOW)
+
+**Contexto:** A D009 citava `CriticalityLevel` em 3 níveis
+(`CRITICAL`, `COMMON`, `OPTIONAL`). Na implementação da Tarefa 2, o enum
+foi definido com 4 níveis (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`) e essa
+mudança não havia sido formalizada no histórico de decisões.
+
+**Decisão:** Adotar oficialmente 4 níveis em `CriticalityLevel`:
+`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`.
+
+**Justificativa:** Os 4 níveis oferecem maior granularidade para
+priorização dos critérios e já refletem o estado atual do código e do
+domínio do projeto.
+
+**Impacto:**
+- `CriticalityLevel.java` permanece com 4 valores.
+- D009 continua válida para a padronização de **códigos de erro**, mas a
+  referência aos níveis `COMMON/OPTIONAL` fica substituída por esta decisão.
+- O refinamento das regras de cálculo/comportamento por nível fica para a
+  Tarefa 8.

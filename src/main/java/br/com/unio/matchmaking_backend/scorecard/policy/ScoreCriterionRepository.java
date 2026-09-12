@@ -9,4 +9,5 @@ public interface ScoreCriterionRepository extends JpaRepository<ScoreCriterion, 
     List<ScoreCriterion> findByScorePolicyIdAndActiveTrue(Long scorePolicyId);
 
     List<ScoreCriterion> findByScorePolicyIdAndDimension(Long scorePolicyId, ScoreDimension dimension);
+    boolean existsByScorePolicyIdAndCodeIgnoreCase(Long scorePolicyId, String code);
 }
