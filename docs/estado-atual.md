@@ -55,7 +55,9 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
       — concluída em 2026-09-12
 - [x] Tarefa 3.7 — Simplificação do register (só User); /error liberado
   — concluída em 2026-09-12
-- [ ] Bloco B — Policy e seed (próximo, começando pela Tarefa 4)
+- [x] Bloco B — Policy e seed
+  - [x] Tarefa 4 — Versionamento de policy (concluída em 2026-09-12)
+  - [ ] Tarefa 5 — Gestão de critérios por policy (próxima)
 - [ ] Bloco C — Cálculo e explicabilidade
 - [ ] Bloco D — Recomendação e feedback
 - [ ] Bloco E — Testes
