@@ -21,10 +21,11 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - Módulo `scorecard` é a ÚNICA implementação de matchmaking do projeto —
   o protótipo anterior (`matching`, conceito swipe/Tinder) foi removido
   por completo (D020)
+- PostgreSQL local em dev (migração H2 → PostgreSQL concluída em 2026-09-12)
 
 ## Documentos do projeto
 
-- `docs/decisoes.md` — decisões de design (D001–D018)
+- `docs/decisoes.md` — decisões de design (D001–D025)
 - `docs/dominio.md` — especificação de domínio (Tarefa 1, ver pendências abaixo)
 - `docs/contrato/contrato-v2.md` — contrato ativo da API
 - `docs/implementacao/plano-tarefas.md` — 17 tarefas (Tarefa 0 a Tarefa 16)
@@ -33,46 +34,66 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 - [x] Contrato v2 aprovado
 - [x] Setup definido
-- [x] Bloco A — Fundação
-  - [x] Tarefa 0 — Setup do projeto (concluída em 2026-09-11)
-  - [x] Tarefa 1 — Especificação de domínio (`docs/dominio.md` criado em
-    2026-09-12; enums, entidades e invariantes documentados — ver
-    pendências abaixo antes de considerar 100% fechada)
-  - [x] Tarefa 2 — Modelar entidades persistentes (concluída em 2026-09-12
-    via Copilot; 5 entidades + 6 enums gerados, sem lógica de negócio —
-    **revisada campo a campo contra `docs/dominio.md` em 2026-09-12,
-    sem divergências**)
-  - [x] Tarefa 3 — Criar camada de repositórios e contratos de acesso
-    (concluída em 2026-09-12 via Copilot; 5 interfaces Spring Data JPA
-    geradas exatamente conforme prompt — revisadas contra D002, D006,
-    D008, sem divergências)
-  - [x] Tarefa 3.5 — Migrations e schema do banco (aplicada em 2026-09-12
-    via Copilot; V2–V6 criadas, revisadas contra as 5 entidades e D002/
-    D006/D008 — sem divergências. `mvn test` confirmado com **build
-    success, 0 failures, 0 erros, 0 skipped** após remoção do módulo
-    `matching` legado — ver D020)
-  - [x] Tarefa 3.6 — Migrations do backend original (V7–V9) + `validate` em dev
-      — concluída em 2026-09-12
+
+### Bloco A — Fundação
+- [x] Tarefa 0 — Setup do projeto (concluída em 2026-09-11)
+- [x] Tarefa 1 — Especificação de domínio (`docs/dominio.md` criado em
+  2026-09-12; enums, entidades e invariantes documentados — ver
+  pendências abaixo antes de considerar 100% fechada)
+- [x] Tarefa 2 — Modelar entidades persistentes (concluída em 2026-09-12
+  via Copilot; 5 entidades + 6 enums gerados, sem lógica de negócio —
+  **revisada campo a campo contra `docs/dominio.md` em 2026-09-12,
+  sem divergências**)
+- [x] Tarefa 3 — Criar camada de repositórios e contratos de acesso
+  (concluída em 2026-09-12 via Copilot; 5 interfaces Spring Data JPA
+  geradas exatamente conforme prompt — revisadas contra D002, D006,
+  D008, sem divergências)
+- [x] Tarefa 3.5 — Migrations e schema do banco (aplicada em 2026-09-12
+  via Copilot; V2–V6 criadas, revisadas contra as 5 entidades e D002/
+  D006/D008 — sem divergências. `mvn test` confirmado com **build
+  success, 0 failures, 0 erros, 0 skipped** após remoção do módulo
+  `matching` legado — ver D020)
+- [x] Tarefa 3.6 — Migrations do backend original (V7–V9) + `validate` em dev
+  — concluída em 2026-09-12
 - [x] Tarefa 3.7 — Simplificação do register (só User); /error liberado
   — concluída em 2026-09-12
-- [x] Bloco B — Policy e seed
-  - [x] Tarefa 4 — Versionamento de policy (2026-09-12)
-  - [x] Tarefa 5 — Gestão de critérios por policy (2026-09-12)
-  - [x] Tarefa 6 — Seed inicial (2026-09-12)
-  - [ ] Bloco C — Cálculo e explicabilidade (próximo)
-- [x] Bloco C — Cálculo e explicabilidade
-  - [x] Tarefa 7A — ScoreCalculatorService (2026-09-12)
-  - [x] Tarefa 7B — ScorePersistenceService (2026-09-12)
-  - [x] Tarefa 10 — ExplanationService (2026-09-12)
-  - [x] Bloco D — Recomendação e feedback (próximo)
-- [ ] Bloco E — Testes
-- [x] Migração H2 → PostgreSQL em dev (2026-09-12)
-- [ ] Bloco C — Cálculo e explicabilidade
-- [ ] Bloco D — Recomendação e feedback
-- [ ] Bloco E — Testes
+
+### Bloco B — Policy e seed
+- [x] Tarefa 4 — Versionamento de policy (2026-09-12)
+- [x] Tarefa 5 — Gestão de critérios por policy (2026-09-12)
+- [x] Tarefa 6 — Seed inicial (2026-09-12)
+
+### Bloco C — Cálculo e explicabilidade
+- [x] Tarefa 7A — ScoreCalculatorService (2026-09-12)
+- [x] Tarefa 7B — ScorePersistenceService (2026-09-12)
+- [x] Tarefa 10 — ExplanationService (2026-09-12)
+
+### Bloco D — Recomendação e feedback
 - [x] Tarefa 11 — RecommendationService (2026-09-12)
 - [x] Tarefa 11.5 — Endpoints de criação de perfil (2026-09-12)
-- [ ] Tarefa 12 — Endpoints REST do scorecard (próxima)
+- [x] Tarefa 12 — Endpoints REST do scorecard (2026-09-12)
+- [x] Tarefa 13 — Feedback persistido (coberto pela Tarefa 12)
+
+### Bloco E — Testes
+- [ ] Tarefa 14 — Testes unitários (próxima)
+- [ ] Tarefa 15 — Testes de integração
+- [ ] Tarefa 16 — Hardening
+
+### Infraestrutura
+- [x] Migração H2 → PostgreSQL em dev (2026-09-12)
+- [x] Actuator + health check funcionando
+- [x] /error liberado em dev
+
+### Validado via curl
+- [x] POST /api/auth/register → 200 com JWT
+- [x] POST /api/auth/login → 200 com JWT
+- [x] POST /api/profile/startup → 201 Created
+- [x] POST /api/profile/investor → 201 Created
+- [x] POST /api/admin/policies → 201 Created
+- [x] POST /api/scorecard/calculate → 201, score 92.50, EXCELENTE
+- [x] GET /api/scorecard/{startupId}/explanation → 200
+- [x] GET /api/scorecard/recommendations → 200
+- [x] POST /api/scorecard/feedback → 201 Created
 
 ## Arquivos gerados na Tarefa 2
 
@@ -120,7 +141,7 @@ resíduo sem conteúdo.
 
 Ver D020 em `docs/decisoes.md`.
 
-## Pendências abertas (não bloqueiam Tarefa 4)
+## Pendências abertas
 
 - [x] Revisar o código gerado das 5 entidades/6 enums contra `docs/dominio.md`
   campo a campo — feito em 2026-09-12, sem divergências
@@ -131,13 +152,15 @@ Ver D020 em `docs/decisoes.md`.
   repositórios/migrations)
 - [ ] Decidir se `FeedbackEvent` formaliza a contagem para "8 entidades"
   (D020 se sim)
+- [ ] Inconsistência entre /calculate (92.50) e /explanation (REGIAO: 0).
+  Hipótese: ExplanationService não persiste todos os fatores, só top 3
+  + top 3. Ver D026 (a registrar).
 
 ## Próximo passo
 
-Tarefa 4 — implementar fluxo de versionamento de policy (criação/ativação
-com apenas uma versão ativa por InvestorProfileType, D007). Bloco A
-(Fundação) está oficialmente encerrado.
+Bloco E — Testes (Tarefa 14, 15, 16). Opcionalmente, iniciar frontend
+(Antigravity) para visualização.
 
 ## Fora do MVP (trabalho futuro)
 
-Ver D011 em `docs/decisoes.md`.
+Ver D011 e D025 em `docs/decisoes.md`.
