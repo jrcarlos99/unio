@@ -95,6 +95,15 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] GET /api/scorecard/recommendations → 200
 - [x] POST /api/scorecard/feedback → 201 Created
 
+
+### Frontend
+- [x] Integração com backend (Antigravity) — 2026-09-12
+- [x] Login/registro funcionando
+- [x] Perfil funcionando
+- [x] Calculadora de Match funcionando (score 92.50 exibido)
+- [x] Recomendações funcionando
+- [x] CORS resolvido
+
 ## Arquivos gerados na Tarefa 2
 
 - `scorecard/common/InvestorProfileType.java`
@@ -152,9 +161,7 @@ Ver D020 em `docs/decisoes.md`.
   repositórios/migrations)
 - [ ] Decidir se `FeedbackEvent` formaliza a contagem para "8 entidades"
   (D020 se sim)
-- [ ] Inconsistência entre /calculate (92.50) e /explanation (REGIAO: 0).
-  Hipótese: ExplanationService não persiste todos os fatores, só top 3
-  + top 3. Ver D026 (a registrar).
+- [x] D026 — Inconsistência /calculate vs /explanation resolvida (2026-09-12)
 
 ## Próximo passo
 

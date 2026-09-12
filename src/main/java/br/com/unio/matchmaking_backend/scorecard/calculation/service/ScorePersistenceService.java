@@ -15,6 +15,8 @@ import br.com.unio.matchmaking_backend.scorecard.explanation.MatchScoreFactorRep
 import br.com.unio.matchmaking_backend.scorecard.policy.ScoreCriterionRepository;
 import br.com.unio.matchmaking_backend.scorecard.policy.ScorePolicy;
 import br.com.unio.matchmaking_backend.scorecard.policy.ScorePolicyRepository;
+
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -90,21 +92,22 @@ public class ScorePersistenceService {
             ScoreCalculationResult result
     ) {
         List<CriterionEvaluation> evaluations = result.getCriterionEvaluations();
-
-        List<CriterionEvaluation> topPositive = evaluations.stream()
-                .sorted(Comparator.comparing(CriterionEvaluation::getAdjustedScore).reversed())
-                .limit(3)
-                .toList();
-
-        List<CriterionEvaluation> topAttention = evaluations.stream()
-                .filter(e -> e.getAdjustedScore().compareTo(new java.math.BigDecimal("70")) < 0)
-                .sorted(Comparator.comparing(CriterionEvaluation::getAdjustedScore))
-                .limit(3)
-                .toList();
-
         List<MatchScoreFactor> factors = new ArrayList<>();
-        factors.addAll(toFactors(matchScore, topPositive, MatchScoreFactorType.POSITIVE));
-        factors.addAll(toFactors(matchScore, topAttention, MatchScoreFactorType.ATTENTION));
+
+        // Separa todos em POSITIVE e ATTENTION, ordena por score.
+        List<CriterionEvaluation> positives = evaluations.stream()
+                .filter(e -> e.getAdjustedScore().compareTo(new BigDecimal("70")) >= 0)
+                .sorted(Comparator.comparing(CriterionEvaluation::getAdjustedScore).reversed())
+                .toList();
+
+        List<CriterionEvaluation> attentions = evaluations.stream()
+                .filter(e -> e.getAdjustedScore().compareTo(new BigDecimal("70")) < 0)
+                .sorted(Comparator.comparing(CriterionEvaluation::getAdjustedScore))
+                .toList();
+
+        factors.addAll(toFactors(matchScore, positives, MatchScoreFactorType.POSITIVE));
+        factors.addAll(toFactors(matchScore, attentions, MatchScoreFactorType.ATTENTION));
+
         return factors;
     }
 

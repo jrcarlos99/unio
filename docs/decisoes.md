@@ -489,3 +489,33 @@ antes de virar produto.
 
 **Impacto:** Nenhum desses itens bloqueia o cálculo ou a
 persistência. O MVP funciona com as limitações documentadas.
+
+
+## D026 — Persistência completa dos fatores explicáveis
+
+**Contexto:** O `ScorePersistenceService` persistia apenas top 3
+positivos + top 3 atenção. Como consequência, dimensões que não
+entravam nesses top 3 (mas que tinham sido avaliadas no cálculo)
+ficavam sem fator persistido. O `ExplanationService`, ao calcular
+o score da dimensão como média dos fatores, retornava 0 para essas
+dimensões. Isso gerou inconsistência: `/calculate` retornava 92.50,
+mas `/explanation` mostrava soma de 77.50.
+
+**Decisão:** Persistir TODOS os fatores avaliados (não só top 3).
+O `ExplanationService` continua limitando a resposta a top 3
+positivos + top 3 atenção (conforme contrato v2), mas calcula as
+dimensões sobre os dados completos.
+
+**Justificativa:** Coerência entre `/calculate` e `/explanation`.
+O banco tem mais linhas, mas o MVP não tem restrição de volume.
+
+**Impacto:**
+- MatchScoreFactor pode ter até N fatores por MatchScore (N = número
+  de critérios ativos).
+- `/explanation` retorna dimensões corretas.
+- Nenhuma migration necessária.
+
+**Validado em 2026-09-12:**
+- 5 fatores persistidos (era 4)
+- REGIAO: 100.00 (era 0.00)
+- Soma das dimensões = 92.50 = score final

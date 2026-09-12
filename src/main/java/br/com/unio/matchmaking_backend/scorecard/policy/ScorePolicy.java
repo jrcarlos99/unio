@@ -49,7 +49,7 @@ public class ScorePolicy {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @JsonIgnore
+    @Builder.Default
     @OneToMany(mappedBy = "scorePolicy", fetch = FetchType.LAZY)
     private List<ScoreCriterion> criteria = new java.util.ArrayList<>();
 
