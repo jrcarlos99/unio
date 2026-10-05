@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import publicRoutes from "./publicRoutes";
 import adminRoutes from "./adminRoutes";
+import startupRoutes from "./startupRoutes";
 import ProtectedRoute from "./ProtectedRoute";
 
 // Componente único de rotas da aplicação — App.tsx só renderiza isso dentro
@@ -13,6 +14,9 @@ export default function AppRoutes() {
       {publicRoutes}
       <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
         {adminRoutes}
+      </Route>
+      <Route element={<ProtectedRoute allowedRoles={["startup"]} />}>
+        {startupRoutes}
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
