@@ -49,4 +49,6 @@ application-local.properties
 AGENTS.md
 
 # Arquivos de upload gerados em tempo de execução
-uploads/
+uploads/*
+
+*.zip
