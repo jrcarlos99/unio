@@ -18,12 +18,16 @@ export default function SignupForm({ onSuccess }: SignupFormProps) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [role, setRole] = useState<'STARTUP' | 'INVESTOR'>('STARTUP');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [erroApi, setErroApi] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
-  const [erros, setErros] = useState<{ documento?: string; email?: string; senha?: string }>(
-    {}
-  );
+  const [erros, setErros] = useState<{
+    documento?: string;
+    email?: string;
+    senha?: string;
+    acceptedTerms?: string;
+  }>({});
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -36,12 +40,21 @@ export default function SignupForm({ onSuccess }: SignupFormProps) {
     if (!EMAIL_REGEX.test(email)) novosErros.email = 'E-mail inválido.';
     if (senha.trim() === '') novosErros.senha = 'Informe a senha.';
     else if (senha.length < 8) novosErros.senha = 'A senha deve ter no mínimo 8 caracteres.';
+    if (!acceptedTerms) {
+      novosErros.acceptedTerms = 'Você deve aceitar os termos de uso e política de privacidade';
+    }
     setErros(novosErros);
 
     if (Object.keys(novosErros).length === 0) {
       setIsLoading(true);
       setErroApi('');
-      register({ email: email.trim(), password: senha, role })
+      register({
+        email: email.trim(),
+        password: senha,
+        role,
+        documento: digitos,
+        acceptedTerms,
+      })
         .then((response) => onSuccess(response.role))
         .catch((error: unknown) => setErroApi(getApiErrorMessage(error, 'Não foi possível criar a conta.')))
         .finally(() => setIsLoading(false));
@@ -88,6 +101,25 @@ export default function SignupForm({ onSuccess }: SignupFormProps) {
           onChange={(e) => setSenha(e.target.value)}
         />
         {erros.senha && <p className="-mt-2 mb-2 text-xs text-red-600">{erros.senha}</p>}
+
+        <label className="mb-3 flex items-start gap-2 text-xs text-deepgreen" htmlFor="signup-accepted-terms">
+          <input
+            id="signup-accepted-terms"
+            type="checkbox"
+            checked={acceptedTerms}
+            onChange={(e) => {
+              setAcceptedTerms(e.target.checked);
+              if (e.target.checked) {
+                setErros((current) => ({ ...current, acceptedTerms: undefined }));
+              }
+            }}
+            className="mt-0.5 accent-deepgreen"
+          />
+          <span>Aceito os termos de uso e a política de privacidade.</span>
+        </label>
+        {erros.acceptedTerms && (
+          <p className="-mt-2 mb-2 text-xs text-red-600">{erros.acceptedTerms}</p>
+        )}
 
         <label className="mb-3 block text-xs font-semibold text-deepgreen" htmlFor="signup-role">
           Tipo de conta

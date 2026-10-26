@@ -33,6 +33,8 @@ interface RegisterData {
   email: string;
   password: string;
   role: "STARTUP" | "INVESTOR";
+  documento: string;
+  acceptedTerms: boolean;
 }
 
 interface AuthContextValue {

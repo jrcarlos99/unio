@@ -310,7 +310,15 @@ const ROTAS: Record<string, Rota> = {
   "POST /api/auth/register": ({ banco, corpo }) => {
     const email = String(corpo.email ?? "").trim().toLowerCase();
     const role = corpo.role as Role;
-    exigirCampos(corpo, { email: "Email é obrigatório", password: "Senha é obrigatória" });
+    exigirCampos(corpo, {
+      email: "Email é obrigatório",
+      password: "Senha é obrigatória",
+      documento: "CPF/CNPJ é obrigatório",
+      acceptedTerms: "Aceite os termos de uso e a política de privacidade",
+    });
+    if (corpo.acceptedTerms !== true) {
+      badRequest("Aceite os termos de uso e a política de privacidade");
+    }
     if (banco.usuarios.some((usuario) => usuario.email === email)) {
       throw new ErroHttp(409, "Email já cadastrado");
     }
