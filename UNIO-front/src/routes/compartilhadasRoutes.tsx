@@ -1,15 +1,13 @@
 import { lazy } from "react";
 import { Route } from "react-router-dom";
 import PorPerfil from "./PorPerfil";
-import ContatosForm from "../components/unios/ContatosForm";
 
 const PaginaSalvos = lazy(() => import("../pages/shared/PaginaSalvos"));
 const PaginaMeusUnios = lazy(() => import("../pages/shared/PaginaMeusUnios"));
 const EmBreve = lazy(() => import("../pages/EmBreve"));
+const StartupProfile = lazy(() => import("../pages/startup/StartupProfile"));
+const InvestorProfile = lazy(() => import("../pages/investidor/InvestorProfile"));
 
-// Rotas iguais para investidor e startup (mesmos itens da sidebar). Cada
-// perfil vê o seu conteúdo; Salvos e Meus unios são a mesma página com a
-// prop `perfil`. Mesmo formato de Fragment do publicRoutes.tsx.
 const compartilhadasRoutes = (
   <>
     <Route
@@ -43,29 +41,10 @@ const compartilhadasRoutes = (
         />
       }
     />
-    <Route
+     <Route
       path="/meu-perfil"
       element={
-        <PorPerfil
-          investidor={
-            <EmBreve
-              titulo="Meu perfil"
-              texto="Em breve você poderá editar seus dados aqui. Sua tese de investimento já pode ser revisada."
-              link={{ para: "/onboarding/investidor?passo=1", rotulo: "Revisar minha tese" }}
-            >
-              <ContatosForm />
-            </EmBreve>
-          }
-          startup={
-            <EmBreve
-              titulo="Meu perfil"
-              texto="Em breve você poderá editar o perfil e o pitch da startup aqui. As respostas do onboarding já podem ser revisadas."
-              link={{ para: "/onboarding/startup?passo=1", rotulo: "Revisar meu onboarding" }}
-            >
-              <ContatosForm />
-            </EmBreve>
-          }
-        />
+        <PorPerfil investidor={<InvestorProfile />} startup={<StartupProfile />} />
       }
     />
   </>

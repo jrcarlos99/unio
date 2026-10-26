@@ -29,15 +29,23 @@ interface PitchMock {
   leanCanvas: Record<string, string>;
 }
 
+type OnboardingStatusMock = "PENDENTE" | "CONCLUIDO" | "PULADO";
+
+
+interface OnboardingMock {
+  status: OnboardingStatusMock;
+  respostas: Record<string, unknown>;
+  atualizadoEm: string | null;
+}
+
 interface BancoMock {
   proximoId: number;
   usuarios: UsuarioMock[];
   // perfis por id do usuário
   startups: Record<number, Record<string, unknown>>;
   investidores: Record<number, Record<string, unknown>>;
-  // pitch + Lean Canvas per startup user id (missing in databases saved
-  // before this field existed, hence optional)
   pitches?: Record<number, PitchMock>;
+  onboarding?: Record<number, OnboardingMock>;
 }
 
 function bancoInicial(): BancoMock {
@@ -126,6 +134,54 @@ function resumoUsuario(usuario: UsuarioMock) {
   };
 }
 
+const STARTUP_FIELDS = [
+  "nome",
+  "segmento",
+  "estagio",
+  "localizacao",
+  "modeloNegocio",
+  "mercadoAlvo",
+  "capitalProcurado",
+  "pitchCanvas",
+];
+
+const INVESTOR_FIELDS = [
+  "segmentosInteresse",
+  "estagiosInteresse",
+  "ticketMinimo",
+  "ticketMaximo",
+  "regiaoInteresse",
+  "perfilRisco",
+  "disponibilidade",
+  "disponibilidadeObservacao",
+];
+const DISPONIBILIDADES_MENTORIA = ["BAIXA", "MEDIA", "ALTA"];
+
+function atualizarInvestidor(perfil: Record<string, unknown>, corpo: Record<string, unknown>) {
+  for (const campo of INVESTOR_FIELDS) {
+    if (!(campo in corpo)) continue;
+    const valor = corpo[campo];
+    if (campo === "disponibilidade") {
+      // null clears it; any other value must match the enum exactly
+      if (valor != null && !DISPONIBILIDADES_MENTORIA.includes(String(valor))) {
+        throw new ErroHttp(400, "Disponibilidade de mentoria inválida");
+      }
+      perfil[campo] = valor == null ? null : String(valor);
+    } else if (campo === "disponibilidadeObservacao") {
+      if (valor != null && String(valor).length > 255) {
+        throw new ErroHttp(400, "disponibilidadeObservacao deve ter no máximo 255 caracteres");
+      }
+      perfil[campo] = valor == null ? null : String(valor);
+    } else if (campo === "ticketMinimo" || campo === "ticketMaximo") {
+      perfil[campo] = valor == null ? null : Number(valor);
+    } else if (campo === "segmentosInteresse" || campo === "estagiosInteresse") {
+      perfil[campo] = Array.isArray(valor) ? valor.map((item) => String(item).trim()).filter(Boolean) : [];
+    } else {
+      perfil[campo] = String(valor);
+    }
+  }
+}
+
 function perfilCompleto(banco: BancoMock, usuario: UsuarioMock) {
   if (usuario.role === "ADMIN") return resumoUsuario(usuario);
   const perfil =
@@ -134,7 +190,24 @@ function perfilCompleto(banco: BancoMock, usuario: UsuarioMock) {
     const tipo = usuario.role === "STARTUP" ? "Startup" : "Investor";
     throw new ErroHttp(404, `Perfil ${tipo} não encontrado`);
   }
-  return { ...resumoUsuario(usuario), ...perfil };
+  if (usuario.role === "STARTUP") {
+    const campos = Object.fromEntries(STARTUP_FIELDS.map((campo) => [campo, perfil[campo] ?? null]));
+    return { ...resumoUsuario(usuario), ...campos };
+  }
+   return { ...resumoUsuario(usuario), disponibilidade: null, disponibilidadeObservacao: null, ...perfil };
+}
+
+function atualizarStartup(perfil: Record<string, unknown>, corpo: Record<string, unknown>) {
+  if ("nome" in corpo && corpo.nome != null && String(corpo.nome).length > 255) {
+    throw new ErroHttp(400, "nome deve ter no máximo 255 caracteres");
+  }
+  for (const campo of STARTUP_FIELDS) {
+    if (!(campo in corpo)) continue;
+    const valor = corpo[campo];
+    if (campo === "capitalProcurado") perfil[campo] = valor == null ? null : Number(valor);
+    else if (campo === "nome") perfil[campo] = valor == null ? null : String(valor);
+    else perfil[campo] = String(valor);
+  }
 }
 
 function exigirCampos(corpo: Record<string, unknown>, campos: Record<string, string>) {
@@ -152,10 +225,6 @@ function exigirPositivo(valor: unknown, mensagem: string) {
     throw new ErroHttp(400, mensagem, { errors: [{ defaultMessage: mensagem }] });
   }
 }
-
-// ---------------------------------------------------------------------------
-// Pitch & Lean Canvas (/api/startups/me/pitch)
-// ---------------------------------------------------------------------------
 
 const SHORT_PITCH_MAX = 280;
 const CANVAS_BLOCK_MAX = 500;
@@ -214,6 +283,17 @@ function badRequest(message: string): never {
   throw new ErroHttp(400, message, { errors: [{ defaultMessage: message }] });
 }
 
+const ONBOARDING_STATUSES: OnboardingStatusMock[] = ["PENDENTE", "CONCLUIDO", "PULADO"];
+const ONBOARDING_MAX_BYTES = 20 * 1024;
+
+function requireOnboardingUser(banco: BancoMock, config: InternalAxiosRequestConfig) {
+  const usuario = exigirUsuario(banco, config);
+  if (usuario.role !== "STARTUP" && usuario.role !== "INVESTOR") {
+    throw new ErroHttp(403, "Onboarding disponível apenas para STARTUP e INVESTOR");
+  }
+  return usuario;
+}
+
 type Rota = (args: {
   banco: BancoMock;
   corpo: Record<string, unknown>;
@@ -265,7 +345,8 @@ const ROTAS: Record<string, Rota> = {
     const perfis = usuario.role === "STARTUP" ? banco.startups : banco.investidores;
     if (usuario.role !== "ADMIN") {
       perfilCompleto(banco, usuario); // 404 se ainda não existe
-      perfis[usuario.id] = { ...perfis[usuario.id], ...corpo };
+      if (usuario.role === "STARTUP") atualizarStartup(perfis[usuario.id], corpo);
+      else atualizarInvestidor(perfis[usuario.id], corpo);
     }
     return perfilCompleto(banco, usuario);
   },
@@ -343,6 +424,39 @@ const ROTAS: Record<string, Rota> = {
     if (!pitch.shortPitch.trim()) badRequest("Pitch curto é obrigatório para publicar");
     pitches[usuario.id] = { ...pitch, status: "IN_REVIEW", updatedAt: new Date().toISOString() };
     return pitches[usuario.id];
+  },
+
+   "GET /api/profile/onboarding": ({ banco, config }) => {
+    const usuario = requireOnboardingUser(banco, config);
+    return banco.onboarding?.[usuario.id] ?? { status: "PENDENTE", respostas: {}, atualizadoEm: null };
+  },
+
+  "PUT /api/profile/onboarding": ({ banco, corpo, config }) => {
+    const usuario = requireOnboardingUser(banco, config);
+    const registros = (banco.onboarding ??= {});
+    const atual = registros[usuario.id] ?? { status: "PENDENTE", respostas: {}, atualizadoEm: null };
+
+    const status = corpo.status;
+    if (status != null && !ONBOARDING_STATUSES.includes(status as OnboardingStatusMock)) {
+      throw new ErroHttp(400, "Status inválido");
+    }
+    let respostas = atual.respostas;
+    if (corpo.respostas != null) {
+      if (typeof corpo.respostas !== "object" || Array.isArray(corpo.respostas)) {
+        throw new ErroHttp(400, "JSON malformado");
+      }
+      const json = JSON.stringify(corpo.respostas);
+      if (new TextEncoder().encode(json).length > ONBOARDING_MAX_BYTES) {
+        throw new ErroHttp(400, "Respostas excedem o limite de 20 KB");
+      }
+      respostas = JSON.parse(json) as Record<string, unknown>;
+    }
+    registros[usuario.id] = {
+      status: (status as OnboardingStatusMock | null | undefined) ?? atual.status,
+      respostas,
+      atualizadoEm: new Date().toISOString(),
+    };
+    return registros[usuario.id];
   },
 
   "GET /api/admin/users": ({ banco, config }) => {
