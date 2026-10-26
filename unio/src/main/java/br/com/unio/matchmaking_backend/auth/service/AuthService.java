@@ -5,6 +5,9 @@ import br.com.unio.matchmaking_backend.auth.dto.RegisterRequest;
 import br.com.unio.matchmaking_backend.auth.entity.Role;
 import br.com.unio.matchmaking_backend.auth.entity.User;
 import br.com.unio.matchmaking_backend.auth.repository.UserRepository;
+import br.com.unio.matchmaking_backend.consent.entity.ConsentRecord;
+import br.com.unio.matchmaking_backend.consent.repository.ConsentRecordRepository;
+import java.time.Instant;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,12 +23,19 @@ import org.springframework.web.server.ResponseStatusException;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final ConsentRecordRepository consentRecordRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        if (request.getAcceptedTerms() == null || !request.getAcceptedTerms()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Você deve aceitar os termos de uso e política de privacidade");
+        }
+
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
 
         if (userRepository.existsByEmail(normalizedEmail)) {
@@ -44,6 +54,11 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+        consentRecordRepository.save(ConsentRecord.builder()
+                .user(savedUser)
+                .acceptedTerms(Boolean.TRUE.equals(request.getAcceptedTerms()))
+                .acceptedAt(Instant.now())
+                .build());
 
         String token = jwtService.generateToken(savedUser);
         return AuthResponse.builder()

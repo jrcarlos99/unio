@@ -1,6 +1,7 @@
 package br.com.unio.matchmaking_backend.auth.dto;
 
 import br.com.unio.matchmaking_backend.auth.entity.Role;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,4 +29,7 @@ public class RegisterRequest {
 
     @NotNull(message = "Tipo de perfil é obrigatório")
     private Role role;
+
+    @AssertTrue(message = "Você deve aceitar os termos de uso e política de privacidade")
+    private Boolean acceptedTerms;
 }
