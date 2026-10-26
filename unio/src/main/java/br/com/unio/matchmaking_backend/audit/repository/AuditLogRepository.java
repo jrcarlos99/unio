@@ -7,4 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
     List<AuditLog> findTop50ByOrderByCreatedAtDesc();
+
+    /** T13 — registros de auditoria do próprio titular, para a exportação de dados. */
+    List<AuditLog> findByActorEmailOrderByCreatedAtDesc(String actorEmail);
 }

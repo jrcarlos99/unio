@@ -69,7 +69,7 @@ public class ParticipantService {
 
     /** Usuários anonimizados pela exclusão de conta (T13) deixam de estar ativos. */
     public boolean isActive(User user) {
-        return user != null;
+        return user != null && !user.isDeleted();
     }
 
     public ParticipantDto toDto(User user) {

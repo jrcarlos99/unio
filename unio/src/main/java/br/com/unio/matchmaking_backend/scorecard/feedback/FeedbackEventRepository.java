@@ -5,6 +5,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface FeedbackEventRepository extends JpaRepository<FeedbackEvent, Long> {
 
@@ -17,4 +20,9 @@ public interface FeedbackEventRepository extends JpaRepository<FeedbackEvent, Lo
     );
 
     List<FeedbackEvent> findByInvestorIdAndStartupId(UUID investorId, UUID startupId);
+
+    /** T13 — apaga os feedbacks em que o titular aparece. */
+    @Modifying
+    @Query("delete from FeedbackEvent f where f.investorId = :participantId or f.startupId = :participantId")
+    int deleteByParticipant(@Param("participantId") UUID participantId);
 }

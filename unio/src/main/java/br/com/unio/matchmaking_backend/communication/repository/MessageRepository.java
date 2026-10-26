@@ -34,4 +34,9 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     int markAsRead(@Param("conversationId") Long conversationId,
                    @Param("userId") Long userId,
                    @Param("readAt") Instant readAt);
+
+    /** T13 — substitui o conteúdo das mensagens enviadas por um titular que excluiu a conta. */
+    @Modifying
+    @Query("update Message m set m.content = :content where m.sender.id = :userId")
+    int replaceContentSentBy(@Param("userId") Long userId, @Param("content") String content);
 }
