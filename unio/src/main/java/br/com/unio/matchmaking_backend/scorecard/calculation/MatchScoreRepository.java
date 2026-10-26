@@ -23,7 +23,7 @@ public interface MatchScoreRepository extends JpaRepository<MatchScore, Long> {
     List<Object[]> countByClassification();
 
     /** T13 — apaga os scores em que o titular aparece (rodar depois de apagar os fatores). */
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from MatchScore m where m.investorId = :participantId or m.startupId = :participantId")
     int deleteByParticipant(@Param("participantId") UUID participantId);
 

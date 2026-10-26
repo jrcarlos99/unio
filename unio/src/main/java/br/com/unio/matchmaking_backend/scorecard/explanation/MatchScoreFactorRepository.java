@@ -12,7 +12,7 @@ public interface MatchScoreFactorRepository extends JpaRepository<MatchScoreFact
     List<MatchScoreFactor> findByMatchScoreIdOrderByTypeAscRankAsc(Long matchScoreId);
 
     /** T13 — apaga os fatores dos scores em que o titular aparece (como investidor ou startup). */
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             delete from MatchScoreFactor f
             where f.matchScore.id in (

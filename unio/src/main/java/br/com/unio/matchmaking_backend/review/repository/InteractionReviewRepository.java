@@ -26,7 +26,7 @@ public interface InteractionReviewRepository extends JpaRepository<InteractionRe
     Double averageRating();
 
     /** T13 — remove o texto livre das avaliações escritas por um titular que excluiu a conta. */
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update InteractionReview r set r.comment = null where r.reviewer.id = :userId")
     int clearCommentsWrittenBy(@Param("userId") Long userId);
 }

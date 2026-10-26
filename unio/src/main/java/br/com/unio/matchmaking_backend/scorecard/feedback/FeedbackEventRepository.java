@@ -22,7 +22,7 @@ public interface FeedbackEventRepository extends JpaRepository<FeedbackEvent, Lo
     List<FeedbackEvent> findByInvestorIdAndStartupId(UUID investorId, UUID startupId);
 
     /** T13 — apaga os feedbacks em que o titular aparece. */
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from FeedbackEvent f where f.investorId = :participantId or f.startupId = :participantId")
     int deleteByParticipant(@Param("participantId") UUID participantId);
 }

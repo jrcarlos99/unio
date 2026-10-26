@@ -24,7 +24,7 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     long countByConversationIdAndSenderIdNotAndReadAtIsNull(Long conversationId, Long userId);
 
     /** Marca como lidas as mensagens recebidas (enviadas pelo outro participante). */
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             update Message m set m.readAt = :readAt
             where m.conversation.id = :conversationId
@@ -36,7 +36,7 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
                    @Param("readAt") Instant readAt);
 
     /** T13 — substitui o conteúdo das mensagens enviadas por um titular que excluiu a conta. */
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update Message m set m.content = :content where m.sender.id = :userId")
     int replaceContentSentBy(@Param("userId") Long userId, @Param("content") String content);
 }
