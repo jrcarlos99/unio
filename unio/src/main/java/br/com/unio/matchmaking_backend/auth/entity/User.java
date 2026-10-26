@@ -39,6 +39,9 @@ public class User {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
+    @Column(name = "documento", unique = true, length = 14)
+    private String documento;
+
     @JsonIgnore
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;

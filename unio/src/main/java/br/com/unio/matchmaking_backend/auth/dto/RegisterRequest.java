@@ -23,6 +23,10 @@ public class RegisterRequest {
     @Email(message = "Email inválido")
     private String email;
 
+    @NotBlank(message = "CPF/CNPJ é obrigatório")
+    @Size(max = 14)
+    private String documento;
+
     @NotBlank(message = "Senha é obrigatória")
     @Size(min = 8, message = "Senha deve ter no mínimo 8 caracteres")
     private String password;

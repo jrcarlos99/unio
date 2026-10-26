@@ -42,6 +42,10 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado");
         }
 
+        if (userRepository.existsByDocumento(request.getDocumento())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "CPF/CNPJ já cadastrado");
+        }
+
         Role role = request.getRole();
         if (role == Role.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Criação de administrador deve ser feita por bootstrap interno");
@@ -49,6 +53,7 @@ public class AuthService {
 
         User user = User.builder()
                 .email(normalizedEmail)
+                .documento(request.getDocumento())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(role)
                 .build();
