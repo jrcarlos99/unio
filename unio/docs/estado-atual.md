@@ -59,6 +59,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] T03 — Disponibilidade na Startup (RF01/RF02) — 2026-10-14
 - [x] T06 — Métricas de uso (RF09) — 2026-10-14
 - [x] T07 — Log de Auditoria (RNF10) — 2026-10-26
+- [x] T08 — Consentimento LGPD (RF11 + RNF03) — 2026-10-26
 - [x] T11 — Upload de pitch (RF06) — 2026-10-20
 
 ### Bloco E — Testes (pendente)
@@ -95,9 +96,9 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] RF09 — Métricas de uso
 - [ ] RF04 — Visualização de perfis compatíveis
 - [ ] RF05 — Comunicação (mensagens + reuniões)
-- [ ] RF08 — Moderação de cadastros
+- [x] RF08 — Moderação de cadastros
 - [ ] RF10 — Feedback pós-interação
-- [ ] RF11 — Consentimento LGPD
+- [x] RF11 — Consentimento LGPD
 
 ### RNF
 - [x] RNF01 — Disponibilidade (Azure)
