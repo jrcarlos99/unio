@@ -1,6 +1,6 @@
 # Estado Atual do Projeto — Scorecard de Matchmaking
 
-Última atualização: 2026-10-14
+Última atualização: 2026-10-26
 
 ## Resumo
 
@@ -58,6 +58,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] T02 — Campo nome na Startup (RF01) — 2026-10-14
 - [x] T03 — Disponibilidade na Startup (RF01/RF02) — 2026-10-14
 - [x] T06 — Métricas de uso (RF09) — 2026-10-14
+- [x] T07 — Log de Auditoria (RNF10) — 2026-10-26
 - [x] T11 — Upload de pitch (RF06) — 2026-10-20
 
 ### Bloco E — Testes (pendente)
@@ -72,6 +73,8 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] Deploy Azure (backend + PostgreSQL)
 - [x] CORS configurado
 - [x] Frontend React integrado
+- [x] Banco de dados Azure liberado para equipe de IA (usuário somente leitura)
+- [x] .gitignore configurado para ignorar uploads/
 
 ### Frontend
 - [x] Integração com backend (Antigravity) — 2026-09-12
@@ -84,14 +87,14 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 ## Requisitos atendidos (RF/RNF)
 
 ### RF
-- [x] RF01 — Cadastro de startups (parcial: falta nome)
+- [x] RF01 — Cadastro de startups (nome adicionado no T02)
 - [x] RF02 — Cadastro de investidores (T01 adicionou disponibilidade)
 - [x] RF03 — Matchmaking
+- [x] RF06 — Pitch/Canvas (T11 adicionou upload)
 - [x] RF07 — Autenticação e roles
 - [x] RF09 — Métricas de uso
 - [ ] RF04 — Visualização de perfis compatíveis
 - [ ] RF05 — Comunicação (mensagens + reuniões)
-- [ ] RF06 — Pitch/Canvas
 - [ ] RF08 — Moderação de cadastros
 - [ ] RF10 — Feedback pós-interação
 - [ ] RF11 — Consentimento LGPD
@@ -102,11 +105,11 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] RNF05 — Escalabilidade
 - [x] RNF06 — Padrões corporativos
 - [x] RNF09 — Código modular
+- [x] RNF10 — Log de auditoria (T07)
 - [ ] RNF02 — Criptografia em repouso
 - [ ] RNF03 — LGPD
 - [ ] RNF07 — Testes + beta testers
 - [ ] RNF08 — Responsividade mobile
-- [ ] RNF10 — Log de auditoria
 
 ## Padrões do projeto (para próximos tickets)
 
@@ -117,19 +120,18 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - Erros: ResponseStatusException com HttpStatus
 - Autenticação: JWT com roles STARTUP/INVESTOR/ADMIN
 - Testes manuais via curl
+- Auditoria via AOP com anotação @Auditable
 
 ## Branch atual
 
-- `feature/t01-disponibilidade-investidor` (T01 + T06 commitados)
+- `main`
 
 ## Próximo passo
 
 Escolher o próximo ticket:
-- T02 — Campo `nome` na Startup (RF01) — P (1h)
-- T03 — Disponibilidade na Startup (RF01/RF02) — P (2h)
-- T07 — Log de auditoria (RNF10) — M (3 dias)
 - T08 — Consentimento LGPD (RF11 + RNF03) — M (3 dias)
 - T09 — Módulo de comunicação (RF05) — G (5 dias)
+- T10 — Moderação de cadastros (RF08) — M (2 dias)
 
 ## Fora do MVP (trabalho futuro)
 
