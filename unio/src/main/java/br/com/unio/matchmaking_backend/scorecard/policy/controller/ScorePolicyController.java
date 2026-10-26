@@ -1,5 +1,6 @@
 package br.com.unio.matchmaking_backend.scorecard.policy.controller;
 
+import br.com.unio.matchmaking_backend.audit.annotation.Auditable;
 import br.com.unio.matchmaking_backend.scorecard.common.InvestorProfileType;
 import br.com.unio.matchmaking_backend.scorecard.common.exception.PolicyNotFoundException;
 import br.com.unio.matchmaking_backend.scorecard.policy.ScorePolicy;
@@ -27,6 +28,7 @@ public class ScorePolicyController {
     private final ScorePolicyService scorePolicyService;
 
     @PostMapping
+    @Auditable(action = "CREATE_POLICY", entityType = "ScorePolicy")
     public ResponseEntity<ScorePolicyResponse> create(@Valid @RequestBody ScorePolicyCreateRequest request) {
         ScorePolicy created = scorePolicyService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(created));

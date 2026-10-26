@@ -47,3 +47,6 @@ application-local.properties
 
 ### Arquivos pessoais de workflow ###
 AGENTS.md
+
+# Arquivos de upload gerados em tempo de execução
+uploads/

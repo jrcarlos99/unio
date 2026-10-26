@@ -1,5 +1,6 @@
 package br.com.unio.matchmaking_backend.scorecard.policy.controller;
 
+import br.com.unio.matchmaking_backend.audit.annotation.Auditable;
 import br.com.unio.matchmaking_backend.scorecard.policy.ScoreCriterion;
 import br.com.unio.matchmaking_backend.scorecard.policy.dto.ScoreCriterionCreateRequest;
 import br.com.unio.matchmaking_backend.scorecard.policy.dto.ScoreCriterionResponse;
@@ -29,6 +30,7 @@ public class ScoreCriterionController {
     private final ScoreCriterionService scoreCriterionService;
 
     @PostMapping("/policies/{policyId}/criteria")
+    @Auditable(action = "CREATE_CRITERION", entityType = "ScoreCriterion")
     public ResponseEntity<ScoreCriterionResponse> create(
             @PathVariable Long policyId,
             @Valid @RequestBody ScoreCriterionCreateRequest request
@@ -47,6 +49,7 @@ public class ScoreCriterionController {
     }
 
     @PutMapping("/criteria/{criterionId}")
+    @Auditable(action = "UPDATE_CRITERION", entityType = "ScoreCriterion")
     public ResponseEntity<ScoreCriterionResponse> update(
             @PathVariable Long criterionId,
             @Valid @RequestBody ScoreCriterionUpdateRequest request
@@ -56,6 +59,7 @@ public class ScoreCriterionController {
     }
 
     @DeleteMapping("/criteria/{criterionId}")
+    @Auditable(action = "DEACTIVATE_CRITERION", entityType = "ScoreCriterion")
     public ResponseEntity<Void> deactivate(@PathVariable Long criterionId) {
         scoreCriterionService.deactivate(criterionId);
         return ResponseEntity.noContent().build();

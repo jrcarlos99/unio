@@ -1,5 +1,6 @@
 package br.com.unio.matchmaking_backend.profile.controller;
 
+import br.com.unio.matchmaking_backend.audit.annotation.Auditable;
 import br.com.unio.matchmaking_backend.profile.service.AdminService;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ public class AdminController {
     }
 
     @PostMapping("/bootstrap-admin")
+    @Auditable(action = "BOOTSTRAP_ADMIN", entityType = "User")
     public ResponseEntity<Map<String, Object>> bootstrapAdmin(
         @RequestParam String email,
         @RequestParam String password
