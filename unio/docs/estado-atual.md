@@ -61,11 +61,20 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] T07 — Log de Auditoria (RNF10) — 2026-10-26
 - [x] T08 — Consentimento LGPD (RF11 + RNF03) — 2026-10-26
 - [x] T11 — Upload de pitch (RF06) — 2026-10-20
+- [x] T09a — Mensagens (RF05) — 2026-10-26
+- [x] T09b — Agendamento de reuniões (RF05) — 2026-10-26
+- [x] T12 — Avaliação pós-interação (RF10) — 2026-10-26
+- [x] T13 — Exclusão e exportação de dados (RNF03) — 2026-10-26
+- [x] T16 — Métricas de conversas/reuniões/avaliações (RF09) — 2026-10-26
+- [x] T17 — Alertas no Azure (RNF01) — 2026-10-26 (template pronto; aplicar com `infra/azure/deploy-alerts.sh`)
+- [x] T18 — Teste de carga e documento (RNF05) — 2026-10-26 (script pronto; preencher resultados)
+- [x] T19 — Swagger e README (RNF09) — 2026-10-26
 
-### Bloco E — Testes (pendente)
-- [ ] Tarefa 14 — Testes unitários
-- [ ] Tarefa 15 — Testes de integração
-- [ ] Tarefa 16 — Hardening
+### Bloco E — Testes
+- [x] Tarefa 14 — Testes unitários (comunicação, reuniões, avaliação, LGPD, métricas) — 2026-10-26
+- [x] Tarefa 15 — Testes de integração (fluxo RF05/RF10, LGPD, segurança) — 2026-10-26
+- [x] Tarefa 16 — Hardening (method security, 401, filtro JWT, erro padrão) — 2026-10-26
+- [ ] Beta testers (parte de RNF07) — pendente
 
 ### Infraestrutura
 - [x] Migração H2 → PostgreSQL em dev (2026-09-12)
@@ -95,9 +104,9 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] RF07 — Autenticação e roles
 - [x] RF09 — Métricas de uso
 - [ ] RF04 — Visualização de perfis compatíveis
-- [ ] RF05 — Comunicação (mensagens + reuniões)
+- [x] RF05 — Comunicação (mensagens + reuniões) — T09a/T09b
 - [x] RF08 — Moderação de cadastros
-- [ ] RF10 — Feedback pós-interação
+- [x] RF10 — Feedback pós-interação — T12
 - [x] RF11 — Consentimento LGPD
 
 ### RNF
@@ -108,8 +117,8 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] RNF09 — Código modular
 - [x] RNF10 — Log de auditoria (T07)
 - [ ] RNF02 — Criptografia em repouso
-- [ ] RNF03 — LGPD
-- [ ] RNF07 — Testes + beta testers
+- [x] RNF03 — LGPD (consentimento T08 + exportação/exclusão T13)
+- [ ] RNF07 — Testes + beta testers (testes automatizados feitos; falta beta)
 - [ ] RNF08 — Responsividade mobile
 
 ## Padrões do projeto (para próximos tickets)
@@ -120,8 +129,10 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - Update via Map com validação manual (ver D027)
 - Erros: ResponseStatusException com HttpStatus
 - Autenticação: JWT com roles STARTUP/INVESTOR/ADMIN
-- Testes manuais via curl
+- Testes unitários com Mockito + integração com @SpringBootTest/MockMvc (PostgreSQL local)
 - Auditoria via AOP com anotação @Auditable
+- Erros no formato do GlobalExceptionHandler (message + errors[].defaultMessage)
+- @PreAuthorize é aplicado (@EnableMethodSecurity) — ver D030
 
 ## Branch atual
 
@@ -129,10 +140,10 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Próximo passo
 
-Escolher o próximo ticket:
-- T08 — Consentimento LGPD (RF11 + RNF03) — M (3 dias)
-- T09 — Módulo de comunicação (RF05) — G (5 dias)
-- T10 — Moderação de cadastros (RF08) — M (2 dias)
+- Front: integrar mensagens, reuniões, avaliação e LGPD (`docs/contrato/contrato-comunicacao.md`)
+- Aplicar os alertas no Azure e rodar o teste de carga; preencher `docs/testes/teste-de-carga.md`
+- Definir `JWT_SECRET` no App Service
+- RNF07: rodada com beta testers
 
 ## Fora do MVP (trabalho futuro)
 
