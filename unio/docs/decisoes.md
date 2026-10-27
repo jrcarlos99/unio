@@ -543,3 +543,79 @@ até a refatoração. Registrar como trabalho futuro (D011).
 
 **Trabalho futuro:** refatorar `updateCurrentProfile` para aceitar
 DTOs tipados por role.
+
+## D028 — Comunicação dentro da plataforma (T09a/T09b) sem exigir match
+
+**Contexto:** RF05 pede mensagens e agendamento de reuniões. O back não tem
+uma entidade de "match"/interesse mútuo — hoje o "unio" é controlado no front
+(localStorage).
+
+**Decisão:** Conversas e reuniões ligam um usuário `STARTUP` a um `INVESTOR`,
+identificados pelo **id do usuário** (`Long`), sem exigir match prévio. O par
+startup/investidor tem uma única conversa (`uk_conversations_pair`). ADMIN não
+participa. Recurso de outra pessoa responde 404 (não 403) para não revelar ids.
+Reuniões têm máquina de estados `PENDENTE → CONFIRMADA → REALIZADA` (ou
+`RECUSADA`/`CANCELADA`) e checagem de conflito de agenda.
+
+**Justificativa:** Entrega RF05 sem bloquear em uma modelagem de match que
+ainda não existe no back. Quando o match for persistido, basta uma checagem em
+`ParticipantService.requireCounterpart`.
+
+**Trabalho futuro:** exigir match; notificações (e-mail/push) de nova mensagem e
+convite; tempo real (WebSocket/SSE) em vez de polling.
+
+
+## D029 — Exclusão de conta por anonimização (T13 / LGPD)
+
+**Contexto:** A LGPD (art. 18) garante eliminação dos dados, mas mensagens,
+reuniões e avaliações também pertencem ao outro participante, e o log de
+auditoria tem base legal própria (segurança/obrigação legal).
+
+**Decisão:** `POST /api/privacy/delete-account` (com senha) **anonimiza** o
+usuário em vez de apagar a linha: e-mail vira `removido-{id}@unio.invalid`,
+documento é apagado, senha trocada por hash aleatório e `deleted_at` é
+preenchido. São apagados perfil, onboarding, pitch, tokens de senha, scores e
+feedbacks do scorecard. Conteúdo das mensagens enviadas vira
+`[mensagem removida a pedido do titular]`, comentários das avaliações escritas
+são apagados (a nota fica para as médias) e reuniões ativas são canceladas. O
+consentimento é marcado como revogado e mantido como prova. Registros de
+auditoria antigos são mantidos; o evento de exclusão é auditado só com o id.
+
+**Justificativa:** Remove os dados pessoais sem quebrar a integridade
+referencial nem o histórico do outro participante.
+
+**Impacto:** Login e tokens antigos deixam de funcionar (o e-mail original não
+existe mais). Usuário removido aparece como "Usuário removido".
+
+**Pendente:** definir com o responsável jurídico o prazo de retenção do
+`audit_logs` e revisar `docs/lgpd.md`.
+
+
+## D030 — Method security ativado e 401 para não autenticado (Bloco E)
+
+**Contexto:** O projeto usava `@PreAuthorize` nos controllers, mas não tinha
+`@EnableMethodSecurity` — as anotações eram ignoradas (só valiam as regras de
+URL do `SecurityConfig`). Requisições sem token recebiam 403 e token
+expirado/adulterado gerava 500 no filtro JWT.
+
+**Decisão:** Ativar `@EnableMethodSecurity`; responder 401 (via
+`HttpStatusEntryPoint`) quando não há autenticação válida; o filtro JWT trata
+`JwtException` e usuário inexistente sem lançar exceção. Criado
+`GlobalExceptionHandler` com formato único de erro (`message` +
+`errors[].defaultMessage`, que o front já lê).
+
+**Impacto:** `GET /api/scorecard/recommendations` passa a ser realmente restrito
+a INVESTOR/ADMIN. O front já trata 401 redirecionando ao login. O teste
+`OnboardingControllerTest.semTokenEhBarrado` foi ajustado de 403 para 401.
+
+
+## D031 — Observabilidade e carga como código (T17/T18)
+
+**Decisão:** Alertas do Azure Monitor versionados em `infra/azure/alerts.bicep`
+(aplicados por `infra/azure/deploy-alerts.sh`) e teste de carga em k6
+(`load-test/k6/unio-load-test.js`) com os critérios de aceite como
+`thresholds`. Documentação em `docs/operacao/alertas-azure.md` e
+`docs/testes/teste-de-carga.md`.
+
+**Justificativa:** Reprodutível por qualquer pessoa da equipe e revisável em PR,
+em vez de configuração manual no portal.

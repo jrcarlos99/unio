@@ -21,5 +21,19 @@ sobre o tratamento, portabilidade quando aplicável, revogação do consentiment
 e eliminação ou anonimização quando não houver obrigação legal de retenção.
 O consentimento pode ser revogado pela API em `POST /api/consent/revoke`.
 
+### Como o titular exerce os direitos pela plataforma (T13)
+
+| Direito | Endpoint |
+|---|---|
+| Confirmação, acesso e portabilidade | `GET /api/privacy/export` — todos os dados em JSON (anexo) |
+| Correção | `PUT /api/profile/me` |
+| Revogação do consentimento | `POST /api/consent/revoke` |
+| Eliminação | `POST /api/privacy/delete-account` — exige senha; anonimiza a conta (ver D029) |
+
+Na eliminação, dados de perfil, pitch, onboarding e scores são apagados; o
+conteúdo das mensagens enviadas e os comentários de avaliações são removidos;
+o registro de consentimento e os logs de auditoria são mantidos pelo prazo de
+retenção a definir (base: cumprimento de obrigação legal e segurança).
+
 Este documento é um rascunho operacional e deve ser revisado pelo responsável
 jurídico e pelo encarregado de dados antes da publicação.

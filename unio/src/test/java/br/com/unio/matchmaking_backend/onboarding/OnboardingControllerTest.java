@@ -117,11 +117,10 @@ class OnboardingControllerTest {
 
     @Test
     void semTokenEhBarrado() throws Exception {
-        // O SecurityConfig não define AuthenticationEntryPoint; o padrão do Spring Security
-        // nesse caso (sem httpBasic/formLogin) é Http403ForbiddenEntryPoint.
-        mockMvc.perform(get(URL)).andExpect(status().isForbidden());
+        // Bloco E: o SecurityConfig define HttpStatusEntryPoint(401) para requisições sem token
+        mockMvc.perform(get(URL)).andExpect(status().isUnauthorized());
         mockMvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
