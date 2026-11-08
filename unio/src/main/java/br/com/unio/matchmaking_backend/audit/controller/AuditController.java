@@ -1,5 +1,6 @@
 package br.com.unio.matchmaking_backend.audit.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import br.com.unio.matchmaking_backend.audit.entity.AuditLog;
 import br.com.unio.matchmaking_backend.audit.service.AuditService;
 import java.util.List;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Tag(name = "Administração", description = "Log de auditoria (somente ADMIN)")
 @RequestMapping("/api/admin/audit")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")

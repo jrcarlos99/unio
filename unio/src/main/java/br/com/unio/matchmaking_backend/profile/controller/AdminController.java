@@ -1,5 +1,6 @@
 package br.com.unio.matchmaking_backend.profile.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import br.com.unio.matchmaking_backend.audit.annotation.Auditable;
 import br.com.unio.matchmaking_backend.profile.service.AdminService;
 import java.util.List;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Tag(name = "Administração", description = "Gestão de usuários (somente ADMIN)")
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")

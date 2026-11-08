@@ -1,5 +1,6 @@
 package br.com.unio.matchmaking_backend.profile.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import br.com.unio.matchmaking_backend.auth.service.AuthUser;
 import br.com.unio.matchmaking_backend.profile.dto.InvestorCreateRequest;
 import br.com.unio.matchmaking_backend.profile.dto.StartupCreateRequest;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
+@Tag(name = "Perfis", description = "Perfil do usuário logado e criação de perfis de startup/investidor")
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @PreAuthorize("isAuthenticated()")
