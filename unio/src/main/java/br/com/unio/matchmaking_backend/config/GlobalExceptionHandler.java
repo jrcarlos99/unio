@@ -1,8 +1,6 @@
 package br.com.unio.matchmaking_backend.config;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +37,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex, HttpServletRequest request) {
         HttpStatusCode status = ex.getStatusCode();
-        String message = ex.getReason() != null ? ex.getReason() : reasonPhrase(status);
+        String message = ex.getReason() != null ? ex.getReason() : ApiErrorFactory.reasonPhrase(status);
         if (status.is5xxServerError()) {
             log.error("Erro {} em {}: {}", status.value(), request.getRequestURI(), message, ex);
         }
@@ -50,7 +48,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBodyValidation(MethodArgumentNotValidException ex,
                                                                     HttpServletRequest request) {
         List<Map<String, String>> errors = ex.getBindingResult().getAllErrors().stream()
-                .map(error -> fieldError(error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName(),
+                .map(error -> ApiErrorFactory.fieldError(
+                        error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName(),
                         error.getDefaultMessage()))
                 .toList();
         return build(HttpStatus.BAD_REQUEST, firstMessage(errors), request, errors);
@@ -60,7 +59,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleMethodValidation(HandlerMethodValidationException ex,
                                                                       HttpServletRequest request) {
         List<Map<String, String>> errors = ex.getAllErrors().stream()
-                .map(error -> fieldError(fieldName(error), error.getDefaultMessage()))
+                .map(error -> ApiErrorFactory.fieldError(fieldName(error), error.getDefaultMessage()))
                 .toList();
         return build(HttpStatus.BAD_REQUEST, firstMessage(errors), request, errors);
     }
@@ -86,23 +85,8 @@ public class GlobalExceptionHandler {
     private static ResponseEntity<Map<String, Object>> build(HttpStatusCode status, String message,
                                                              HttpServletRequest request,
                                                              List<Map<String, String>> errors) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", Instant.now());
-        body.put("status", status.value());
-        body.put("error", reasonPhrase(status));
-        body.put("message", message);
-        body.put("path", request.getRequestURI());
-        if (errors != null && !errors.isEmpty()) {
-            body.put("errors", errors);
-        }
-        return ResponseEntity.status(status).body(body);
-    }
-
-    private static Map<String, String> fieldError(String field, String message) {
-        Map<String, String> error = new LinkedHashMap<>();
-        error.put("field", field);
-        error.put("defaultMessage", message);
-        return error;
+        return ResponseEntity.status(status)
+                .body(ApiErrorFactory.build(status, message, request, errors));
     }
 
     private static String fieldName(MessageSourceResolvable error) {
@@ -121,8 +105,4 @@ public class GlobalExceptionHandler {
                 .orElse("Dados inválidos");
     }
 
-    private static String reasonPhrase(HttpStatusCode status) {
-        HttpStatus resolved = HttpStatus.resolve(status.value());
-        return resolved != null ? resolved.getReasonPhrase() : String.valueOf(status.value());
-    }
 }

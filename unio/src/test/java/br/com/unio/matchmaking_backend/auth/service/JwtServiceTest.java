@@ -9,6 +9,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class JwtServiceTest {
@@ -17,7 +18,10 @@ class JwtServiceTest {
 
     @Test
     void tokenGeradoComConfiguracaoPadraoExpiraEmUmaHora() {
-        JwtService jwtService = new JwtService();
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("dev");
+
+        JwtService jwtService = new JwtService(environment);
         ReflectionTestUtils.setField(jwtService, "secret", SECRET);
         ReflectionTestUtils.setField(jwtService, "expirationMinutes", 60L);
         jwtService.init();
