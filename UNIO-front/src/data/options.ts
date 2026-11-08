@@ -35,11 +35,9 @@ export const TIPOS_PERFIL: TipoPerfil[] = [
   "Ambos",
 ];
 
-export const DISPONIBILIDADES: Disponibilidade[] = ["Baixa", "Média", "Alta"];
-
 // ---------------------------------------------------------------------------
-// Opções detalhadas (onboarding). Ficam aqui pra cadastro e home poderem
-// reaproveitar. Os ícones de cada opção ficam em components/onboarding/icons.ts,
+// Opções detalhadas (onboarding). Ficam aqui pra onboarding, perfil e home
+// poderem reaproveitar. Os ícones de cada opção ficam em components/onboarding/icons.ts,
 // pra este arquivo continuar sendo só dado.
 // ---------------------------------------------------------------------------
 
@@ -51,7 +49,7 @@ export interface OpcaoDetalhada<T extends string> {
 }
 
 // Lista completa dos 12 segmentos. O SEGMENTOS acima continua com a lista
-// curta que o cadastro já usa.
+// curta usada nos filtros da home do investidor e no editor de perfil.
 export const SEGMENTOS_DETALHADOS: OpcaoDetalhada<Segmento>[] = [
   { valor: "Fintech", categoria: "Finanças & Banking" },
   { valor: "HealthTech", categoria: "Saúde & Bem-estar" },

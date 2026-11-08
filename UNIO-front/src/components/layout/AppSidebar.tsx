@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { ChevronsUpDown, LogOut, SlidersHorizontal, X } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useSolicitacoesRecebidas } from "../../hooks/useReunioes";
 import { iniciais, nomeUsuario } from "../../utils/nomeUsuario";
 import Logo from "../brand/Logo";
 import { CONFIG_PERFIL, type PerfilApp } from "./navegacao";
@@ -30,6 +31,7 @@ export default function AppSidebar({ perfil, aberta, onFechar }: AppSidebarProps
   const nome = nomeUsuario(user);
   const [menuAberto, setMenuAberto] = useState(false);
   const idMenu = useId();
+  const solicitacoes = useSolicitacoesRecebidas();
 
   return (
     <>
@@ -61,7 +63,7 @@ export default function AppSidebar({ perfil, aberta, onFechar }: AppSidebarProps
         </div>
 
         <nav aria-label="Principal" className="flex flex-1 flex-col gap-1 px-4">
-          {config.itens.map(({ to, rotulo, icone: Icone }) => (
+          {config.itens.map(({ to, rotulo, icone: Icone, contador }) => (
             <NavLink
               key={to}
               to={to}
@@ -74,6 +76,14 @@ export default function AppSidebar({ perfil, aberta, onFechar }: AppSidebarProps
             >
               <Icone size={18} aria-hidden="true" />
               {rotulo}
+              {contador === "solicitacoesReuniao" && solicitacoes > 0 && (
+                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-sage px-1.5 text-xs font-bold text-deepgreen">
+                  {solicitacoes}
+                  <span className="sr-only">
+                    {solicitacoes === 1 ? " solicitação pendente" : " solicitações pendentes"}
+                  </span>
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

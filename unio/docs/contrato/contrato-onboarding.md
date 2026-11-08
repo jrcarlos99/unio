@@ -68,6 +68,13 @@ Upsert do onboarding do usuário logado. Os dois campos são opcionais:
 | `status`    | `PENDENTE` \| `CONCLUIDO` \| `PULADO`  | Ausente = mantém o status atual                               |
 | `respostas` | objeto JSON                            | Ausente = mantém as respostas; presente = **substitui** tudo  |
 
+Como `respostas` é substituído por inteiro, o front sempre lê, mescla a chave que
+quer alterar e grava o objeto todo (`onboardingAnswersStore.updateAnswer`). Assim
+uma tela não apaga o que outra gravou. Chaves usadas hoje pelo front: `onboarding`
+(respostas do wizard), `teamMembers`, `startupDocuments`, `profileVisibility`,
+`investorProfileExtras`, `pitch` e `pitchLeanCanvas`. Ver
+`UNIO-front/docs/adr/ADR-003`.
+
 `atualizadoEm` é sempre atualizado. Resposta no mesmo formato do `GET`.
 
 | Ação do front               | Corpo                                              |
@@ -104,6 +111,62 @@ Upsert do onboarding do usuário logado. Os dois campos são opcionais:
   "atualizadoEm": "2026-10-11T17:00:00.123456Z"
 }
 ```
+
+---
+
+## Criação do perfil a partir do onboarding (desde 2026-11-07)
+
+O onboarding é o único caminho de criação de perfil (D028). Fluxo do front:
+
+1. `POST /api/auth/register` cria só o `User`.
+2. O front navega para `/onboarding/startup` ou `/onboarding/investidor`. Enquanto
+   `GET /api/profile/me` responder 404, o onboarding é obrigatório e não pode ser pulado.
+3. No último passo, com o consentimento marcado, o front chama
+   `POST /api/profile/startup` ou `POST /api/profile/investor`. 409 (perfil já existe)
+   é tratado como sucesso. Quem já tem perfil não chama o `POST` de novo.
+4. Em seguida grava as respostas completas do wizard em `respostas.onboarding`
+   (mescla por chave, item acima). Falha nessa gravação não desfaz o perfil.
+
+O status `CONCLUIDO`/`PULADO` do wizard continua no `localStorage` do front; este
+endpoint não é chamado com `status` nesse fluxo.
+
+### Mudanças nos DTOs de criação
+
+| DTO                     | Campo                          | Antes                    | Agora                                         |
+|-------------------------|--------------------------------|--------------------------|-----------------------------------------------|
+| `StartupCreateRequest`  | `capitalProcurado`             | `@NotNull @Positive`     | opcional, `@Positive` quando presente (D029)  |
+| `InvestorCreateRequest` | `ticketMinimo`, `ticketMaximo` | `@NotNull @Positive`     | opcionais, `@Positive` quando presentes (D029)|
+| `InvestorCreateRequest` | `perfilRisco`                  | opcional, nulo gravado   | nulo ou em branco grava "Investidor Anjo" (D030) |
+
+Mínimo maior que máximo continua 400, mas só é verificado quando os dois tickets vêm
+preenchidos. Coluna `startup_profiles.capital_procurado` aceita nulo desde a
+`V23__capital_procurado_opcional.sql`. Em `GET /api/profile/me` esses campos podem vir `null`.
+
+**Exemplo** (`POST /api/profile/startup`, startup que não busca investimento):
+```json
+{
+  "nome": "EcoTech",
+  "segmento": "Fintech",
+  "estagio": "MVP",
+  "localizacao": "Recife / Porto Digital",
+  "modeloNegocio": "B2B",
+  "mercadoAlvo": "PMEs",
+  "pitchCanvas": "Crédito para PMEs do varejo"
+}
+```
+
+**Exemplo** (`POST /api/profile/investor`, atua apenas como mentor, sem faixa de ticket):
+```json
+{
+  "segmentosInteresse": ["Fintech", "EdTech", "AgTech"],
+  "estagiosInteresse": ["MVP"],
+  "perfilRisco": "Mentor",
+  "disponibilidade": "MEDIA",
+  "regiaoInteresse": "Recife / Porto Digital,Nordeste"
+}
+```
+
+Conversão das respostas (faixas, disponibilidade, regiões): `UNIO-front/docs/adr/ADR-002`.
 
 ---
 

@@ -3,8 +3,9 @@ import type { ResumoStartup } from "../types/dashboard";
 // MOCK — números da home da startup ("Visão geral"), iguais aos do print.
 // O back ainda NÃO tem: visualizações do perfil (total, variação e série
 // semanal), funil de interesse, investidores interessados, matches, conversas
-// iniciados nem benchmark de conversão. Contatos e reuniões usam os eventos
-// locais dos unios quando existirem (ver dashboardStartupService). Levar ao squad; só o
+// iniciados nem benchmark de conversão. Contatos usam os eventos locais dos
+// unios e reuniões usam as confirmadas do reunioesService, quando existirem
+// (ver dashboardStartupService). Levar ao squad; só o
 // services/dashboardStartupService.ts lê daqui. Os investidores recomendados
 // ficam em mocks/investidoresMock.ts.
 

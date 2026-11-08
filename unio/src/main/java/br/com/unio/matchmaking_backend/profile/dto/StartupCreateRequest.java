@@ -2,7 +2,6 @@ package br.com.unio.matchmaking_backend.profile.dto;
 
 import br.com.unio.matchmaking_backend.profile.entity.DisponibilidadeMentoria;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -38,7 +37,8 @@ public class StartupCreateRequest {
     @NotBlank(message = "Mercado alvo é obrigatório")
     private String mercadoAlvo;
 
-    @NotNull(message = "Capital procurado é obrigatório")
+    // Opcional (D029): startup que não busca investimento não informa. @Positive só
+    // valida quando o valor vem preenchido.
     @Positive(message = "Capital procurado deve ser positivo")
     private BigDecimal capitalProcurado;
 

@@ -96,8 +96,7 @@ export default function CompanyDataCard({ values, saved, errors, onChange, onBlu
         <CurrencyField
           {...bind("capitalProcurado")}
           label="Capital procurado nesta rodada"
-          required
-          hint="Valor em reais, sem centavos."
+          hint="Valor em reais, sem centavos. Deixe vazio se não busca investimento."
         />
         <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
           <TextAreaField

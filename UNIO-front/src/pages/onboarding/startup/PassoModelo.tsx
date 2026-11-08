@@ -6,6 +6,7 @@ import SectionCard from "../../../components/onboarding/SectionCard";
 import SelectableCard from "../../../components/onboarding/SelectableCard";
 import { tabIndexRadio } from "../../../components/onboarding/selecao";
 import { MODELOS_NEGOCIO, SUGESTOES_MERCADO_ALVO } from "../../../data/options";
+import { TAMANHO_MAX_TEXTO } from "../../../services/perfilFromOnboarding";
 import type { PassoStartupProps } from "./tipos";
 
 export default function PassoModelo({ respostas, atualizar }: PassoStartupProps) {
@@ -31,6 +32,7 @@ export default function PassoModelo({ respostas, atualizar }: PassoStartupProps)
         <input
           id="mercado-alvo"
           value={mercadoDigitado}
+          maxLength={TAMANHO_MAX_TEXTO}
           onChange={(event) => atualizar({ mercadoAlvo: event.target.value })}
           className="w-full rounded-xl border border-lightgray bg-[#F7F8F5] px-4 py-3 text-sm text-deepgreen outline-none focus:border-deepgreen"
           placeholder="Ex.: Pequenas e médias empresas do varejo"

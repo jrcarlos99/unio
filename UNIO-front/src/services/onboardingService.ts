@@ -1,10 +1,10 @@
 import type { PerfilOnboarding, StatusOnboarding } from "../types/onboarding";
 
-// Único ponto de persistência do onboarding. Por enquanto tudo fica no
-// localStorage do navegador (o onboarding ainda NÃO chama a API). Quando o
-// back tiver os campos/endpoints, basta trocar a implementação destas funções
-// por chamadas HTTP — por isso todas já retornam Promise, e as telas não
-// precisam mudar.
+// Persistência do estado do wizard (status e respostas por e-mail) no
+// localStorage do navegador. A criação do perfil no back e a cópia das
+// respostas em /api/profile/onboarding ficam em perfilOnboardingService.ts.
+// Todas as funções já retornam Promise, pra poderem virar chamadas HTTP sem
+// mudar as telas.
 
 const PREFIXO = "unio_onboarding_";
 
@@ -47,6 +47,14 @@ function gravar(chave: string, valor: unknown) {
 
 export async function getStatus(userKey: string): Promise<StatusOnboarding> {
   return ler<RegistroStatus>(chaveStatus(userKey))?.status ?? "pendente";
+}
+
+// Conta sem perfil precisa passar pelo onboarding para criá-lo (ADR-001),
+// então "concluido"/"pulado" antigos no localStorage (ex.: contas de teste de
+// antes da mudança) valem como "pendente". Nada é apagado: as respostas salvas
+// continuam lá e o wizard retoma de onde parou.
+export function statusEfetivo(status: StatusOnboarding, temPerfil: boolean): StatusOnboarding {
+  return temPerfil ? status : "pendente";
 }
 
 export async function loadAnswers<T>(

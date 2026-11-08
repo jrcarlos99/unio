@@ -55,6 +55,8 @@ export type ModeloNegocio =
   | "Outro";
 
 export interface RespostasStartup {
+  // Obrigatório no back (StartupCreateRequest.nome); pedido no passo 1
+  nome: string;
   segmento: Segmento | null;
   estagio: Estagio | null;
   necessidades: Necessidade[];

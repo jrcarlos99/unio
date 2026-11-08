@@ -1,3 +1,5 @@
+import containerQueries from '@tailwindcss/container-queries';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   // O Tailwind só gera as classes usadas nestes arquivos (deixa o CSS final pequeno)
@@ -35,5 +37,7 @@ export default {
       },
     },
   },
-  plugins: [],
+  // Container queries (@container, @[40rem]:...): o Lean Canvas muda de
+  // layout pela largura disponível do conteúdo, não pela largura da janela
+  plugins: [containerQueries],
 };

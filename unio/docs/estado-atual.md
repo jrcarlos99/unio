@@ -1,6 +1,6 @@
 # Estado Atual do Projeto — Scorecard de Matchmaking
 
-Última atualização: 2026-10-26
+Última atualização: 2026-11-07
 
 ## Resumo
 
@@ -20,9 +20,10 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Documentos do projeto
 
-- `docs/decisoes.md` — decisões de design (D001–D027)
+- `docs/decisoes.md` — decisões de design (D001 a D030)
 - `docs/dominio.md` — especificação de domínio
 - `docs/contrato/contrato-v2.md` — contrato ativo da API
+- `docs/contrato/contrato-onboarding.md`: onboarding e criação de perfil a partir dele
 - `docs/implementacao/plano-tarefas.md` — plano de tarefas
 - `docs/planejamento/` — resumos e planejamento de tickets
 
@@ -61,6 +62,16 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] T07 — Log de Auditoria (RNF10) — 2026-10-26
 - [x] T08 — Consentimento LGPD (RF11 + RNF03) — 2026-10-26
 - [x] T11 — Upload de pitch (RF06) — 2026-10-20
+
+### Onboarding cria o perfil (2026-11-07, D028 a D030)
+- [x] Formulário antigo de cadastro removido do front; o último passo do
+  onboarding chama `POST /api/profile/startup` ou `POST /api/profile/investor` (D028)
+- [x] `capitalProcurado`, `ticketMinimo` e `ticketMaximo` opcionais,
+  `@Positive` quando preenchidos; migration `V23__capital_procurado_opcional.sql` (D029)
+- [x] `perfilRisco` nulo ou em branco gravado como "Investidor Anjo" (D030)
+- [x] Testes: `ProfileServiceTest` (unitário) e `ProfileControllerTest` (integração)
+- [ ] Pendências: ordem V19 a V22 x V23 no Flyway, consentimento específico do
+  onboarding, backfill de `perfil_risco` nulo, `mapToProfileType` (ver D028 e D030)
 
 ### Bloco E — Testes (pendente)
 - [ ] Tarefa 14 — Testes unitários
@@ -116,7 +127,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 - Package by feature
 - Migrations via Flyway (nunca ddl-auto)
-- Bean Validation nos DTOs de create
+- Bean Validation nos DTOs de create (campos numéricos opcionais usam só `@Positive`, ver D029)
 - Update via Map com validação manual (ver D027)
 - Erros: ResponseStatusException com HttpStatus
 - Autenticação: JWT com roles STARTUP/INVESTOR/ADMIN
@@ -125,7 +136,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Branch atual
 
-- `main`
+- `front-carolina` (onboarding cria perfil, D028 a D030)
 
 ## Próximo passo
 
@@ -136,4 +147,4 @@ Escolher o próximo ticket:
 
 ## Fora do MVP (trabalho futuro)
 
-Ver D011, D025 e D027 em `docs/decisoes.md`.
+Ver D011, D025, D027 e as pendências da D028 e D030 em `docs/decisoes.md`.

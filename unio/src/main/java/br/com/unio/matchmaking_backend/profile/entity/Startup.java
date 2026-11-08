@@ -54,7 +54,8 @@ public class Startup {
     @Column(name = "mercado_alvo", nullable = false)
     private String mercadoAlvo;
 
-    @Column(name = "capital_procurado", nullable = false, precision = 19, scale = 2)
+    // Opcional desde a V23 (D029)
+    @Column(name = "capital_procurado", nullable = true, precision = 19, scale = 2)
     private BigDecimal capitalProcurado;
 
     @Column(name = "pitch_canvas", columnDefinition = "TEXT")

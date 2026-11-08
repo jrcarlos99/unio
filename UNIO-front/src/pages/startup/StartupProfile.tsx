@@ -86,7 +86,9 @@ export default function StartupProfile() {
   }
 
   return (
-    <div>
+    // Formulário: limite interno de 1152px (a largura de antes do AppLayout
+    // fluido), para os campos não esticarem em telas grandes
+    <div className="max-w-6xl">
       <div className="mb-6 border-b border-lightgray pb-5">
         <p className="text-xs font-bold uppercase tracking-wider text-deepgreen/75">Configurações institucionais</p>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">

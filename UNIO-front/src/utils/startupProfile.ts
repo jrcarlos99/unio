@@ -73,8 +73,9 @@ export function validateProfile(values: StartupProfileFormValues): StartupProfil
     else if (value.length > TEXT_MAX) errors[field] = `Use no máximo ${TEXT_MAX} caracteres.`;
   }
 
-  if (!values.capitalProcurado || Number(values.capitalProcurado) <= 0) {
-    errors.capitalProcurado = "Informe um valor maior que zero.";
+  // Opcional (D029 do back); se preenchido, tem que ser positivo
+  if (values.capitalProcurado && !(Number(values.capitalProcurado) > 0)) {
+    errors.capitalProcurado = "Informe um valor maior que zero ou deixe vazio.";
   }
 
   if (values.pitchCanvas.length > PITCH_MAX) {
@@ -118,7 +119,7 @@ export function toProfileUpdateRequest(
     pitchCanvas: values.pitchCanvas.trim(),
   };
   if (values.capitalProcurado !== saved.capitalProcurado) {
-    body.capitalProcurado = Number(values.capitalProcurado);
+    body.capitalProcurado = values.capitalProcurado ? Number(values.capitalProcurado) : null;
   }
   return body;
 }

@@ -10,9 +10,10 @@ interface SignupFormProps {
   onSuccess: (role: string) => void;
 }
 
-// Este é só o passo 1 da conta: documento + e-mail + senha. O nome e o
-// resto dos dados (segmento, ticket médio, etc.) só são pedidos depois,
-// nas telas de RF01/RF02, quando a pessoa escolhe se é startup ou investidor.
+// Este é só o passo 1 da conta: documento + e-mail + senha + tipo de conta.
+// O resto dos dados (nome da startup, segmento, ticket, etc.) é pedido depois,
+// no onboarding do tipo escolhido, que é quem cria o perfil (RF01/RF02,
+// docs/adr/ADR-001).
 export default function SignupForm({ onSuccess }: SignupFormProps) {
   const [documento, setDocumento] = useState('');
   const [email, setEmail] = useState('');

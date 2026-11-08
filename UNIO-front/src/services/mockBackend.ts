@@ -214,6 +214,22 @@ function exigirPositivo(valor: unknown, mensagem: string) {
   }
 }
 
+// Como o @Positive sem @NotNull do back (D029): ausente/null passa
+function exigirPositivoSePresente(valor: unknown, mensagem: string) {
+  if (valor === undefined || valor === null) return;
+  exigirPositivo(valor, mensagem);
+}
+
+// Enum DisponibilidadeMentoria: valor fora do enum vira 400 no back (Jackson)
+function exigirDisponibilidadeValida(valor: unknown) {
+  if (valor != null && !DISPONIBILIDADES_MENTORIA.includes(String(valor))) {
+    throw new ErroHttp(400, "Disponibilidade de mentoria inválida");
+  }
+}
+
+// D030 do back: perfilRisco nulo ou em branco é gravado com este padrão
+const PERFIL_RISCO_PADRAO = "Investidor Anjo";
+
 const ONBOARDING_STATUSES: OnboardingStatusMock[] = ["PENDENTE", "CONCLUIDO", "PULADO"];
 const ONBOARDING_MAX_BYTES = 20 * 1024;
 
@@ -248,7 +264,7 @@ const ROTAS: Record<string, Rota> = {
       acceptedTerms: "Aceite os termos de uso e a política de privacidade",
     });
     if (corpo.acceptedTerms !== true) {
-      badRequest("Aceite os termos de uso e a política de privacidade");
+      throw new ErroHttp(400, "Aceite os termos de uso e a política de privacidade");
     }
     if (banco.usuarios.some((usuario) => usuario.email === email)) {
       throw new ErroHttp(409, "Email já cadastrado");
@@ -294,15 +310,20 @@ const ROTAS: Record<string, Rota> = {
     const usuario = exigirUsuario(banco, config);
     if (usuario.role !== "STARTUP") throw new ErroHttp(403, "Usuário não é do tipo STARTUP");
     if (banco.startups[usuario.id]) throw new ErroHttp(409, "Perfil Startup já existe");
+    // Mesmas regras do StartupCreateRequest depois da D029 do back
     exigirCampos(corpo, {
+      nome: "Nome é obrigatório",
       segmento: "Segmento é obrigatório",
       estagio: "Estágio é obrigatório",
       localizacao: "Localização é obrigatória",
       modeloNegocio: "Modelo de negócio é obrigatório",
       mercadoAlvo: "Mercado alvo é obrigatório",
-      capitalProcurado: "Capital procurado é obrigatório",
     });
-    exigirPositivo(corpo.capitalProcurado, "Capital procurado deve ser positivo");
+    if (String(corpo.nome).length > 255) {
+      throw new ErroHttp(400, "Nome deve ter no máximo 255 caracteres");
+    }
+    exigirPositivoSePresente(corpo.capitalProcurado, "Capital procurado deve ser positivo");
+    exigirDisponibilidadeValida(corpo.disponibilidade);
     banco.startups[usuario.id] = corpo;
     return perfilCompleto(banco, usuario);
   },
@@ -311,12 +332,24 @@ const ROTAS: Record<string, Rota> = {
     const usuario = exigirUsuario(banco, config);
     if (usuario.role !== "INVESTOR") throw new ErroHttp(403, "Usuário não é do tipo INVESTOR");
     if (banco.investidores[usuario.id]) throw new ErroHttp(409, "Perfil Investor já existe");
-    exigirPositivo(corpo.ticketMinimo, "Ticket mínimo deve ser positivo");
-    exigirPositivo(corpo.ticketMaximo, "Ticket máximo deve ser positivo");
-    if (Number(corpo.ticketMinimo) > Number(corpo.ticketMaximo)) {
+    // Mesmas regras do InvestorCreateRequest/ProfileService depois da D029 e D030
+    exigirPositivoSePresente(corpo.ticketMinimo, "Ticket mínimo deve ser positivo");
+    exigirPositivoSePresente(corpo.ticketMaximo, "Ticket máximo deve ser positivo");
+    if (
+      corpo.ticketMinimo != null &&
+      corpo.ticketMaximo != null &&
+      Number(corpo.ticketMinimo) > Number(corpo.ticketMaximo)
+    ) {
       throw new ErroHttp(400, "Ticket mínimo não pode ser maior que ticket máximo");
     }
-    banco.investidores[usuario.id] = corpo;
+    exigirDisponibilidadeValida(corpo.disponibilidade);
+    const perfilRisco = typeof corpo.perfilRisco === "string" ? corpo.perfilRisco.trim() : "";
+    banco.investidores[usuario.id] = {
+      ...corpo,
+      ticketMinimo: corpo.ticketMinimo ?? null,
+      ticketMaximo: corpo.ticketMaximo ?? null,
+      perfilRisco: perfilRisco || PERFIL_RISCO_PADRAO,
+    };
     return perfilCompleto(banco, usuario);
   },
 

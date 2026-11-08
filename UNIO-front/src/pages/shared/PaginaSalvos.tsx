@@ -4,6 +4,7 @@ import { Bookmark, CircleAlert } from "lucide-react";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
 import CabecalhoPagina from "../../components/discovery/CabecalhoPagina";
 import CardRecomendacao from "../../components/discovery/CardRecomendacao";
+import { GRADE_CARDS } from "../../components/discovery/GradeRecomendacoes";
 import StartupCardSkeleton from "../../components/discovery/StartupCardSkeleton";
 import { FOCO_VISIVEL } from "../../components/onboarding/selecao";
 import { useAuth } from "../../contexts/AuthContext";
@@ -59,7 +60,7 @@ export default function PaginaSalvos({ perfil }: { perfil: PerfilApp }) {
       <CabecalhoPagina titulo="Salvos" subtitulo={textos.subtitulo} />
 
       {carregando ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+        <div className={GRADE_CARDS} aria-busy="true">
           <span className="sr-only">Carregando salvos</span>
           {Array.from({ length: 3 }, (_, i) => (
             <StartupCardSkeleton key={i} />
@@ -89,7 +90,7 @@ export default function PaginaSalvos({ perfil }: { perfil: PerfilApp }) {
           }
         />
       ) : (
-        <ul className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <ul className={GRADE_CARDS}>
           {dados.map((rec) => {
             const id = idDaRecomendacao(rec);
             return (

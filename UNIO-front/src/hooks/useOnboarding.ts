@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -14,6 +14,17 @@ import {
   markSkipped,
   saveAnswers,
 } from "../services/onboardingService";
+import {
+  criarPerfilPeloOnboarding,
+  ErroCriacaoPerfil,
+  salvarRespostasOnboardingNoBack,
+  type TipoErroCriacaoPerfil,
+} from "../services/perfilOnboardingService";
+
+export interface ErroEnvioOnboarding {
+  tipo: TipoErroCriacaoPerfil;
+  mensagem: string;
+}
 
 export interface OnboardingState<T> {
   respostas: T;
@@ -22,6 +33,11 @@ export interface OnboardingState<T> {
   carregando: boolean;
   // true enquanto conclui/pula (pra desabilitar os botões)
   ocupado: boolean;
+  // false = a conta ainda não tem perfil: o onboarding é obrigatório, não
+  // pode ser pulado e o último passo cria o perfil (ADR-001)
+  temPerfil: boolean;
+  // Falha ao criar o perfil no último passo (as respostas continuam na tela)
+  erroEnvio: ErroEnvioOnboarding | null;
   etapas: string[];
   passo: number;
   totalPassos: number;
@@ -44,8 +60,9 @@ export function useOnboarding<P extends PerfilComOnboarding>(
   const config = ONBOARDING_CONFIG[perfil] as ConfigOnboarding<T>;
   const totalPassos = config.etapas.length;
 
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const userKey = user ? chaveUsuario(user) : "";
+  const temPerfil = user?.perfilCompleto !== false;
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
 
@@ -53,6 +70,9 @@ export function useOnboarding<P extends PerfilComOnboarding>(
   // Guarda pra qual usuário as respostas já foram carregadas
   const [carregadoPara, setCarregadoPara] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState<ErroEnvioOnboarding | null>(null);
+  // Trava síncrona contra clique duplo (o estado "ocupado" só vale no próximo render)
+  const enviando = useRef(false);
   const carregando = carregadoPara !== userKey;
 
   useEffect(() => {
@@ -116,17 +136,42 @@ export function useOnboarding<P extends PerfilComOnboarding>(
     const tudoValido = config.etapas.every((_, indice) =>
       config.validarPasso(indice + 1, respostas),
     );
-    if (!tudoValido) return;
+    if (!tudoValido || enviando.current) return;
+    enviando.current = true;
     setOcupado(true);
+    setErroEnvio(null);
     try {
+      // Quem já tem perfil só conclui o onboarding: o POST não é repetido
+      if (!temPerfil) {
+        await criarPerfilPeloOnboarding(perfil, respostas);
+        await refreshProfile();
+        void salvarRespostasOnboardingNoBack(perfil, respostas);
+      }
       await markCompleted(userKey, perfil, respostas);
-      navigate(config.rotaHome, { replace: true });
+      navigate(config.rotaHome, {
+        replace: true,
+        state: temPerfil ? undefined : { cadastroSucesso: true },
+      });
+    } catch (error) {
+      if (error instanceof ErroCriacaoPerfil) {
+        setErroEnvio({ tipo: error.tipo, mensagem: error.message });
+      } else {
+        // refreshProfile falhou depois do POST: tentar de novo cai no 409,
+        // que conta como sucesso
+        setErroEnvio({
+          tipo: "rede",
+          mensagem: "Seu perfil foi enviado, mas não conseguimos confirmar. Tente novamente.",
+        });
+      }
     } finally {
+      enviando.current = false;
       setOcupado(false);
     }
-  }, [config, navigate, perfil, respostas, userKey]);
+  }, [config, navigate, perfil, refreshProfile, respostas, temPerfil, userKey]);
 
   const skip = useCallback(async () => {
+    // Sem perfil o onboarding é obrigatório (o botão nem aparece)
+    if (!temPerfil) return;
     setOcupado(true);
     try {
       await markSkipped(userKey, perfil);
@@ -134,13 +179,15 @@ export function useOnboarding<P extends PerfilComOnboarding>(
     } finally {
       setOcupado(false);
     }
-  }, [config, navigate, perfil, userKey]);
+  }, [config, navigate, perfil, temPerfil, userKey]);
 
   return {
     respostas,
     atualizar,
     carregando,
     ocupado,
+    temPerfil,
+    erroEnvio,
     etapas: config.etapas,
     passo,
     totalPassos,

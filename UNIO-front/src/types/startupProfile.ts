@@ -9,7 +9,8 @@ export interface StartupProfileResponse {
   localizacao: string;
   modeloNegocio: string;
   mercadoAlvo: string;
-  capitalProcurado: number;
+  // Opcional desde a D029 do back: startup que não busca investimento
+  capitalProcurado: number | null;
   pitchCanvas: string | null;
 }
 
@@ -21,7 +22,8 @@ export interface StartupProfileUpdateRequest {
   localizacao: string;
   modeloNegocio: string;
   mercadoAlvo: string;
-  capitalProcurado?: number;
+  // null limpa o valor salvo
+  capitalProcurado?: number | null;
   pitchCanvas: string;
 }
 

@@ -19,9 +19,9 @@ export default function OnboardingStartup() {
   const passos = {
     1: {
       titulo: "Conte um pouco sobre a sua startup",
-      subtitulo: "Com segmento e estágio, já conseguimos começar a encontrar investidores e mentores compatíveis.",
-      aviso: "Você poderá alterar segmento e estágio a qualquer momento nas configurações da startup.",
-      resumo: passoValido ? "Segmento e estágio escolhidos" : "Selecione segmento e estágio",
+      subtitulo: "Com nome, segmento e estágio, já conseguimos começar a encontrar investidores e mentores compatíveis.",
+      aviso: "Você poderá alterar nome, segmento e estágio a qualquer momento nas configurações da startup.",
+      resumo: passoValido ? "Nome, segmento e estágio definidos" : "Informe nome, segmento e estágio",
       conteudo: <PassoSegmento {...props} />,
     },
     2: {
@@ -49,6 +49,8 @@ export default function OnboardingStartup() {
 
   if (!passos) return null;
   const ultimoPasso = passo === onboarding.totalPassos;
+  // Sem perfil, o último passo cria o perfil (ADR-001)
+  const rotuloFinal = onboarding.temPerfil ? "Concluir e ver investidores" : "Concluir e criar meu perfil";
 
   return (
     <OnboardingLayout
@@ -60,12 +62,17 @@ export default function OnboardingStartup() {
       aviso={passos.aviso}
       statusFinal="Passo final do credenciamento"
       onSkip={onboarding.skip}
+      podePular={onboarding.temPerfil}
+      erro={onboarding.erroEnvio?.mensagem}
+      onTentarNovamente={
+        onboarding.erroEnvio && onboarding.erroEnvio.tipo !== "validacao" ? onboarding.finish : undefined
+      }
       onGoTo={onboarding.goTo}
       resumo={passos.resumo}
       resumoAtivo={passoValido}
       onBack={onboarding.back}
       onPrimary={ultimoPasso ? onboarding.finish : onboarding.next}
-      primaryLabel={ultimoPasso ? "Concluir e ver investidores" : "Continuar"}
+      primaryLabel={ultimoPasso ? rotuloFinal : "Continuar"}
       primaryIcon={ultimoPasso ? Check : undefined}
       primaryDisabled={!passoValido}
       ocupado={onboarding.ocupado}

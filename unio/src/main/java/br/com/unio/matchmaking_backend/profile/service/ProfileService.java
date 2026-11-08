@@ -34,6 +34,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class ProfileService {
 
+    static final String PERFIL_RISCO_PADRAO = "Investidor Anjo";
+
     private final UserRepository userRepository;
     private final StartupRepository startupRepository;
     private final InvestorRepository investorRepository;
@@ -163,7 +165,10 @@ public class ProfileService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Perfil Investor já existe");
         }
 
-        if (request.getTicketMinimo().compareTo(request.getTicketMaximo()) > 0) {
+        // Tickets são opcionais (D029): só dá para comparar quando os dois vêm preenchidos
+        BigDecimal ticketMinimo = request.getTicketMinimo();
+        BigDecimal ticketMaximo = request.getTicketMaximo();
+        if (ticketMinimo != null && ticketMaximo != null && ticketMinimo.compareTo(ticketMaximo) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Ticket mínimo não pode ser maior que ticket máximo");
         }
@@ -172,10 +177,10 @@ public class ProfileService {
                 .user(user)
                 .segmentosInteresse(asCsv(request.getSegmentosInteresse()))
                 .estagiosInteresse(asCsv(request.getEstagiosInteresse()))
-                .ticketMinimo(request.getTicketMinimo())
-                .ticketMaximo(request.getTicketMaximo())
+                .ticketMinimo(ticketMinimo)
+                .ticketMaximo(ticketMaximo)
                 .regiaoInteresse(request.getRegiaoInteresse())
-                .perfilRisco(request.getPerfilRisco())
+                .perfilRisco(perfilRiscoOuPadrao(request.getPerfilRisco()))
                 .disponibilidade(request.getDisponibilidade())
                 .disponibilidadeObservacao(request.getDisponibilidadeObservacao())
                 .build();
@@ -316,6 +321,13 @@ public class ProfileService {
             users.add(buildUserSummary(user));
         }
         return users;
+    }
+
+    // D030: sem perfilRisco o ScorePersistenceService não acha política (POLICY_NOT_FOUND).
+    // Qualquer valor não nulo leva hoje à política ANGEL_INVESTOR (ver D025, item 2);
+    // "Investidor Anjo" é o rótulo que o front usa para esse tipo.
+    private String perfilRiscoOuPadrao(String perfilRisco) {
+        return perfilRisco == null || perfilRisco.isBlank() ? PERFIL_RISCO_PADRAO : perfilRisco.trim();
     }
 
     private BigDecimal parseBigDecimal(Object rawValue) {

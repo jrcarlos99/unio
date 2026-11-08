@@ -20,17 +20,21 @@ const TIPS = [
   },
 ];
 
-// Static tips below the pitch form
+// Static tips below the pitch form. 3 columns only when the card itself has
+// room for them (container query): next to the preview the column is narrow
+// even on large windows.
 export default function PitchTipsCard() {
   return (
     <PitchCard title="Boas práticas para pitches de alto impacto" icon={Lightbulb}>
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {TIPS.map(({ title, icon, text }) => (
-          <li key={title}>
-            <PitchCanvasCard titulo={title} icone={icon} texto={text} />
-          </li>
-        ))}
-      </ul>
+      <div className="@container">
+        <ul className="grid grid-cols-1 gap-4 @[36rem]:grid-cols-3">
+          {TIPS.map(({ title, icon, text }) => (
+            <li key={title}>
+              <PitchCanvasCard titulo={title} icone={icon} texto={text} />
+            </li>
+          ))}
+        </ul>
+      </div>
     </PitchCard>
   );
 }

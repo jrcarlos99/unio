@@ -40,6 +40,11 @@ export function criarUnioLocal(prefixo: string) {
   const chaveUsados = (userKey: string) => `unio_reciprocos_usados_${prefixo}${userKey}`;
   const chaveEventos = (userKey: string) => `unio_eventos_${prefixo}${userKey}`;
 
+  const uniosComEvento = (userKey: string, tipo: TipoEventoUnio): string[] => {
+    const eventos = ler<EventoUnio[]>(chaveEventos(userKey), []);
+    return [...new Set(eventos.filter((evento) => evento.tipo === tipo).map((evento) => evento.id))];
+  };
+
   return {
     dataDoMatch(userKey: string, id: string): string | null {
       return ler<Record<string, string>>(chaveDatas(userKey), {})[id] ?? null;
@@ -62,10 +67,11 @@ export function criarUnioLocal(prefixo: string) {
       const eventos = ler<EventoUnio[]>(chaveEventos(userKey), []);
       gravar(chaveEventos(userKey), [...eventos, { id, tipo, em: new Date().toISOString() }]);
     },
+    // Ids dos unios que tiveram pelo menos um evento desse tipo
+    uniosComEvento,
     // Quantos unios diferentes tiveram pelo menos um evento desse tipo
     contarUniosComEvento(userKey: string, tipo: TipoEventoUnio) {
-      const eventos = ler<EventoUnio[]>(chaveEventos(userKey), []);
-      return new Set(eventos.filter((evento) => evento.tipo === tipo).map((evento) => evento.id)).size;
+      return uniosComEvento(userKey, tipo).length;
     },
   };
 }

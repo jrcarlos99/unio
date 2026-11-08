@@ -104,7 +104,7 @@ export default function PaginaMeusUnios({ perfil }: { perfil: PerfilApp }) {
       <CabecalhoPagina titulo="Meus unios" subtitulo={textos.subtitulo} />
 
       {carregando ? (
-        <div className="space-y-3" aria-busy="true">
+        <div className="grid grid-cols-1 gap-3 min-[1700px]:grid-cols-2" aria-busy="true">
           <span className="sr-only">Carregando unios</span>
           {Array.from({ length: 2 }, (_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-3xl bg-lightgray" />
@@ -134,7 +134,9 @@ export default function PaginaMeusUnios({ perfil }: { perfil: PerfilApp }) {
           }
         />
       ) : (
-        <ul className="space-y-3">
+        // Linhas em 2 colunas a partir de 1700px (mesmo ponto da 4ª coluna dos
+        // cards em GRADE_CARDS), para não esticar no AppLayout fluido
+        <ul className="grid grid-cols-1 gap-3 min-[1700px]:grid-cols-2">
           {dados.map((rec) => {
             const id = idDaRecomendacao(rec);
             return <Linha key={id} rec={rec} onAbrir={() => abrir(id)} />;

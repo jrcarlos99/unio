@@ -1,15 +1,35 @@
-import { Building2 } from "lucide-react";
+import { Building2, PenLine } from "lucide-react";
 import OptionGroup from "../../../components/onboarding/OptionGroup";
 import SectionCard from "../../../components/onboarding/SectionCard";
 import SelectableCard from "../../../components/onboarding/SelectableCard";
 import { ESTAGIO_ICONES, SEGMENTO_ICONES } from "../../../components/onboarding/icons";
 import { tabIndexRadio } from "../../../components/onboarding/selecao";
 import { ESTAGIOS_DETALHADOS, SEGMENTOS_DETALHADOS } from "../../../data/options";
+import { TAMANHO_MAX_TEXTO } from "../../../services/perfilFromOnboarding";
 import type { PassoStartupProps } from "./tipos";
 
 export default function PassoSegmento({ respostas, atualizar }: PassoStartupProps) {
   return (
     <>
+      <SectionCard
+        tituloId="nome-titulo"
+        titulo="Qual o nome da sua startup?"
+        subtitulo="É assim que investidores e mentores vão encontrar a sua startup."
+        selo="Obrigatório"
+        icone={PenLine}
+      >
+        <label htmlFor="startup-nome" className="sr-only">Nome da startup</label>
+        <input
+          id="startup-nome"
+          value={respostas.nome}
+          maxLength={TAMANHO_MAX_TEXTO}
+          autoComplete="organization"
+          aria-required="true"
+          onChange={(event) => atualizar({ nome: event.target.value })}
+          placeholder="Ex.: EcoTech Solutions"
+          className="w-full rounded-xl border border-lightgray bg-[#F7F8F5] px-4 py-3 text-sm text-deepgreen outline-none focus:border-deepgreen"
+        />
+      </SectionCard>
       <SectionCard
         tituloId="segmento-titulo"
         titulo="Qual o segmento da sua startup?"

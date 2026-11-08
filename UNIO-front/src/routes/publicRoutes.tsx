@@ -1,11 +1,7 @@
-import { Route } from "react-router-dom";
+import { Navigate, Route } from "react-router-dom";
 import Landing from "../pages/Landing";
 import Login from "../pages/Login";
-import EscolhaCadastro from "../pages/EscolhaCadastro";
-import CadastroStartup from "../pages/CadastroStartup";
-import CadastroInvestidor from "../pages/CadastroInvestidor";
 import AccessDenied from "../pages/AccessDenied";
-import ProtectedRoute from "./ProtectedRoute";
 
 // Rotas públicas: landing, login/cadastro e as páginas iniciais de cada tipo
 // de conta. Isso já é um elemento <Route>/Fragment pronto (não uma função
@@ -16,13 +12,11 @@ const publicRoutes = (
   <>
     <Route path="/" element={<Landing />} />
     <Route path="/login" element={<Login />} />
-    <Route path="/cadastro" element={<EscolhaCadastro />} />
-    <Route element={<ProtectedRoute allowedRoles={["startup"]} />}>
-      <Route path="/cadastro-startup" element={<CadastroStartup />} />
-    </Route>
-    <Route element={<ProtectedRoute allowedRoles={["investidor"]} />}>
-      <Route path="/cadastro-investidor" element={<CadastroInvestidor />} />
-    </Route>
+    {/* Endereços antigos do cadastro (docs/adr/ADR-001): o perfil agora é
+        criado no onboarding, e o registro da conta fica no /login */}
+    <Route path="/cadastro" element={<Navigate to="/login?modo=cadastro" replace />} />
+    <Route path="/cadastro-startup" element={<Navigate to="/onboarding/startup" replace />} />
+    <Route path="/cadastro-investidor" element={<Navigate to="/onboarding/investidor" replace />} />
     <Route path="/acesso-negado" element={<AccessDenied />} />
     {/* /home-startup e /home-investidor ficam em startupRoutes.tsx e investidorRoutes.tsx */}
   </>

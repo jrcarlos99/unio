@@ -87,7 +87,9 @@ export default function InvestorProfile() {
   }
 
   return (
-    <div>
+    // Formulário: limite interno de 1152px (a largura de antes do AppLayout
+    // fluido), para os campos não esticarem em telas grandes
+    <div className="max-w-6xl">
       <div className="mb-6 border-b border-lightgray pb-5">
         <nav aria-label="Trilha de navegação">
           <ol className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-deepgreen/75">

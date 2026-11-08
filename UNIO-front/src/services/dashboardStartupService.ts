@@ -5,6 +5,7 @@ import type { Estagio, FaixaCapital, Segmento } from "../types";
 import type { CompletudePerfil, DadosStartup, ResumoStartup } from "../types/dashboard";
 import type { RespostasStartup } from "../types/onboarding";
 import { chaveUsuario, loadAnswers } from "./onboardingService";
+import { uniosComReuniaoConfirmada } from "./reunioesStore";
 import { unioLocalStartup } from "./unioLocal";
 
 // Único ponto de dados da home da startup ("Visão geral"). A tela usa SÓ
@@ -17,9 +18,12 @@ import { unioLocalStartup } from "./unioLocal";
 // - Investidores interessados (clicaram "Tenho interesse" na startup) e
 //   matches (a startup também aceitou). Regra de produto: só depois do match
 //   mútuo há conversa/reunião — por isso a home não tem "enviar mensagem".
-// - Contatos iniciados e reuniões marcadas: não há chat nem agenda na
-//   plataforma; contam os eventos locais registrados no popup do unio
-//   (services/unioLocal.ts). Sem eventos, ficam os números do mock.
+// - Contatos iniciados: não há chat na plataforma; contam os eventos locais
+//   registrados no popup do unio (services/unioLocal.ts).
+// - Reunião marcada: unios com reunião confirmada (reunioesService, mock em
+//   localStorage) somados, sem repetir unio, aos eventos "reuniao" antigos
+//   do unioLocal (do atalho do Google Agenda, que saiu do popup).
+// Sem nenhum dado, ficam os números do mock.
 // A recomendação de investidores fica em services/investidoresService.ts.
 // - Logo da startup (não há upload), usada na completude do perfil.
 
@@ -33,7 +37,9 @@ export async function obterResumo(user: UserProfile | null): Promise<ResumoStart
   await esperar();
   const userKey = user ? chaveUsuario(user) : "";
   const contatos = userKey ? unioLocalStartup.contarUniosComEvento(userKey, "contato") : 0;
-  const reunioes = userKey ? unioLocalStartup.contarUniosComEvento(userKey, "reuniao") : 0;
+  const reunioes = userKey
+    ? new Set([...uniosComReuniaoConfirmada(userKey), ...unioLocalStartup.uniosComEvento(userKey, "reuniao")]).size
+    : 0;
   const [visualizaram, interesse, contatoMock, reuniaoMock] = RESUMO_MOCK.funil;
   return {
     ...RESUMO_MOCK,

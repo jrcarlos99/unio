@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { HeartCrack, Sparkles, X } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -6,16 +6,28 @@ import { useCarregamento } from "../../hooks/useDescoberta";
 import { useToast } from "../../hooks/useToast";
 import {
   desfazerMatch,
+  idDaRecomendacao,
   nomeDaRecomendacao,
   obterContato,
   registrarEvento,
 } from "../../services/recomendacoesService";
+import {
+  assinarReunioes,
+  cancelarReunioesDoUnio,
+  gerarIcs,
+  listarReunioesAtivasComUnio,
+  obterProximaConfirmada,
+  type SessaoReunioes,
+} from "../../services/reunioesService";
 import type { Recomendacao } from "../../types/recomendacoes";
+import type { Reuniao } from "../../types/reunioes";
+import { baixarIcs } from "../../utils/ics";
 import { nomeUsuario } from "../../utils/nomeUsuario";
 import { FOCO_VISIVEL } from "../onboarding/selecao";
+import SolicitarReuniaoModal from "../reunioes/SolicitarReuniaoModal";
 import ConfirmarDesfazer from "./ConfirmarDesfazer";
 import ContatoCard, { type CanalContato } from "./ContatoCard";
-import ReuniaoCard, { type DestinoReuniao } from "./ReuniaoCard";
+import ReuniaoCard from "./ReuniaoCard";
 import UnioMiniPerfil from "./UnioMiniPerfil";
 
 interface UnioModalProps {
@@ -55,8 +67,32 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
   const refTitulo = useRef<HTMLHeadingElement>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [desfazendo, setDesfazendo] = useState(false);
+  const [solicitando, setSolicitando] = useState(false);
+  const [avisoReunioes, setAvisoReunioes] = useState<string | null>(null);
+  const [proximaConfirmada, setProximaConfirmada] = useState<Reuniao | null>(null);
 
   const nome = nomeDaRecomendacao(rec);
+  const unioId = idDaRecomendacao(rec);
+  const sessao: SessaoReunioes = useMemo(() => ({ user, perfil: rec.perfil }), [user, rec.perfil]);
+
+  // Próxima reunião confirmada com este unio (atalho .ics), atualizada
+  // quando as reuniões mudam
+  useEffect(() => {
+    let ativo = true;
+    const atualizar = () => {
+      obterProximaConfirmada(sessao, unioId)
+        .then((reuniao) => {
+          if (ativo) setProximaConfirmada(reuniao);
+        })
+        .catch(() => undefined);
+    };
+    atualizar();
+    const cancelar = assinarReunioes(atualizar);
+    return () => {
+      ativo = false;
+      cancelar();
+    };
+  }, [sessao, unioId]);
   const meuNome = nomeUsuario(user) || "um usuário da UNIO";
 
   const carregar = useCallback(() => obterContato(rec, user), [rec, user]);
@@ -74,6 +110,7 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
 
   // ESC fecha; Tab/Shift+Tab ficam presos dentro do popup
   function aoTeclar(event: KeyboardEvent<HTMLDivElement>) {
+    if (solicitando) return;
     if (event.key === "Escape") {
       event.stopPropagation();
       onFechar();
@@ -99,13 +136,29 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
     mostrar(TOAST_CANAL[canal], "info");
   }
 
-  function aoAbrirReuniao(destino: DestinoReuniao) {
-    if (destino === "agenda") {
-      void registrarEvento(rec, user, "reuniao");
-      mostrar("Abrindo o Google Agenda…", "info");
-    } else {
-      void registrarEvento(rec, user, "contato");
-      mostrar(TOAST_CANAL.whatsapp, "info");
+  function aoAbrirWhatsApp() {
+    void registrarEvento(rec, user, "contato");
+    mostrar(TOAST_CANAL.whatsapp, "info");
+  }
+
+  async function aoBaixarIcs(reuniao: Reuniao) {
+    try {
+      const arquivo = await gerarIcs(sessao, reuniao.id);
+      baixarIcs(arquivo.nomeArquivo, arquivo.conteudo);
+      mostrar("Arquivo .ics baixado. Abra para adicionar ao seu calendário.", "sucesso");
+    } catch {
+      mostrar("Não foi possível gerar o arquivo .ics.", "erro");
+    }
+  }
+
+  // Antes de confirmar, avisa se há reuniões que serão canceladas
+  async function pedirConfirmacao() {
+    setConfirmando(true);
+    try {
+      const ativas = await listarReunioesAtivasComUnio(sessao, unioId);
+      setAvisoReunioes(ativas.length > 0 ? `As reuniões com ${nome} serão canceladas.` : null);
+    } catch {
+      setAvisoReunioes(null);
     }
   }
 
@@ -113,7 +166,13 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
     setDesfazendo(true);
     try {
       await desfazerMatch(rec, user);
-      mostrar(`Match desfeito com ${nome}.`, "info");
+      const canceladas = await cancelarReunioesDoUnio(sessao, unioId);
+      mostrar(
+        canceladas > 0
+          ? `Match desfeito com ${nome}. ${canceladas === 1 ? "1 reunião cancelada" : `${canceladas} reuniões canceladas`}.`
+          : `Match desfeito com ${nome}.`,
+        "info",
+      );
       onDesfeito(rec);
     } catch {
       mostrar("Não foi possível desfazer o match. Tente novamente.", "erro");
@@ -149,7 +208,7 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
           <div className="flex shrink-0 items-center gap-1">
             <button
               type="button"
-              onClick={() => setConfirmando(true)}
+              onClick={pedirConfirmacao}
               aria-expanded={confirmando}
               className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-xl px-3 text-sm font-medium text-red-700 hover:bg-red-50 ${FOCO_VISIVEL}`}
             >
@@ -174,6 +233,7 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
               <ConfirmarDesfazer
                 nome={nome}
                 ocupado={desfazendo}
+                avisoReunioes={avisoReunioes}
                 onCancelar={() => setConfirmando(false)}
                 onConfirmar={confirmarDesfazer}
               />
@@ -194,7 +254,15 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
             ) : dados ? (
               <>
                 <ContatoCard nome={nome} meuNome={meuNome} contato={dados.contato} onAbrir={aoAbrirContato} />
-                <ReuniaoCard nome={nome} meuNome={meuNome} contato={dados.contato} onAbrir={aoAbrirReuniao} />
+                <ReuniaoCard
+                  nome={nome}
+                  meuNome={meuNome}
+                  contato={dados.contato}
+                  proximaConfirmada={proximaConfirmada}
+                  onSolicitar={() => setSolicitando(true)}
+                  onBaixarIcs={aoBaixarIcs}
+                  onAbrirWhatsApp={aoAbrirWhatsApp}
+                />
               </>
             ) : (
               <p className="rounded-2xl bg-lightgray/50 p-4 text-sm text-deepgreen sm:col-span-2">
@@ -204,6 +272,9 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
           </div>
         </div>
       </div>
+      {solicitando && (
+        <SolicitarReuniaoModal sessao={sessao} unioInicial={unioId} onFechar={() => setSolicitando(false)} />
+      )}
     </div>,
     document.body,
   );

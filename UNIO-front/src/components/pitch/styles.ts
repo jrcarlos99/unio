@@ -8,7 +8,7 @@ export const OUTLINE_BUTTON = `inline-flex min-h-[48px] items-center justify-cen
 
 export const CHIP = "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold";
 
-// Text inputs (same look as components/ui/Textarea.tsx)
+// Text inputs
 export const FIELD_BASE =
   "w-full rounded-2xl border text-sm text-deepgreen placeholder:text-deepgreen/60 focus:outline-none focus:ring-2 focus:ring-deepgreen";
 

@@ -6,12 +6,15 @@ export default function PitchPageSkeleton() {
       <span className="sr-only">Carregando pitch e Lean Canvas</span>
       <div className="h-12 w-64 animate-pulse rounded-2xl bg-lightgray" />
       <div className="mt-4 h-14 animate-pulse rounded-2xl bg-lightgray" />
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
-        <div className="space-y-6 lg:col-span-3">
-          <div className={`h-96 ${block}`} />
-          <div className={`h-64 ${block}`} />
+      {/* Same columns as the Pitch tab (pages/startup/PitchCanvas.tsx) */}
+      <div className="mt-6 @container">
+        <div className="grid grid-cols-1 gap-6 @[56rem]:grid-cols-5 @[90rem]:grid-cols-3">
+          <div className="space-y-6 @[56rem]:col-span-3 @[90rem]:col-span-2">
+            <div className={`h-96 ${block}`} />
+            <div className={`h-64 ${block}`} />
+          </div>
+          <div className={`h-[28rem] @[56rem]:col-span-2 @[90rem]:col-span-1 ${block}`} />
         </div>
-        <div className={`h-[28rem] lg:col-span-2 ${block}`} />
       </div>
     </div>
   );

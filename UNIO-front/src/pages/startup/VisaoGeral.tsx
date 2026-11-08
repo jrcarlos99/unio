@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   ArrowRight,
-  Bell,
   Bookmark,
   CircleAlert,
   CircleCheck,
@@ -23,6 +22,7 @@ import ProfileCompleteness from "../../components/dashboard/ProfileCompleteness"
 import RecommendedInvestorCard from "../../components/dashboard/RecommendedInvestorCard";
 import ViewsChart from "../../components/dashboard/ViewsChart";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
+import SinoNotificacoes from "../../components/layout/SinoNotificacoes";
 import { FOCO_VISIVEL } from "../../components/onboarding/selecao";
 import SuccessMessage from "../../components/ui/SuccessMessage";
 import { useAuth } from "../../contexts/AuthContext";
@@ -251,15 +251,7 @@ export default function VisaoGeral() {
           <button type="button" onClick={() => emBreve("Os filtros")} aria-label="Filtros" className={BOTAO_ICONE}>
             <SlidersHorizontal size={20} aria-hidden="true" />
           </button>
-          <button
-            type="button"
-            onClick={() => emBreve("A central de notificações")}
-            aria-label="Notificações (há novidades)"
-            className={BOTAO_ICONE}
-          >
-            <Bell size={20} aria-hidden="true" />
-            <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white" aria-hidden="true" />
-          </button>
+          <SinoNotificacoes className={BOTAO_ICONE} />
         </div>
       </div>
 
