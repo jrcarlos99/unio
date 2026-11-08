@@ -1,5 +1,6 @@
 package br.com.unio.matchmaking_backend.consent.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import br.com.unio.matchmaking_backend.auth.service.AuthUser;
 import br.com.unio.matchmaking_backend.consent.dto.ConsentResponse;
 import br.com.unio.matchmaking_backend.consent.entity.ConsentRecord;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
 @RestController
+@Tag(name = "Privacidade (LGPD)", description = "Consentimento aos termos e política de privacidade")
 @RequestMapping("/api/consent")
 @RequiredArgsConstructor
 public class ConsentController {

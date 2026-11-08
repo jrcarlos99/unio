@@ -10,6 +10,7 @@ Cada decisão tem: contexto, alternativas, escolha e justificativa.
 **Contexto:** A primeira proposta modelava ScoreDimension como tabela com peso próprio.
 
 **Alternativas:**
+
 - (a) ScoreDimension como tabela com peso persistido
 - (b) ScoreDimension como enum, peso derivado dos critérios
 
@@ -29,6 +30,7 @@ dentro da policy ativa. Campo `weight` no payload é sempre calculado, nunca per
 **Contexto:** A primeira proposta relacionava FeedbackEvent a MatchScore.
 
 **Alternativas:**
+
 - (a) FeedbackEvent com FK para MatchScore
 - (b) FeedbackEvent referenciando investorId + startupId + scorePolicyId
 
@@ -46,6 +48,7 @@ Feedback é sobre a decisão do investidor, não sobre uma linha específica de 
 **Contexto:** A primeira proposta não incluía `dimension` em MatchScoreFactor.
 
 **Alternativas:**
+
 - (a) MatchScoreFactor sem `dimension`
 - (b) MatchScoreFactor com `dimension`
 
@@ -63,6 +66,7 @@ que é requisito explícito da regra de negócio (breakdown + top 3 + next step)
 **Contexto:** Havia ambiguidade sobre como o peso da dimensão era calculado.
 
 **Alternativas:**
+
 - (a) Peso da dimensão = soma dos pesos dos critérios ativos
 - (b) Peso da dimensão = campo explícito na policy
 - (c) Peso da dimensão = fixo por enum
@@ -83,6 +87,7 @@ nunca persistido em tabela.
 apareciam (dentro de dimensão, no nível raiz, ou ambos).
 
 **Decisão:**
+
 - `dimensions[].factors[]` sempre presentes em explanation e calculate
 - `dimensions[].factors[]` opcional em recommendations (payload)
 - `topPositiveFactors[]` e `topAttentionFactors[]` sempre no nível raiz
@@ -100,6 +105,7 @@ no nível raiz. Explanation e Calculate têm estrutura completa.
 para o par (startup, investor, policy).
 
 **Decisão:**
+
 - Sempre recalcula e atualiza o MatchScore existente para (startup, investor, policy)
 - 201 Created se criou; 200 OK se atualizou
 - Campo `recalculated: boolean` no response
@@ -118,6 +124,7 @@ histórico de scores no MVP.
 uma nova era criada com `active=true`.
 
 **Decisão:**
+
 - `active=true`: desativa a anterior (active=false) e ativa a nova
 - `active=false`: cria inativa, sem mexer na ativa
 - MatchScores antigos permanecem referenciando a policy antiga
@@ -134,6 +141,7 @@ de histórico de score.
 **Contexto:** Não havia regra clara sobre o que constituía feedback duplicado.
 
 **Decisão:**
+
 - Duplicata = mesmo investorId + startupId + scorePolicyId + action
   nos últimos 5 minutos
 - Fora da janela, sempre registra (pode ser mudança de decisão)
@@ -151,6 +159,7 @@ de histórico de score.
 padronização para consumo programático pelo cliente.
 
 **Decisão:** Tabela global de códigos:
+
 - CRITICAL_CRITERION_VIOLATED (422)
 - POLICY_INACTIVE (422)
 - STARTUP_BLACKLISTED (403)
@@ -175,6 +184,7 @@ padronização para consumo programático pelo cliente.
 com prazo definido.
 
 **Decisão:**
+
 - 7 entidades: InvestorProfileType, ScoreDimension (enum), CriticalityLevel (enum),
   ScorePolicy, ScoreCriterion, MatchScore, MatchScoreFactor
 - 3 serviços: ScoreCalculatorService, ExplanationService, RecommendationService
@@ -195,6 +205,7 @@ cobrindo a regra de negócio. Extensões ficam documentadas como trabalho futuro
 cabem no MVP acadêmico.
 
 **Decisão:** Documentar como trabalho futuro:
+
 - Versionamento com rollback de policy
 - Overrides por setor/estágio
 - Blacklist/whitelist compostos
@@ -217,6 +228,7 @@ de produto. Vira seção de "limitações e trabalhos futuros" no TCC/artigo.
 leveza no desenvolvimento (H2).
 
 **Alternativas:**
+
 - (a) PostgreSQL em dev, testes e prod
 - (b) H2 em dev + Testcontainers PostgreSQL em testes + PostgreSQL em prod
 
@@ -265,7 +277,8 @@ previsível em CI; consistente com o que já existe no backend atual.
 
 **Decisão:** feature-first (scorecard.policy, scorecard.calculation,
 scorecard.explanation, scorecard.recommendation, scorecard.feedback)
-+ core mínimo compartilhado (scorecard.common, scorecard.api).
+
+- core mínimo compartilhado (scorecard.common, scorecard.api).
 
 **Justificativa:** Preserva "package by feature" e evita duplicação
 em tipos transversais (enums, erros, utilitários).
@@ -295,6 +308,7 @@ configurado. Causa raiz: `spring-boot-starter-actuator` não estava no
 via `/error` protegido.
 
 **Decisão:**
+
 - Adicionar `spring-boot-starter-actuator` ao `pom.xml`.
 - Expor `health,info` em `application.properties`.
 - Liberar `/actuator/**` na SecurityConfig.
@@ -310,6 +324,7 @@ FeedbackEvent na Tarefa 2, o tipo de investorId/startupId não estava
 definido — o backend existente (auth/profile) ainda não tinha isso fixado.
 
 **Alternativas:**
+
 - (a) Long (sequência incremental)
 - (b) UUID
 
@@ -397,6 +412,7 @@ Segue o contrato v2 (endpoints separados). Sem over-engineering: cada
 endpoint faz uma coisa.
 
 **Impacto:**
+
 - `AuthService.register()` simplificado.
 - `RegisterRequest` só com email, password, role.
 - Criação de perfil vira endpoint próprio (a implementar quando o MVP precisar).
@@ -415,6 +431,7 @@ estourava `NULL not allowed for column "SEGMENTO"` — erro mascarado como
 Segue o contrato v2 (endpoints separados). Sem over-engineering.
 
 **Impacto:**
+
 - `AuthService.register()` simplificado.
 - `RegisterRequest` só com email, password, role.
 - Criação de perfil vira endpoint próprio (a implementar quando o MVP precisar).
@@ -435,6 +452,7 @@ priorização dos critérios e já refletem o estado atual do código e do
 domínio do projeto.
 
 **Impacto:**
+
 - `CriticalityLevel.java` permanece com 4 valores.
 - D009 continua válida para a padronização de **códigos de erro**, mas a
   referência aos níveis `COMMON/OPTIONAL` fica substituída por esta decisão.
@@ -457,11 +475,11 @@ A regra de negócio original previa 5 faixas. O código ainda está em
 dev, sem dados em prod — é o momento certo de alinhar.
 
 **Impacto:**
+
 - MatchScoreClassification.java passa a ter 5 valores.
 - ScoreCalculatorService.classify() implementa 5 faixas.
 - Nenhuma migration necessária (coluna VARCHAR sem constraint).
 - Contrato v2 permanece inalterado (já estava correto).
-
 
 ## D025 — Pendências técnicas do MVP
 
@@ -490,7 +508,6 @@ antes de virar produto.
 **Impacto:** Nenhum desses itens bloqueia o cálculo ou a
 persistência. O MVP funciona com as limitações documentadas.
 
-
 ## D026 — Persistência completa dos fatores explicáveis
 
 **Contexto:** O `ScorePersistenceService` persistia apenas top 3
@@ -510,16 +527,17 @@ dimensões sobre os dados completos.
 O banco tem mais linhas, mas o MVP não tem restrição de volume.
 
 **Impacto:**
+
 - MatchScoreFactor pode ter até N fatores por MatchScore (N = número
   de critérios ativos).
 - `/explanation` retorna dimensões corretas.
 - Nenhuma migration necessária.
 
 **Validado em 2026-09-12:**
+
 - 5 fatores persistidos (era 4)
 - REGIAO: 100.00 (era 0.00)
 - Soma das dimensões = 92.50 = score final
-
 
 ## D027 — updateCurrentProfile usa Map<String, Object> sem Bean Validation
 
@@ -543,149 +561,3 @@ até a refatoração. Registrar como trabalho futuro (D011).
 
 **Trabalho futuro:** refatorar `updateCurrentProfile` para aceitar
 DTOs tipados por role.
-
-## D028: Onboarding é o único caminho de criação de perfil
-
-**Data:** 2026-11-07
-
-**Contexto:** O front tinha dois caminhos depois do registro. O formulário
-antigo (`CadastroStartup.tsx` e `CadastroInvestidor.tsx`) criava o perfil
-com `POST /api/profile/startup` e `POST /api/profile/investor`. O onboarding
-novo (4 passos) só guardava as respostas no `localStorage` e não criava
-perfil. Quem se registrava caía no formulário antigo, e as respostas do
-onboarding nunca chegavam ao perfil usado pelo scorecard.
-
-**Alternativas:**
-1. Manter os dois caminhos. Contra: dados duplicados e divergentes, duas
-   telas para manter.
-2. Criar um endpoint novo que recebe as respostas do onboarding e monta o
-   perfil no back. Contra: duplica as regras dos DTOs de criação e exige
-   mexer no endpoint de onboarding, fora do escopo.
-3. O último passo do onboarding chama os endpoints de criação que já
-   existem, e o formulário antigo é removido.
-
-**Decisão:** Alternativa 3. O front converte as respostas nos DTOs
-`StartupCreateRequest` e `InvestorCreateRequest` e chama os endpoints atuais.
-Nenhum endpoint novo, nenhuma mudança no endpoint de onboarding, na
-autenticação ou nas regras de score.
-
-**Justificativa:** Um caminho só, reaproveitando validação e persistência que
-já existem. As mudanças no back se limitam a flexibilizar os DTOs para o que
-o onboarding pergunta (D029 e D030).
-
-**Impacto:**
-- Back: sem endpoint novo. `GET /api/profile/me` continua respondendo 404
-  para quem ainda não tem perfil, e o front usa isso para obrigar o onboarding.
-- `POST` repetido continua devolvendo 409; o front trata 409 como sucesso.
-- O que o onboarding pergunta e os DTOs não têm (necessidades, tração,
-  tamanho da equipe, preferências, formas de interação, consentimento)
-  continua só no JSON livre do onboarding, agora gravado pelo front em
-  `respostas.onboarding` (ver `contrato/contrato-onboarding.md`).
-- Detalhes do front: `UNIO-front/docs/adr/ADR-001` e `ADR-002`.
-
-**Pendências registradas (não implementadas, fora do escopo):**
-- Flyway: a V23 (D029) foi criada nesta branch, mas V19 a V22 existem só na
-  branch `feat/p2-comunicacao-lgpd-qualidade`. Um banco que aplicar a V23
-  antes delas vai recusar V19 a V22 na validação ("resolved migration not
-  applied"). Ao integrar, aplicar as branches em ordem ou ligar
-  `spring.flyway.out-of-order=true` só durante a migração. O banco local de
-  dev desta branch já está na versão 23.
-- Consentimento do onboarding: o `ConsentController` só tem `GET /me` e
-  `POST /revoke`; o registro nasce no `register` (`acceptedTerms`). Proposta:
-  `POST /api/consent/onboarding` (ou um campo `finalidade` em
-  `consent_record`) para registrar o aceite específico de uso das respostas
-  em recomendações. Não ligado; descrito em `UNIO-front/docs/adr/ADR-001`.
-- `OnboardingService` cita no Javadoc chaves no topo de `respostas`
-  (`segmentosInteresse`, `segmento`...). O front agora grava o wizard em
-  `respostas.onboarding`. O consumidor de IA deve ler dessa chave.
-
-
-## D029: Capital procurado e tickets passam a ser opcionais
-
-**Data:** 2026-11-07
-
-**Contexto:** No onboarding, a startup só informa a faixa de capital quando
-marca "Investimento", e o investidor que atua apenas como mentor não informa
-ticket. O back exigia os três valores: `@NotNull` em
-`StartupCreateRequest.capitalProcurado`, `InvestorCreateRequest.ticketMinimo`
-e `ticketMaximo`, e a coluna `startup_profiles.capital_procurado` era
-`NOT NULL` (V8). As colunas de ticket já aceitavam nulo (V9).
-
-**Alternativas:**
-1. Manter obrigatório e o front enviar um valor sentinela (ex.: 1).
-   Contra: grava dado falso, e o `CAPITAL_FIT` passa a punir o par. Com
-   capital 1 e ticket mínimo 10 000 o score bruto fica perto de 0; como o
-   critério é `CRITICAL`, o cálculo dispara `CRITICAL_CRITERION_VIOLATED` e
-   o par some das recomendações.
-2. Tornar os campos opcionais, validando só quando vierem preenchidos.
-
-**Decisão:** Alternativa 2.
-- `StartupCreateRequest`: sem `@NotNull`, mantém `@Positive`.
-- `InvestorCreateRequest`: sem `@NotNull` nos dois tickets, mantém `@Positive`.
-- `V23__capital_procurado_opcional.sql`: `ALTER COLUMN capital_procurado DROP NOT NULL`.
-- `Startup.java`: `@Column(nullable = true)` em `capitalProcurado`.
-- `ProfileService.createInvestorProfile`: compara mínimo com máximo só
-  quando os dois vêm preenchidos; com um só, aceita.
-
-**Justificativa:** Ausência de dado é diferente de dado ruim. O
-`ScoreCalculatorService.evaluateCapitalRange` já devolve 50 (neutro) quando
-capital, ticket mínimo ou ticket máximo é nulo, então o cálculo foi pensado
-para dados incompletos.
-
-**Impacto:**
-- `CAPITAL_FIT` com dado faltando vale 50. Como a falha é "score bruto menor
-  que 50", não há violação crítica e não há penalidade; com peso 0.25 o
-  critério contribui 12.5 pontos no total.
-- Investidor com só um ticket também cai em 50 (o cálculo exige os dois).
-- `GET /api/profile/me` pode devolver `capitalProcurado`, `ticketMinimo` e
-  `ticketMaximo` como `null`. `buildStartupProfile` e `buildInvestorProfile`
-  usam `LinkedHashMap`, que aceita nulo; não há `NullPointerException`.
-- `PUT /api/profile/me` já aceitava `null` (via `parseBigDecimal`); agora a
-  coluna aceita e não gera mais erro 500.
-- Nenhum outro ponto do back lê esses campos (busca feita em `src/`):
-  `ExplanationService` usa só o score já calculado.
-- Startup com capital zero ou negativo e investidor com mínimo maior que
-  máximo continuam recebendo 400.
-- Testes: `ProfileServiceTest` e `ProfileControllerTest`.
-- Front: conversão das faixas documentada em `UNIO-front/docs/adr/ADR-002`.
-
-
-## D030: perfilRisco com valor padrão quando ausente
-
-**Data:** 2026-11-07
-
-**Contexto:** `ScorePersistenceService.calculateAndPersist` só procura
-política quando `perfilRisco` não é nulo; com nulo chama
-`findByInvestorProfileTypeAndActiveTrue(null)` e lança `POLICY_NOT_FOUND`.
-Com qualquer valor não nulo, `mapToProfileType` devolve sempre
-`ANGEL_INVESTOR` (pendência já registrada na D025, item 2). O
-`ScorecardSeedRunner` (perfil `dev`) cria políticas para `ANGEL_INVESTOR`,
-`MENTOR` e `VENTURE_CAPITAL`. `perfilRisco` é opcional no DTO.
-
-**Alternativas:**
-1. Tornar `perfilRisco` obrigatório (`@NotBlank`). Contra: quebra clientes
-   que não enviam o campo.
-2. Tratar o nulo dentro do `ScorePersistenceService`. Contra: mexe nas
-   regras de score, fora do escopo desta mudança.
-3. Gravar um padrão em `ProfileService.createInvestorProfile` quando o
-   campo vier nulo ou em branco.
-
-**Decisão:** Alternativa 3. Nulo ou em branco vira `"Investidor Anjo"`;
-valor informado é gravado com `trim`. Constante
-`ProfileService.PERFIL_RISCO_PADRAO`.
-
-**Justificativa:** `"Investidor Anjo"` é o rótulo que o front já usa
-(`TIPOS_PERFIL`) e, como qualquer valor não nulo leva a `ANGEL_INVESTOR`,
-ele resolve para a política que o código realmente usa hoje. O front
-continua enviando o campo (`"Mentor"` ou `"Investidor Anjo"`); o padrão é só
-defesa.
-
-**Impacto:**
-- Investidores criados a partir de agora nunca caem em `POLICY_NOT_FOUND`
-  por falta de `perfilRisco`.
-- Investidores antigos com `perfil_risco` nulo continuam sujeitos ao erro:
-  não há backfill (pendência).
-- `"Mentor"` continua usando a política `ANGEL_INVESTOR` até a D025 item 2
-  ser resolvida (pendência, não alterado aqui).
-- `PUT /api/profile/me` com `perfilRisco: null` grava o texto `"null"`
-  (`String.valueOf`), comportamento anterior e não alterado (ver D027).

@@ -54,6 +54,14 @@ public class User {
     @Setter(AccessLevel.NONE)
     private Instant createdAt;
 
+    /** T13 (LGPD) — preenchido quando o titular exclui a conta; os dados pessoais são anonimizados. */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {

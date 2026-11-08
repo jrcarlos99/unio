@@ -30,6 +30,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 ## Progresso
 
 ### Bloco A — Fundação
+
 - [x] Tarefa 0 — Setup do projeto (2026-09-11)
 - [x] Tarefa 1 — Especificação de domínio (2026-09-12)
 - [x] Tarefa 2 — Modelar entidades persistentes (2026-09-12)
@@ -39,22 +40,26 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] Tarefa 3.7 — Simplificação do register + /error liberado (2026-09-12)
 
 ### Bloco B — Policy e seed
+
 - [x] Tarefa 4 — Versionamento de policy (2026-09-12)
 - [x] Tarefa 5 — Gestão de critérios por policy (2026-09-12)
 - [x] Tarefa 6 — Seed inicial (2026-09-12)
 
 ### Bloco C — Cálculo e explicabilidade
+
 - [x] Tarefa 7A — ScoreCalculatorService (2026-09-12)
 - [x] Tarefa 7B — ScorePersistenceService (2026-09-12)
 - [x] Tarefa 10 — ExplanationService (2026-09-12)
 
 ### Bloco D — Recomendação e feedback
+
 - [x] Tarefa 11 — RecommendationService (2026-09-12)
 - [x] Tarefa 11.5 — Endpoints de criação de perfil (2026-09-12)
 - [x] Tarefa 12 — Endpoints REST do scorecard (2026-09-12)
 - [x] Tarefa 13 — Feedback persistido (2026-09-12)
 
 ### Tickets pós-MVP (outubro)
+
 - [x] T01 — Disponibilidade do investidor/mentor (RF02) — 2026-10-14
 - [x] T02 — Campo nome na Startup (RF01) — 2026-10-14
 - [x] T03 — Disponibilidade na Startup (RF01/RF02) — 2026-10-14
@@ -63,22 +68,14 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] T08 — Consentimento LGPD (RF11 + RNF03) — 2026-10-26
 - [x] T11 — Upload de pitch (RF06) — 2026-10-20
 
-### Onboarding cria o perfil (2026-11-07, D028 a D030)
-- [x] Formulário antigo de cadastro removido do front; o último passo do
-  onboarding chama `POST /api/profile/startup` ou `POST /api/profile/investor` (D028)
-- [x] `capitalProcurado`, `ticketMinimo` e `ticketMaximo` opcionais,
-  `@Positive` quando preenchidos; migration `V23__capital_procurado_opcional.sql` (D029)
-- [x] `perfilRisco` nulo ou em branco gravado como "Investidor Anjo" (D030)
-- [x] Testes: `ProfileServiceTest` (unitário) e `ProfileControllerTest` (integração)
-- [ ] Pendências: ordem V19 a V22 x V23 no Flyway, consentimento específico do
-  onboarding, backfill de `perfil_risco` nulo, `mapToProfileType` (ver D028 e D030)
-
 ### Bloco E — Testes (pendente)
+
 - [ ] Tarefa 14 — Testes unitários
 - [ ] Tarefa 15 — Testes de integração
 - [ ] Tarefa 16 — Hardening
 
 ### Infraestrutura
+
 - [x] Migração H2 → PostgreSQL em dev (2026-09-12)
 - [x] Actuator + health check funcionando
 - [x] /error liberado em dev
@@ -89,6 +86,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] .gitignore configurado para ignorar uploads/
 
 ### Frontend
+
 - [x] Integração com backend (Antigravity) — 2026-09-12
 - [x] Login/registro funcionando
 - [x] Perfil funcionando (startup + investidor)
@@ -99,6 +97,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 ## Requisitos atendidos (RF/RNF)
 
 ### RF
+
 - [x] RF01 — Cadastro de startups (nome adicionado no T02)
 - [x] RF02 — Cadastro de investidores (T01 adicionou disponibilidade)
 - [x] RF03 — Matchmaking
@@ -106,12 +105,13 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] RF07 — Autenticação e roles
 - [x] RF09 — Métricas de uso
 - [ ] RF04 — Visualização de perfis compatíveis
-- [ ] RF05 — Comunicação (mensagens + reuniões)
+- [x] RF05 — Comunicação (mensagens + reuniões) — T09a/T09b
 - [x] RF08 — Moderação de cadastros
-- [ ] RF10 — Feedback pós-interação
+- [x] RF10 — Feedback pós-interação — T12
 - [x] RF11 — Consentimento LGPD
 
 ### RNF
+
 - [x] RNF01 — Disponibilidade (Azure)
 - [x] RNF04 — Interface intuitiva
 - [x] RNF05 — Escalabilidade
@@ -119,8 +119,8 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] RNF09 — Código modular
 - [x] RNF10 — Log de auditoria (T07)
 - [ ] RNF02 — Criptografia em repouso
-- [ ] RNF03 — LGPD
-- [ ] RNF07 — Testes + beta testers
+- [x] RNF03 — LGPD (consentimento T08 + exportação/exclusão T13)
+- [ ] RNF07 — Testes + beta testers (testes automatizados feitos; falta beta)
 - [ ] RNF08 — Responsividade mobile
 
 ## Padrões do projeto (para próximos tickets)
@@ -131,8 +131,10 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - Update via Map com validação manual (ver D027)
 - Erros: ResponseStatusException com HttpStatus
 - Autenticação: JWT com roles STARTUP/INVESTOR/ADMIN
-- Testes manuais via curl
+- Testes unitários com Mockito + integração com @SpringBootTest/MockMvc (PostgreSQL local)
 - Auditoria via AOP com anotação @Auditable
+- Erros no formato do GlobalExceptionHandler (message + errors[].defaultMessage)
+- @PreAuthorize é aplicado (@EnableMethodSecurity) — ver D030
 
 ## Branch atual
 
@@ -140,10 +142,10 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Próximo passo
 
-Escolher o próximo ticket:
-- T08 — Consentimento LGPD (RF11 + RNF03) — M (3 dias)
-- T09 — Módulo de comunicação (RF05) — G (5 dias)
-- T10 — Moderação de cadastros (RF08) — M (2 dias)
+- Front: integrar mensagens, reuniões, avaliação e LGPD (`docs/contrato/contrato-comunicacao.md`)
+- Aplicar os alertas no Azure e rodar o teste de carga; preencher `docs/testes/teste-de-carga.md`
+- Definir `JWT_SECRET` no App Service
+- RNF07: rodada com beta testers
 
 ## Fora do MVP (trabalho futuro)
 
