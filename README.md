@@ -33,7 +33,7 @@ Cada pasta tem suas próprias dependências e seu próprio ciclo de build — n�
 ## Back-end (`unio/`)
 
 - **Stack:** Java 21, Spring Boot 4.1.1, Spring Security + JWT, Spring Data JPA, PostgreSQL, Flyway, Springdoc OpenAPI (Swagger), Lombok
-- **Arquitetura:** `package by feature` (cada domínio — `auth`, `profile`, `scorecard` — com seu próprio `controller`, `dto`, `entity`, `repository`, `service`)
+- **Arquitetura:** `package by feature` (cada domínio — `auth`, `profile`, `scorecard`, `communication`, `review`, `privacy`… — com seu próprio `controller`, `dto`, `entity`, `repository`, `service`)
 
 ### Como rodar
 
@@ -60,8 +60,16 @@ Configure um banco PostgreSQL local (`matchmaking_backend`) e as credenciais em 
 | POST | `/api/profile/investor` | Cria perfil de investidor (RF02) |
 | GET | `/api/admin/users` | Lista usuários (somente ADMIN) |
 | POST/GET | `/api/scorecard/**` | Cálculo, recomendações e feedback do matchmaking |
+| POST/GET | `/api/conversations/**` | Mensagens entre startup e investidor (RF05) |
+| POST/GET | `/api/meetings/**` | Agendamento de reuniões e avaliação pós-reunião (RF05/RF10) |
+| GET | `/api/reviews/received` | Avaliações recebidas e média (RF10) |
+| GET | `/api/privacy/export` | Exporta todos os dados do titular (LGPD) |
+| POST | `/api/privacy/delete-account` | Exclui (anonimiza) a conta do titular (LGPD) |
+| GET | `/api/admin/metrics` | Métricas do ecossistema, inclusive comunicação (somente ADMIN) |
 
-Endpoints de `/api/admin/**` exigem role `ADMIN`. Autenticação é via JWT (stateless).
+Endpoints de `/api/admin/**` exigem role `ADMIN`. Autenticação é via JWT (stateless): sem token ou token expirado a API responde `401`. A documentação completa e interativa está no Swagger UI.
+
+Testes: `cd unio && ./mvnw test` (os de integração precisam do PostgreSQL local). Teste de carga em `unio/load-test/` e alertas do Azure em `unio/infra/azure/` — veja os documentos em `unio/docs/testes/` e `unio/docs/operacao/`.
 
 ## Front-end (`UNIO-front/`)
 

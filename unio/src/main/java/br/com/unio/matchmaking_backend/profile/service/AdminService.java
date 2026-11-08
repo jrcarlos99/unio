@@ -51,6 +51,7 @@ public class AdminService {
         payload.put("email", user.getEmail());
         payload.put("role", user.getRole().name());
         payload.put("createdAt", user.getCreatedAt());
+        payload.put("deletedAt", user.getDeletedAt());
         return payload;
     }
 }

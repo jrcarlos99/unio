@@ -1,5 +1,7 @@
 package br.com.unio.matchmaking_backend.auth.controller;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import br.com.unio.matchmaking_backend.auth.dto.AuthResponse;
 import br.com.unio.matchmaking_backend.auth.dto.ForgotPasswordRequest;
 import br.com.unio.matchmaking_backend.auth.dto.LoginRequest;
@@ -18,6 +20,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+// Rotas públicas: sem cadeado no Swagger
+@SecurityRequirements
+@Tag(name = "Autenticação", description = "Cadastro, login e recuperação de senha (rotas públicas)")
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
