@@ -1,9 +1,10 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
-import { CircleAlert, ShieldCheck, Target } from "lucide-react";
+import { CircleAlert, ShieldCheck, Target, TrendingUp } from "lucide-react";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
 import { FOCO_VISIVEL } from "../../components/onboarding/selecao";
 import { OUTLINE_BUTTON } from "../../components/pitch/styles";
+import AbaPopularidade from "../../components/popularidade/AbaPopularidade";
 import AboutCard from "../../components/profile/investor/AboutCard";
 import InvestorCardPreview from "../../components/profile/investor/InvestorCardPreview";
 import MentoringCard from "../../components/profile/investor/MentoringCard";
@@ -16,11 +17,13 @@ import { useAuth } from "../../contexts/AuthContext";
 import { DISPONIBILIDADES_DETALHADAS } from "../../data/options";
 import { useCarregamento, useUserKey } from "../../hooks/useDescoberta";
 import { useInvestorProfileEditor } from "../../hooks/useInvestorProfileEditor";
+import { useSessaoReunioes } from "../../hooks/useReunioes";
 import { loadAnswers } from "../../services/onboardingService";
 import type { RespostasInvestidor } from "../../types/onboarding";
 import { nomeUsuario } from "../../utils/nomeUsuario";
 
-type ProfileTab = "tese" | "mentoria";
+// "popularidade" é só leitura (RF10, ADR-006): não tem campo editável
+type ProfileTab = "tese" | "mentoria" | "popularidade";
 
 const TABS_ID = "perfil-investidor-tabs";
 
@@ -28,6 +31,7 @@ function profileTabs(unsaved: boolean): TabItem<ProfileTab>[] {
   return [
     { id: "tese", label: "Tese de investimento", icon: Target },
     { id: "mentoria", label: "Mentoria e perfil", icon: ShieldCheck, alert: unsaved ? "alterações não salvas" : undefined },
+    { id: "popularidade", label: "Popularidade", icon: TrendingUp },
   ];
 }
 
@@ -44,6 +48,7 @@ export default function InvestorProfile() {
   const [activeTab, setActiveTab] = useState<ProfileTab>("mentoria");
   const loadThesis = useCallback(() => loadAnswers<RespostasInvestidor>(userKey, "investidor"), [userKey]);
   const thesis = useCarregamento(loadThesis, "Não foi possível carregar sua tese.");
+  const sessao = useSessaoReunioes();
 
   const name = nomeUsuario(user);
 
@@ -111,6 +116,8 @@ export default function InvestorProfile() {
       <Tabs
         label="Seções do perfil"
         idPrefix={TABS_ID}
+        // O aviso de "alterações não salvas" fica só na aba que tem formulário
+        // (Mentoria e perfil), quando você está em outra aba
         tabs={profileTabs(editor.isDirty && activeTab !== "mentoria")}
         activeTab={activeTab}
         onChange={setActiveTab}
@@ -129,6 +136,10 @@ export default function InvestorProfile() {
         {content}
 
         <ContatosForm />
+      </TabPanel>
+
+      <TabPanel idPrefix={TABS_ID} tab="popularidade" activeTab={activeTab} className="mt-6">
+        {activeTab === "popularidade" && <AbaPopularidade sessao={sessao} />}
       </TabPanel>
 
       {activeTab === "mentoria" && editor.isDirty && (

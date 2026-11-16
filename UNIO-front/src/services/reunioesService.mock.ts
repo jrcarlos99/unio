@@ -30,8 +30,10 @@ import {
 import { formatarFaixaTicket, formatarMoeda } from "../utils/formatoDescoberta";
 import { iniciais } from "../utils/nomeUsuario";
 import { arquivoIcsDaReuniao, validarLinkHttps } from "../utils/reunioes";
+import { registrarAvaliacaoRecebidaExemplo } from "./avaliacoesStore";
 import { chaveUsuario } from "./onboardingService";
 import { gerarCodigo } from "./reunioes.mapping";
+import { textoAvaliar } from "./reunioesNotificacoes";
 import { listarUnios } from "./recomendacoesService";
 import { gravarBanco, lerBanco, type BancoReunioes, type ReuniaoArmazenada } from "./reunioesStore";
 
@@ -52,11 +54,17 @@ import { gravarBanco, lerBanco, type BancoReunioes, type ReuniaoArmazenada } fro
 // de uma proposta sua, a contraparte aceita o primeiro horário ainda futuro;
 // os envios pares ficam pendentes. Os dados de exemplo ficam em
 // mocks/reunioesMock.ts.
+//
+// EXEMPLO (RF10, ADR-006): cerca de 5 s depois do "Compareci", a outra parte
+// também "comparece" e avalia você com 5 ou 4 (alternando), só para a
+// popularidade ter dados no mock. Com a API, a nota vem de outra pessoa real.
 
 export type { SessaoReunioes };
 
 const LATENCIA_MS = 250;
 const RESPOSTA_MOCK_MS = 5000;
+const AVALIACAO_MOCK_MS = 5000;
+const VERSAO_EXEMPLOS = "#v2";
 
 function esperar() {
   return new Promise((resolve) => setTimeout(resolve, LATENCIA_MS));
@@ -228,7 +236,9 @@ async function preparar(sessao: SessaoReunioes): Promise<BancoReunioes> {
   const banco = lerBanco(userKey);
   let mudou = false;
 
-  const semana = inicioDaSemana(hojeChave());
+  // O sufixo muda quando os exemplos mudam (v2: reunião passada para o
+  // "Compareci"), e quem já tinha os exemplos da semana recebe os novos
+  const semana = `${inicioDaSemana(hojeChave())}${VERSAO_EXEMPLOS}`;
   if (banco.semanaExemplos !== semana && contrapartes.length > 0) {
     const idsExemplo = new Set(banco.reunioes.filter((r) => r.exemplo).map((r) => r.id));
     banco.reunioes = banco.reunioes.filter((r) => !r.exemplo);
@@ -248,8 +258,32 @@ async function preparar(sessao: SessaoReunioes): Promise<BancoReunioes> {
   }
 
   const avisos = aplicarRespostasMock(banco);
-  if (mudou || avisos.length > 0) gravarBanco(userKey, banco);
+  const avaliadas = aplicarAvaliacoesMock(userKey, banco);
+  if (mudou || avisos.length > 0 || avaliadas > 0) gravarBanco(userKey, banco);
   return banco;
+}
+
+// EXEMPLO: a "outra parte" avalia você nas reuniões realizadas cujo prazo
+// chegou (dado de exemplo; ver o comentário no topo do arquivo)
+function aplicarAvaliacoesMock(userKey: string, banco: BancoReunioes, agora = new Date()): number {
+  let total = 0;
+  for (const reuniao of banco.reunioes) {
+    if (!reuniao.avaliacaoMockEm || new Date(reuniao.avaliacaoMockEm) > agora) continue;
+    delete reuniao.avaliacaoMockEm;
+    if (reuniao.status === "realizada" && registrarAvaliacaoRecebidaExemplo(userKey, reuniao.id)) total += 1;
+  }
+  return total;
+}
+
+function agendarAvaliacaoMock(sessao: SessaoReunioes, reuniao: ReuniaoArmazenada) {
+  reuniao.avaliacaoMockEm = new Date(Date.now() + AVALIACAO_MOCK_MS).toISOString();
+  const userKey = chaveDe(sessao);
+  window.setTimeout(() => {
+    const atual = lerBanco(userKey);
+    if (aplicarAvaliacoesMock(userKey, atual) === 0) return;
+    gravarBanco(userKey, atual);
+    avisar();
+  }, AVALIACAO_MOCK_MS + 100);
 }
 
 function agendarRespostaMock(sessao: SessaoReunioes, banco: BancoReunioes, reuniao: ReuniaoArmazenada) {
@@ -271,6 +305,7 @@ function publica(reuniao: ReuniaoArmazenada): Reuniao {
   const copia: ReuniaoArmazenada = { ...reuniao };
   delete copia.exemplo;
   delete copia.respostaMockEm;
+  delete copia.avaliacaoMockEm;
   return copia;
 }
 
@@ -400,8 +435,9 @@ export async function responderSolicitacao(
   return publica(reuniao);
 }
 
-// Cancela uma confirmada ou uma pendente (inclusive "Cancelar solicitação")
-export async function cancelarReuniao(sessao: SessaoReunioes, id: string): Promise<Reuniao> {
+// Cancela uma confirmada ou uma pendente (inclusive "Cancelar solicitação" e
+// "A reunião não aconteceu", que passa o motivo)
+export async function cancelarReuniao(sessao: SessaoReunioes, id: string, motivo?: string): Promise<Reuniao> {
   await esperar();
   const banco = await preparar(sessao);
   const reuniao = buscar(banco, id);
@@ -409,8 +445,31 @@ export async function cancelarReuniao(sessao: SessaoReunioes, id: string): Promi
     throw new Error("Esta reunião já foi encerrada.");
   }
   reuniao.status = "cancelada";
+  const limpo = motivo?.trim();
+  if (limpo) reuniao.motivoCancelamento = limpo;
   reuniao.atualizadaEm = new Date().toISOString();
   delete reuniao.respostaMockEm;
+  salvar(sessao, banco);
+  return publica(reuniao);
+}
+
+// "Compareci": vale para a reunião inteira, como o POST /complete do back.
+// Só confirmada cujo horário já começou (a tela só oferece depois do fim).
+// Cria a notificação "Avalie a reunião com {nome}" para o usuário logado.
+export async function marcarComoRealizada(sessao: SessaoReunioes, id: string): Promise<Reuniao> {
+  await esperar();
+  const banco = await preparar(sessao);
+  const reuniao = buscar(banco, id);
+  if (reuniao.status !== "confirmada" || !reuniao.horarioConfirmado) {
+    throw new Error("Só reuniões confirmadas podem ser marcadas como realizadas.");
+  }
+  if (!noPassado(reuniao.horarioConfirmado)) {
+    throw new Error("A reunião só pode ser marcada como realizada depois do horário de início.");
+  }
+  reuniao.status = "realizada";
+  reuniao.atualizadaEm = new Date().toISOString();
+  notificar(banco, "avaliar", reuniao, textoAvaliar(reuniao));
+  agendarAvaliacaoMock(sessao, reuniao);
   salvar(sessao, banco);
   return publica(reuniao);
 }

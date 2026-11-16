@@ -12,6 +12,8 @@ export interface ReuniaoArmazenada extends Reuniao {
   exemplo?: boolean;
   // Quando a "outra parte" do mock aceita a solicitação enviada
   respostaMockEm?: string;
+  // EXEMPLO: quando a "outra parte" do mock avalia você depois do "Compareci"
+  avaliacaoMockEm?: string;
 }
 
 export interface BancoReunioes {
@@ -60,10 +62,10 @@ export function gravarBanco(userKey: string, banco: BancoReunioes) {
   }
 }
 
-// Ids dos unios com pelo menos uma reunião confirmada (funil da startup)
+// Ids dos unios com pelo menos uma reunião confirmada ou realizada (funil da startup)
 export function uniosComReuniaoConfirmada(userKey: string): string[] {
   const ids = lerBanco(userKey)
-    .reunioes.filter((reuniao) => reuniao.status === "confirmada")
+    .reunioes.filter((reuniao) => reuniao.status === "confirmada" || reuniao.status === "realizada")
     .map((reuniao) => reuniao.unioId);
   return [...new Set(ids)];
 }

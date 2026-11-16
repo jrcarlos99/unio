@@ -8,7 +8,9 @@ import type { PerfilApp } from "./recomendacoes";
 // Datas sempre em ISO (UTC) no armazenamento; a tela formata no fuso fixo
 // America/Recife (GMT-3), em pt-BR, com a semana começando na segunda.
 
-export type StatusReuniao = "pendente" | "confirmada" | "recusada" | "cancelada";
+// "realizada": confirmada que já aconteceu e foi marcada com "Compareci"
+// (POST /api/meetings/{id}/complete no back). Libera a avaliação (RF10).
+export type StatusReuniao = "pendente" | "confirmada" | "recusada" | "cancelada" | "realizada";
 
 export type AssuntoReuniao = "Apresentação de pitch" | "Conversa sobre investimento" | "Mentoria" | "Outro";
 
@@ -95,6 +97,8 @@ export interface Reuniao {
   link?: string;
   local?: LocalReuniao;
   status: StatusReuniao;
+  // Motivo do cancelamento, quando informado (ex.: "Não aconteceu")
+  motivoCancelamento?: string;
   criadaEm: string;
   atualizadaEm: string;
   // Ex.: "UNIO-9842"
@@ -131,7 +135,8 @@ export interface RespostaSolicitacao {
 
 export type ValorLinkOuLocal = { link: string } | { local: LocalReuniao };
 
-export type TipoNotificacao = "recebida" | "aceita" | "recusada" | "proposta" | "cancelada";
+// "avaliar": a reunião foi marcada como realizada e falta a sua avaliação
+export type TipoNotificacao = "recebida" | "aceita" | "recusada" | "proposta" | "cancelada" | "avaliar";
 
 export interface NotificacaoReuniao {
   id: string;

@@ -1,4 +1,4 @@
-# Contrato — Comunicação, avaliação e LGPD (T09a, T09b, T12, T13, T16)
+# Contrato: Comunicação, avaliação e LGPD (T09a, T09b, T12, T13, T16, RF10 popularidade)
 
 Complemento do `contrato-v2.md` para o time de front. Todas as rotas exigem
 `Authorization: Bearer <token>`. O Swagger (`/swagger-ui/index.html`) tem os
@@ -146,12 +146,63 @@ Regras:
 
 | Método | Rota | Corpo | Resposta |
 |---|---|---|---|
-| POST | `/api/meetings/{id}/reviews` | `{ "rating": 5, "comment": "..." }` (nota 1–5, comentário até 1000) | `201` `Review` |
+| POST | `/api/meetings/{id}/reviews` | `{ "rating": 5, "comment": "..." }` (nota 1 a 5, comentário opcional até 1000) | `201` `Review` |
 | GET | `/api/meetings/{id}/reviews` | — | `200` `Review[]` |
 | GET | `/api/reviews/received` | — | `200` `{ "averageRating": 4.5, "totalReviews": 2, "reviews": [ ... ] }` |
+| GET | `/api/reviews/summary/{userId}` | (sem corpo) | `200` `ReviewSummary` (D040) |
 
 Só para reunião `REALIZADA` (senão **409**) e uma vez por participante (**409**
 na segunda). A avaliação é sempre do outro participante da reunião.
+
+`Review` = `{ "id", "meetingId", "reviewer", "reviewed", "rating", "createdAt" }`.
+
+**Comentário oculto (D043):** o `comment` continua opcional no POST e é gravado,
+mas **não volta em nenhuma resposta** destas rotas, nem para quem escreveu nem para
+quem foi avaliado. Ele só aparece no export LGPD do próprio autor
+(`reviewsWritten`). O acesso da moderação (ADMIN) ainda não existe.
+
+**Resumo público (D040):** `GET /api/reviews/summary/{userId}`
+
+```json
+{ "userId": 42, "totalReviews": 3, "averageRating": 4.7, "percentage": 93, "visible": true }
+```
+
+- Só agregados: sem comentários, sem autores, sem notas individuais.
+- Com menos de 3 avaliações: `averageRating` e `percentage` nulos e `visible: false`.
+- `percentage = round(média / 5 * 100)`; `averageRating` com uma casa decimal.
+- Pode consultar o **próprio** resumo ou o de um usuário **ativo** do **papel
+  complementar**. Mesmo papel, usuário removido ou inexistente → **404**.
+
+## RF10: Popularidade e visitas ao perfil
+
+| Método | Rota | Corpo | Resposta |
+|---|---|---|---|
+| POST | `/api/profile-views` | `{ "targetUserId": 42 }` | `204` (D041) |
+| GET | `/api/profile/me/popularity` | (sem corpo) | `200` `Popularity` (D042) |
+
+**Visitas (D041):** chamar ao abrir o perfil de outra pessoa (uma vez por
+abertura). O back conta no máximo **uma visita por visitante, por perfil, por dia**
+(fuso America/Recife). Auto-visita e visitante do mesmo papel do alvo são
+ignorados (também `204`). Alvo inexistente ou removido → **404**. O visitante
+**nunca** é exposto em nenhuma resposta.
+
+**Popularidade própria (D042):**
+
+```json
+{ "userId": 42, "totalReviews": 4, "averageRating": 4.5, "percentage": 90, "visible": true,
+  "meetingsCompleted": 4, "profileViews28d": 59, "profileViewsPrev28d": 50,
+  "weeklyViews": [ { "weekStart": "2026-10-20", "views": 10 }, { "weekStart": "2026-10-27", "views": 14 },
+                   { "weekStart": "2026-11-03", "views": 16 }, { "weekStart": "2026-11-10", "views": 19 } ],
+  "interestsReceived": 0 }
+```
+
+- Os 5 primeiros campos são o mesmo resumo do `summary` (mínimo de 3).
+- `profileViews28d`: últimos 28 dias, hoje incluso; `profileViewsPrev28d`: os 28 anteriores.
+- `weeklyViews`: 4 janelas de 7 dias dentro dos 28 dias, da mais antiga à mais recente.
+- `interestsReceived`: sempre `0` por enquanto. O interesse mútuo ainda não existe
+  no back (D039).
+- A popularidade **não** entra no score de compatibilidade nem no ranking do back
+  (D042). A ordenação por popularidade é só do front (ADR-006).
 
 ## T13 — Exportação e exclusão de dados (LGPD)
 
@@ -161,7 +212,13 @@ na segunda). A avaliação é sempre do outro participante da reunião.
 | POST | `/api/privacy/delete-account` | `{ "password": "senha atual", "confirmed": true }` | `204` |
 
 Exportação: `account`, `consent`, `profile`, `onboarding`, `conversations`
-(com mensagens), `meetings`, `reviewsWritten`, `reviewsReceived`, `auditLog`.
+(com mensagens), `meetings`, `reviewsWritten` (com o `comment` que o titular
+escreveu), `reviewsReceived` (sem `comment`, D043), `profileViewsMade` (perfis que
+o titular visitou e o dia), `profileViewsReceivedTotal` (só o total, sem os
+visitantes, D044), `auditLog`.
+
+Na exclusão, as visitas do titular (como visitante e como visitado) são apagadas
+(D044).
 
 Exclusão (irreversível): senha errada → **403**; sem `confirmed: true` → **400**;
 ADMIN → **403**. Depois do `204` o front deve apagar o token e voltar à landing —

@@ -1,11 +1,13 @@
 import { useCallback, useId, useState, type FormEvent, type ReactNode } from "react";
-import { CalendarPlus, Clock, Copy, ExternalLink, MapPin, Pencil, Video } from "lucide-react";
+import { CalendarPlus, CircleCheck, CircleHelp, Clock, Copy, ExternalLink, MapPin, Pencil, Star, Video } from "lucide-react";
+import { useJaAvaliou } from "../../hooks/useAvaliacoes";
 import { useToast } from "../../hooks/useToast";
 import {
   cancelarReuniao,
   definirLinkOuLocal,
   detectarConflito,
   gerarIcs,
+  marcarComoRealizada,
   remarcarReuniao,
   type SessaoReunioes,
 } from "../../services/reunioesService";
@@ -18,8 +20,16 @@ import {
   formatarFaixaHorario,
 } from "../../utils/datas";
 import { baixarIcs } from "../../utils/ics";
-import { ROTULO_STATUS, dominioDoLink, linkGoogleMaps, validarLinkHttps } from "../../utils/reunioes";
+import {
+  MOTIVO_NAO_ACONTECEU,
+  ROTULO_STATUS,
+  aguardandoPresenca,
+  dominioDoLink,
+  linkGoogleMaps,
+  validarLinkHttps,
+} from "../../utils/reunioes";
 import { FOCO_VISIVEL } from "../onboarding/selecao";
+import AvaliarReuniaoModal from "./AvaliarReuniaoModal";
 import CartaoContraparte from "./CartaoContraparte";
 import { ConfirmacaoInline } from "./Comuns";
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, ERRO, ROTULO } from "./estilos";
@@ -33,7 +43,7 @@ interface ReuniaoDrawerProps {
   onFechar: () => void;
 }
 
-type Modo = "ver" | "remarcar" | "cancelar";
+type Modo = "ver" | "remarcar" | "cancelar" | "naoAconteceu";
 
 const LINK_SECUNDARIO = `inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-deepgreen hover:bg-lightgray/60 ${FOCO_VISIVEL}`;
 
@@ -43,6 +53,7 @@ function SeloStatus({ reuniao }: { reuniao: Reuniao }) {
     pendente: "border border-dashed border-sage bg-sage/20 text-deepgreen",
     recusada: "bg-red-50 text-red-800",
     cancelada: "bg-red-50 text-red-800",
+    realizada: "bg-sage/40 text-deepgreen",
   };
   return (
     <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${classes[reuniao.status]}`}>
@@ -301,10 +312,15 @@ export default function ReuniaoDrawer({ sessao, reuniao, onFechar }: ReuniaoDraw
   const [linhas, setLinhas] = useState<LinhaHorario[]>(() => [criarLinha()]);
   const [errosHorarios, setErrosHorarios] = useState<Record<string, string>>({});
   const [ocupado, setOcupado] = useState(false);
+  const [avaliando, setAvaliando] = useState(false);
 
-  const confirmada = reuniao.status === "confirmada" && reuniao.horarioConfirmado;
+  const realizada = reuniao.status === "realizada";
+  const confirmada = (reuniao.status === "confirmada" || realizada) && reuniao.horarioConfirmado;
   const pendenteEnviada = reuniao.status === "pendente" && reuniao.solicitante === "eu";
   const ativa = reuniao.status === "confirmada" || reuniao.status === "pendente";
+  // Confirmada cujo horário já terminou: pergunta se aconteceu (RF10)
+  const presenca = aguardandoPresenca(reuniao);
+  const avaliada = useJaAvaliou(sessao, reuniao.id);
 
   const conflitoDe = useCallback(
     (iso: string) => detectarConflito(sessao, iso, reuniao.duracaoMin, reuniao.id),
@@ -342,7 +358,70 @@ export default function ReuniaoDrawer({ sessao, reuniao, onFechar }: ReuniaoDraw
     void executar(() => remarcarReuniao(sessao, reuniao.id, novos), `Novos horários enviados para ${nome}.`);
   }
 
-  const rodape = !ativa ? null : modo === "remarcar" ? (
+  const rodapeRealizada = realizada ? (
+    avaliada === false ? (
+      <button type="button" onClick={() => setAvaliando(true)} className={`${BOTAO_PRIMARIO} w-full`}>
+        <Star size={16} aria-hidden="true" />
+        Avaliar
+      </button>
+    ) : avaliada ? (
+      <p className="flex items-center justify-center gap-2 rounded-2xl bg-sage/20 px-4 py-3 text-sm font-semibold">
+        <CircleCheck size={16} aria-hidden="true" />
+        Avaliada
+      </p>
+    ) : null
+  ) : null;
+
+  const rodapePresenca =
+    presenca && modo === "naoAconteceu" ? (
+      <ConfirmacaoInline
+        titulo="Confirmar que a reunião não aconteceu?"
+        texto={`A reunião com ${nome} será cancelada com o motivo "${MOTIVO_NAO_ACONTECEU}".`}
+        rotuloConfirmar="A reunião não aconteceu"
+        rotuloOcupado="Cancelando..."
+        ocupado={ocupado}
+        onCancelar={() => setModo("ver")}
+        onConfirmar={() =>
+          executar(
+            () => cancelarReuniao(sessao, reuniao.id, MOTIVO_NAO_ACONTECEU),
+            `Reunião com ${nome} cancelada: não aconteceu.`,
+          )
+        }
+      />
+    ) : presenca ? (
+      <div role="group" aria-labelledby={`${id}-presenca`} className="rounded-2xl border border-sage bg-sage/10 p-4">
+        <p id={`${id}-presenca`} className="flex items-center gap-2 text-sm font-bold">
+          <CircleHelp size={16} aria-hidden="true" />
+          A reunião aconteceu?
+        </p>
+        <p className="mt-1 text-xs text-deepgreen/75">
+          Confirmar a presença libera a avaliação da reunião para você e para {nome}.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+          <button
+            type="button"
+            onClick={() =>
+              void executar(
+                () => marcarComoRealizada(sessao, reuniao.id),
+                `Presença confirmada. Avalie a reunião com ${nome}.`,
+                false,
+              )
+            }
+            disabled={ocupado}
+            aria-busy={ocupado}
+            className={BOTAO_PRIMARIO}
+          >
+            <CircleCheck size={16} aria-hidden="true" />
+            {ocupado ? "Salvando..." : "Compareci"}
+          </button>
+          <button type="button" onClick={() => setModo("naoAconteceu")} disabled={ocupado} className={BOTAO_SECUNDARIO}>
+            A reunião não aconteceu
+          </button>
+        </div>
+      </div>
+    ) : null;
+
+  const rodape = rodapeRealizada ?? rodapePresenca ?? (!ativa ? null : modo === "remarcar" ? (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <button type="button" onClick={() => setModo("ver")} disabled={ocupado} className={BOTAO_SECUNDARIO}>
         Voltar
@@ -385,7 +464,7 @@ export default function ReuniaoDrawer({ sessao, reuniao, onFechar }: ReuniaoDraw
         </button>
       </div>
     </div>
-  );
+  ));
 
   const descricao = reuniao.pauta || reuniao.mensagem;
   const IconeFormato = reuniao.formato === "presencial" ? MapPin : Video;
@@ -420,12 +499,21 @@ export default function ReuniaoDrawer({ sessao, reuniao, onFechar }: ReuniaoDraw
             </span>
           </p>
           <p className="mt-1 text-xs text-white/75">{FUSO_ROTULO}</p>
+          {realizada && (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold">
+              <CircleCheck size={12} aria-hidden="true" />
+              Reunião realizada
+            </p>
+          )}
         </div>
       ) : (
         <div className="rounded-2xl border-2 border-dashed border-sage bg-sage/10 p-4">
           <p className="text-sm font-bold">
             {pendenteEnviada ? `Aguardando ${nome}` : ROTULO_STATUS[reuniao.status]}
           </p>
+          {reuniao.motivoCancelamento && (
+            <p className="mt-0.5 text-xs text-deepgreen/75">Motivo: {reuniao.motivoCancelamento}</p>
+          )}
           <p className="mt-0.5 text-xs text-deepgreen/75">
             {pendenteEnviada ? "Horários sugeridos" : "Horários que estavam em discussão"} ({FUSO_ROTULO})
           </p>
@@ -488,6 +576,10 @@ export default function ReuniaoDrawer({ sessao, reuniao, onFechar }: ReuniaoDraw
         ) : (
           <SecaoLocal key={JSON.stringify(reuniao.local ?? null)} sessao={sessao} reuniao={reuniao} />
         ))}
+
+      {avaliando && (
+        <AvaliarReuniaoModal sessao={sessao} reuniao={reuniao} onFechar={() => setAvaliando(false)} />
+      )}
     </PainelLateral>
   );
 }

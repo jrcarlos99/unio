@@ -12,6 +12,7 @@ import type {
 import type { RespostasInvestidor } from "../types/onboarding";
 import { contatoValido } from "../utils/contato";
 import { formatarMoeda } from "../utils/formatoDescoberta";
+import { ordenarComPopularidade } from "../utils/popularidade";
 import {
   calcularCompatibilidade,
   explicarCompatibilidade,
@@ -20,6 +21,7 @@ import {
   teseDasRespostas,
 } from "./compatibilidade";
 import { loadAnswers } from "./onboardingService";
+import { percentualVisivel } from "./popularidadePerfis";
 import { unioLocalInvestidor as unioLocal } from "./unioLocal";
 
 // Único ponto de dados das telas do investidor (Descobrir, Perfil da startup,
@@ -95,15 +97,20 @@ function montar(
     compatibilidade: calcularCompatibilidade(investidorDaTese(tese), ladoDaStartupDescoberta(startup)),
     statusInteresse: interesses[startup.id] ?? "nenhum",
     salvo: salvos.includes(startup.id),
+    popularidade: percentualVisivel(startup.id),
   };
 }
 
 function montarVarias(userKey: string, startups: StartupDescoberta[], tese: TeseInvestidor) {
   const salvos = lerSalvos(userKey);
   const interesses = lerInteresses(userKey);
-  return startups
-    .map((startup) => montar(startup, tese, salvos, interesses))
-    .sort((a, b) => b.compatibilidade.total - a.compatibilidade.total);
+  // Por compatibilidade; popularidade só desempata e dá um bônus pequeno de
+  // ordenação (utils/popularidade.ts, ADR-006)
+  return ordenarComPopularidade(
+    startups.map((startup) => montar(startup, tese, salvos, interesses)),
+    (item) => item.compatibilidade.total,
+    (item) => item.popularidade,
+  );
 }
 
 function normalizar(texto: string) {

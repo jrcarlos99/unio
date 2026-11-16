@@ -19,6 +19,8 @@ import { diaDaSemana, inicioDoDia, somarDias, somarMinutos } from "../utils/data
 //   - 2 reuniões confirmadas: uma online com link e uma presencial com local
 //   - 2 solicitações recebidas, com horários a partir de amanhã (a primeira
 //     sugestão de uma delas bate com a presencial, para mostrar o conflito)
+//   - 1 confirmada que JÁ PASSOU (ontem às 16h; na segunda-feira, hoje às 8h),
+//     só para testar o "A reunião aconteceu?" / "Compareci" (RF10, ADR-006)
 
 // Pessoa de contato fictícia de cada startup (o mock da descoberta não tem
 // fundadores). Sem entrada aqui, vale "Equipe <startup>".
@@ -66,6 +68,8 @@ export function montarExemplos(contrapartes: ContraparteReuniao[], perfil: Perfi
   // Presencial amanhã quando amanhã ainda é desta semana; senão, ontem
   const diaPresencial = diaDaSemana(hoje) < 6 ? amanha : somarDias(hoje, -1);
   const presencial = as(diaPresencial, 10);
+  // Passada e dentro da semana atual, para aparecer no calendário
+  const passada = diaDaSemana(hoje) > 0 ? as(somarDias(hoje, -1), 16) : as(hoje, 8);
   const investidor = perfil === "investidor";
 
   return [
@@ -123,6 +127,19 @@ export function montarExemplos(contrapartes: ContraparteReuniao[], perfil: Perfi
       horariosSugeridos: [as(amanha, 17), as(depois, 9, 30)],
       local: LOCAL_EXEMPLO,
       status: "pendente",
+    },
+    {
+      contraparte: quem(4),
+      solicitante: "eu",
+      organizador: "eu",
+      assunto: investidor ? "Conversa sobre investimento" : "Apresentação de pitch",
+      duracaoMin: 30,
+      formato: "online",
+      pauta: "Reunião de exemplo que já aconteceu: use \"Compareci\" para testar a avaliação.",
+      horariosSugeridos: [passada],
+      horarioConfirmado: passada,
+      link: LINK_EXEMPLO,
+      status: "confirmada",
     },
   ];
 }

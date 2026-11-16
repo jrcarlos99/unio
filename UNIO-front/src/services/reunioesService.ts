@@ -23,6 +23,7 @@ interface ServicoReunioes {
   solicitarReuniao: typeof remoto.solicitarReuniao;
   responderSolicitacao: typeof remoto.responderSolicitacao;
   cancelarReuniao: typeof remoto.cancelarReuniao;
+  marcarComoRealizada: typeof remoto.marcarComoRealizada;
   remarcarReuniao: typeof remoto.remarcarReuniao;
   definirLinkOuLocal: typeof remoto.definirLinkOuLocal;
   gerarIcs: typeof remoto.gerarIcs;
@@ -44,6 +45,7 @@ export const {
   solicitarReuniao,
   responderSolicitacao,
   cancelarReuniao,
+  marcarComoRealizada,
   remarcarReuniao,
   definirLinkOuLocal,
   gerarIcs,

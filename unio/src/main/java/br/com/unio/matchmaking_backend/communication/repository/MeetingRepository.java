@@ -43,4 +43,12 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                           @Param("excludeId") Long excludeId);
 
     long countByStatus(MeetingStatus status);
+
+    /** Reuniões de um participante num status (ex.: REALIZADA na popularidade, D042). */
+    @Query("""
+            select count(m) from Meeting m
+            where m.status = :status
+              and (m.organizer.id = :userId or m.invitee.id = :userId)
+            """)
+    long countByParticipantAndStatus(@Param("userId") Long userId, @Param("status") MeetingStatus status);
 }

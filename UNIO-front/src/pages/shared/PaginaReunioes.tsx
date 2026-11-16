@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Download, Info, Plus } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Download, Info, Plus, Star } from "lucide-react";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
 import { FOCO_VISIVEL } from "../../components/onboarding/selecao";
 import CalendarioDia from "../../components/reunioes/CalendarioDia";
 import CalendarioSemana from "../../components/reunioes/CalendarioSemana";
+import AvaliarReuniaoModal from "../../components/reunioes/AvaliarReuniaoModal";
 import { BOTAO_ICONE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from "../../components/reunioes/estilos";
 import MiniCalendario from "../../components/reunioes/MiniCalendario";
 import PainelSolicitacoes from "../../components/reunioes/PainelSolicitacoes";
 import ReuniaoDrawer from "../../components/reunioes/ReuniaoDrawer";
 import SolicitacaoRecebidaDrawer from "../../components/reunioes/SolicitacaoRecebidaDrawer";
 import SolicitarReuniaoModal from "../../components/reunioes/SolicitarReuniaoModal";
+import { usePendentesAvaliacao } from "../../hooks/useAvaliacoes";
 import { useCarregamento } from "../../hooks/useDescoberta";
 import { useReunioes, useSessaoReunioes } from "../../hooks/useReunioes";
 import { useToast } from "../../hooks/useToast";
@@ -66,7 +68,7 @@ function useAgora() {
 }
 
 function horariosNaGrade(reuniao: Reuniao) {
-  return reuniao.status === "confirmada" && reuniao.horarioConfirmado
+  return (reuniao.status === "confirmada" || reuniao.status === "realizada") && reuniao.horarioConfirmado
     ? [reuniao.horarioConfirmado]
     : reuniao.horariosSugeridos;
 }
@@ -113,7 +115,9 @@ export default function PaginaReunioes({ perfil }: { perfil: PerfilApp }) {
   const [modal, setModal] = useState<EstadoModal | null>(null);
   const [idAberta, setIdAberta] = useState<string | null>(null);
   const [listaAberta, setListaAberta] = useState(false);
+  const [avaliando, setAvaliando] = useState<Reuniao | null>(null);
   const [params, setParams] = useSearchParams();
+  const pendentesAvaliacao = usePendentesAvaliacao(sessao);
 
   // Deep link do sino: /reunioes?reuniao=<id> abre o detalhe e leva à semana
   // dele (ajuste de estado durante o render, uma vez por link)
@@ -135,7 +139,10 @@ export default function PaginaReunioes({ perfil }: { perfil: PerfilApp }) {
   }
 
   const visiveis = useMemo(
-    () => reunioes.filter((reuniao) => reuniao.status === "confirmada" || reuniao.status === "pendente"),
+    () =>
+      reunioes.filter(
+        (reuniao) => reuniao.status === "confirmada" || reuniao.status === "pendente" || reuniao.status === "realizada",
+      ),
     [reunioes],
   );
   const recebidas = useMemo(
@@ -232,6 +239,30 @@ export default function PaginaReunioes({ perfil }: { perfil: PerfilApp }) {
             </Link>
           )}
         </p>
+      )}
+
+      {pendentesAvaliacao.length > 0 && (
+        <div
+          role="status"
+          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sage bg-sage/10 px-4 py-3 text-sm"
+        >
+          <p className="flex items-center gap-2">
+            <Star size={16} className="shrink-0" aria-hidden="true" />
+            <span>
+              <strong className="font-bold">
+                {pendentesAvaliacao.length} {pendentesAvaliacao.length === 1 ? "reunião" : "reuniões"} para avaliar
+              </strong>
+              <span className="text-deepgreen/75">. A nota entra na popularidade, sem mostrar quem avaliou.</span>
+            </span>
+          </p>
+          <button
+            type="button"
+            onClick={() => setAvaliando(pendentesAvaliacao[0])}
+            className={`${BOTAO_SECUNDARIO} min-h-[40px] px-4`}
+          >
+            Avaliar {pendentesAvaliacao[0].contraparte.nome}
+          </button>
+        </div>
       )}
 
       {/* Barra de navegação */}
@@ -385,6 +416,14 @@ export default function PaginaReunioes({ perfil }: { perfil: PerfilApp }) {
                 <span className="h-3 w-3 rounded border-2 border-dashed border-sage bg-sage/20" aria-hidden="true" />
                 Aguardando confirmação
               </li>
+              <li className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded border-2 border-deepgreen bg-white" aria-hidden="true" />
+                Realizada
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" aria-hidden="true" />
+                Já passou: confirme se aconteceu
+              </li>
             </ul>
             <p className="flex items-center gap-1.5">
               <Download size={14} aria-hidden="true" />
@@ -429,6 +468,8 @@ export default function PaginaReunioes({ perfil }: { perfil: PerfilApp }) {
         ) : (
           <ReuniaoDrawer key={aberta.id} sessao={sessao} reuniao={aberta} onFechar={fecharDetalhe} />
         ))}
+
+      {avaliando && <AvaliarReuniaoModal sessao={sessao} reuniao={avaliando} onFechar={() => setAvaliando(null)} />}
     </div>
   );
 }

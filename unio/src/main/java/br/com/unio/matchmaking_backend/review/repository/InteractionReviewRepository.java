@@ -19,6 +19,9 @@ public interface InteractionReviewRepository extends JpaRepository<InteractionRe
 
     List<InteractionReview> findByReviewerIdOrderByCreatedAtDesc(Long reviewerId);
 
+    /** D040: total de avaliações recebidas (base do mínimo para exibir o resumo). */
+    long countByReviewedId(Long reviewedId);
+
     @Query("select avg(r.rating) from InteractionReview r where r.reviewed.id = :userId")
     Double averageRatingFor(@Param("userId") Long userId);
 

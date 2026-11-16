@@ -44,6 +44,8 @@ export interface InvestidorRecomendado {
   compatibilidade: Compatibilidade;
   statusInteresse: StatusInteresse;
   salvo: boolean;
+  // Popularidade visível em % (RF10). Nula abaixo do mínimo: sem selo.
+  popularidade?: number | null;
 }
 
 // Perfil completo: inclui os motivos de "Por que você viu este investidor"

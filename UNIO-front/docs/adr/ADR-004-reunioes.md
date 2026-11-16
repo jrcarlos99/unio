@@ -5,6 +5,10 @@
 - **Data:** 2026-11-08
 - **Back:** branch `feat/p2-comunicacao-lgpd-qualidade` (`communication/MeetingController`, `V20__create_meetings.sql`), lida sem alterações
 
+> **Atualização (2026-11-16):** `REALIZADA` agora é um status do front (`realizada`), marcado com
+> "Compareci" depois do fim da reunião e que libera a avaliação. O item 2 abaixo ("`REALIZADA`
+> vira `confirmada`") não vale mais: ver [ADR-006](ADR-006-avaliacao-e-popularidade.md).
+>
 > **Atualização (2026-11-08):** a lacuna descrita abaixo foi resolvida no back com a opção A
 > (D032 a D039 em `unio/docs/decisoes.md`, migration `V24__meetings_proposals.sql`). O serviço
 > agora tem dois modos (mock e API) e o mapeamento saiu do fim do serviço para

@@ -27,6 +27,17 @@ public class ParticipantService {
     private final UserRepository userRepository;
     private final StartupRepository startupRepository;
 
+    /** Usuário pelo id, ou null (sem lançar 404). */
+    public User findUser(Long userId) {
+        return userRepository.findById(userId).orElse(null);
+    }
+
+    /** STARTUP com INVESTOR, em qualquer ordem. */
+    public static boolean complementary(User a, User b) {
+        return (a.getRole() == Role.STARTUP && b.getRole() == Role.INVESTOR)
+                || (a.getRole() == Role.INVESTOR && b.getRole() == Role.STARTUP);
+    }
+
     public User requireUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
@@ -58,9 +69,7 @@ public class ParticipantService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Participante não encontrado");
         }
 
-        boolean complementary = (me.getRole() == Role.STARTUP && other.getRole() == Role.INVESTOR)
-                || (me.getRole() == Role.INVESTOR && other.getRole() == Role.STARTUP);
-        if (!complementary) {
+        if (!complementary(me, other)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "A comunicação deve ser entre uma startup e um investidor");
         }

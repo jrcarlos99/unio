@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { BadgeCheck, Sparkles, Star, type LucideIcon } from "lucide-react";
+import SeloPopularidade from "../popularidade/SeloPopularidade";
 import MatchRing from "./MatchRing";
 
 export interface ChipCard {
@@ -26,6 +27,8 @@ interface RecommendationCardProps {
   avatar: ReactNode;
   categoria: string;
   match: number;
+  // Popularidade visível em % (selo pequeno); nula: sem selo
+  popularidade?: number | null;
   melhorMatch: boolean;
   deuMatch: boolean;
   chips: ChipCard[];
@@ -82,6 +85,7 @@ export default function RecommendationCard({
   avatar,
   categoria,
   match,
+  popularidade,
   melhorMatch,
   deuMatch,
   chips,
@@ -115,6 +119,7 @@ export default function RecommendationCard({
             {verificado && <BadgeCheck size={16} className="shrink-0" role="img" aria-label={rotuloVerificado} />}
           </h3>
           <p className="mt-0.5 text-xs text-deepgreen/75">{subtitulo}</p>
+          <SeloPopularidade percentual={popularidade} className="mt-1.5" />
         </div>
       </div>
 

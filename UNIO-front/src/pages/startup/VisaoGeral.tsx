@@ -21,12 +21,15 @@ import PainelCard from "../../components/dashboard/PainelCard";
 import ProfileCompleteness from "../../components/dashboard/ProfileCompleteness";
 import RecommendedInvestorCard from "../../components/dashboard/RecommendedInvestorCard";
 import ViewsChart from "../../components/dashboard/ViewsChart";
+import CardPopularidade from "../../components/popularidade/CardPopularidade";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
 import SinoNotificacoes from "../../components/layout/SinoNotificacoes";
 import { FOCO_VISIVEL } from "../../components/onboarding/selecao";
 import SuccessMessage from "../../components/ui/SuccessMessage";
 import { useAuth } from "../../contexts/AuthContext";
+import { usePopularidade } from "../../hooks/useAvaliacoes";
 import { useCarregamento } from "../../hooks/useDescoberta";
+import { useSessaoReunioes } from "../../hooks/useReunioes";
 import { useToast } from "../../hooks/useToast";
 import { obterContextoStartup, obterResumo } from "../../services/dashboardStartupService";
 import { aplicarFiltrosInvestidores, listarInvestidoresRecomendados } from "../../services/investidoresService";
@@ -37,14 +40,23 @@ const BOTAO_ICONE = `relative inline-flex h-12 w-12 shrink-0 items-center justif
 const BOTAO_CLARO = `inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-lightgray bg-white px-5 text-sm font-semibold text-deepgreen hover:border-sage ${FOCO_VISIVEL}`;
 const SELO = "inline-flex items-center gap-1 rounded-full bg-sage/30 px-2 py-0.5 font-semibold text-deepgreen";
 
+// Grid dos 5 cards de métrica sem buraco: 2 colunas (o 5º ocupa a linha
+// toda), 3 + 2 no xl e os 5 lado a lado no 2xl
+const GRID_METRICAS = "grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-6 2xl:grid-cols-5";
+const COL_TERCO = "xl:col-span-2 2xl:col-span-1";
+const COL_METADE = "xl:col-span-3 2xl:col-span-1";
+
 function Esqueleto() {
   const bloco = "animate-pulse rounded-3xl bg-lightgray";
   return (
     <div aria-busy="true">
       <span className="sr-only">Carregando visão geral</span>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className={`h-44 ${bloco}`} />
+      <div className={GRID_METRICAS}>
+        {Array.from({ length: 5 }, (_, i) => (
+          <div
+            key={i}
+            className={`h-44 ${bloco} ${i < 3 ? COL_TERCO : COL_METADE} ${i === 4 ? "sm:col-span-2" : ""}`}
+          />
         ))}
       </div>
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -64,6 +76,8 @@ export default function VisaoGeral() {
   const location = useLocation();
   const cadastroSucesso = (location.state as { cadastroSucesso?: boolean } | null)?.cadastroSucesso;
   const [busca, setBusca] = useState("");
+  const sessao = useSessaoReunioes();
+  const popularidade = usePopularidade(sessao);
 
   const carregar = useCallback(async () => {
     const [resumo, contexto, investidores] = await Promise.all([
@@ -105,8 +119,9 @@ export default function VisaoGeral() {
 
     conteudo = (
       <>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={GRID_METRICAS}>
           <MetricCard
+            className={COL_TERCO}
             rotulo="Visualizações do perfil"
             valor={metricas.visualizacoes}
             icone={Eye}
@@ -120,6 +135,7 @@ export default function VisaoGeral() {
             }
           />
           <MetricCard
+            className={COL_TERCO}
             rotulo="Investidores interessados"
             valor={metricas.interessados}
             icone={Bookmark}
@@ -134,6 +150,7 @@ export default function VisaoGeral() {
             }
           />
           <MetricCard
+            className={COL_TERCO}
             rotulo="Matches"
             valor={metricas.matches}
             icone={Handshake}
@@ -148,10 +165,16 @@ export default function VisaoGeral() {
             }
           />
           <MetricCard
+            className={COL_METADE}
             rotulo="Contatos iniciados"
             valor={metricas.contatosIniciados}
             icone={MessageSquare}
             rodape="via WhatsApp, e-mail ou telefone"
+          />
+          <CardPopularidade
+            {...popularidade}
+            className={`sm:col-span-2 ${COL_METADE}`}
+            apoio="Quanto maior a popularidade, mais perfis você aparece para recomendados."
           />
         </div>
 

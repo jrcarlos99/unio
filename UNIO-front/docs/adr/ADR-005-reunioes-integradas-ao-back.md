@@ -32,7 +32,8 @@ sem perder o mock, que continua sendo útil para demonstração e para quem roda
 2. **Mapeamento isolado.** `services/reunioes.mapping.ts` é o único lugar que conhece os nomes
    do back:
    - status: `PENDENTE`, `CONFIRMADA`, `RECUSADA` e `CANCELADA` viram os mesmos em minúsculas;
-     `REALIZADA` vira `confirmada`, que já está no passado;
+     `REALIZADA` vira `realizada` desde a [ADR-006](ADR-006-avaliacao-e-popularidade.md) (antes
+     virava `confirmada`, que já está no passado);
    - campos: `subject` ↔ assunto, `message` ↔ mensagem, `format` ↔ formato (em maiúsculas no
      back), `suggestedTimes` ↔ horários, `meetingUrl` ↔ link e `location` ↔ local;
    - lados: `proposedByMe` vira `solicitante` ("eu" ou "outro") e `organizer` vira `organizador`.

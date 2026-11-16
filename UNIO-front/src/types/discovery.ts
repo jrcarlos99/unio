@@ -122,6 +122,9 @@ export interface StartupRecomendada {
   compatibilidade: Compatibilidade;
   statusInteresse: StatusInteresse;
   salvo: boolean;
+  // Popularidade visível em % (RF10). Nula abaixo do mínimo de avaliações:
+  // sem selo. Nunca é somada à compatibilidade exibida.
+  popularidade?: number | null;
 }
 
 // Perfil completo: inclui os motivos de "Por que você viu esta startup"

@@ -13,6 +13,7 @@ import type {
 } from "../types/investidores";
 import { contatoValido } from "../utils/contato";
 import { formatarMoeda } from "../utils/formatoDescoberta";
+import { ordenarComPopularidade } from "../utils/popularidade";
 import {
   calcularCompatibilidade,
   explicarParaStartup,
@@ -22,6 +23,7 @@ import {
 } from "./compatibilidade";
 import { obterContextoStartup } from "./dashboardStartupService";
 import { chaveUsuario } from "./onboardingService";
+import { percentualVisivel } from "./popularidadePerfis";
 import { unioLocalStartup as unioLocal } from "./unioLocal";
 
 // Único ponto de dados dos investidores vistos pela startup: aba
@@ -126,16 +128,22 @@ async function carregarStartup(user: UserProfile | null) {
 function montarVarios(user: UserProfile | null, investidores: InvestidorDescoberta[], startup: LadoStartup) {
   const interesses = lerInteresses(user);
   const salvos = lerSalvos(user);
-  return investidores
-    .map(
-      (investidor): InvestidorRecomendado => ({
-        investidor,
-        compatibilidade: calcularCompatibilidade(ladoDoInvestidor(investidor), startup),
-        statusInteresse: interesses[investidor.id] ?? "nenhum",
-        salvo: salvos.includes(investidor.id),
-      }),
-    )
-    .sort((a, b) => b.compatibilidade.total - a.compatibilidade.total);
+  const lista = investidores.map(
+    (investidor): InvestidorRecomendado => ({
+      investidor,
+      compatibilidade: calcularCompatibilidade(ladoDoInvestidor(investidor), startup),
+      statusInteresse: interesses[investidor.id] ?? "nenhum",
+      salvo: salvos.includes(investidor.id),
+      popularidade: percentualVisivel(investidor.id),
+    }),
+  );
+  // Por compatibilidade; popularidade só desempata e dá um bônus pequeno de
+  // ordenação (utils/popularidade.ts, ADR-006)
+  return ordenarComPopularidade(
+    lista,
+    (item) => item.compatibilidade.total,
+    (item) => item.popularidade,
+  );
 }
 
 function normalizar(texto: string) {

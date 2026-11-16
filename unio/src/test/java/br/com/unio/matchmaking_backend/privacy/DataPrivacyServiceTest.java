@@ -29,6 +29,7 @@ import br.com.unio.matchmaking_backend.privacy.service.DataPrivacyService;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
 import br.com.unio.matchmaking_backend.profile.service.ProfileService;
+import br.com.unio.matchmaking_backend.popularity.repository.ProfileViewRepository;
 import br.com.unio.matchmaking_backend.review.repository.InteractionReviewRepository;
 import br.com.unio.matchmaking_backend.scorecard.calculation.MatchScoreRepository;
 import br.com.unio.matchmaking_backend.scorecard.explanation.MatchScoreFactorRepository;
@@ -69,6 +70,7 @@ class DataPrivacyServiceTest {
     @Mock private MessageRepository messageRepository;
     @Mock private MeetingRepository meetingRepository;
     @Mock private InteractionReviewRepository reviewRepository;
+    @Mock private ProfileViewRepository profileViewRepository;
     @Mock private MatchScoreFactorRepository matchScoreFactorRepository;
     @Mock private MatchScoreRepository matchScoreRepository;
     @Mock private FeedbackEventRepository feedbackEventRepository;
@@ -145,6 +147,7 @@ class DataPrivacyServiceTest {
         UUID scorecardId = new UUID(0L, 1L);
         verify(messageRepository).replaceContentSentBy(eq(1L), anyString());
         verify(reviewRepository).clearCommentsWrittenBy(1L);
+        verify(profileViewRepository).deleteAllInvolving(1L);
         verify(matchScoreFactorRepository).deleteByParticipant(scorecardId);
         verify(matchScoreRepository).deleteByParticipant(scorecardId);
         verify(feedbackEventRepository).deleteByParticipant(scorecardId);

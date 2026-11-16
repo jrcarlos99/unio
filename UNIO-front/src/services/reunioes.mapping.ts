@@ -97,13 +97,14 @@ const PARA_BACK: Record<StatusReuniao, StatusBack> = {
   confirmada: "CONFIRMADA",
   recusada: "RECUSADA",
   cancelada: "CANCELADA",
+  realizada: "REALIZADA",
 };
 
 export function toBackStatus(status: StatusReuniao): StatusBack {
   return PARA_BACK[status];
 }
 
-// REALIZADA não existe no front: é uma confirmada que já passou
+// REALIZADA é um status do front desde a ADR-006 ("Compareci")
 export function fromBackStatus(status: StatusBack): StatusReuniao {
   switch (status) {
     case "PENDENTE":
@@ -112,6 +113,8 @@ export function fromBackStatus(status: StatusBack): StatusReuniao {
       return "recusada";
     case "CANCELADA":
       return "cancelada";
+    case "REALIZADA":
+      return "realizada";
     default:
       return "confirmada";
   }
@@ -223,6 +226,8 @@ export function reuniaoDoBack(
   };
   const mensagem = textoOuNada(meeting.message);
   if (mensagem) reuniao.mensagem = mensagem;
+  const motivo = textoOuNada(meeting.cancelReason);
+  if (motivo && status === "cancelada") reuniao.motivoCancelamento = motivo;
   const pauta = textoOuNada(meeting.agenda);
   if (pauta) reuniao.pauta = pauta;
   if (confirmada) reuniao.horarioConfirmado = isoDoBack(meeting.startsAt);

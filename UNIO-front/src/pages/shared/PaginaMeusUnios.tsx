@@ -45,6 +45,7 @@ function Linha({ rec, onAbrir }: { rec: Recomendacao; onAbrir: () => void }) {
         avatar={<StartupLogo startup={startup} />}
         subtitulo={`${startup.segmento} • ${startup.cidade}, ${startup.uf}`}
         match={compatibilidade.total}
+        popularidade={rec.item.popularidade}
         onAbrir={onAbrir}
       />
     );
@@ -57,6 +58,7 @@ function Linha({ rec, onAbrir }: { rec: Recomendacao; onAbrir: () => void }) {
       avatar={<AvatarIniciais nome={investidor.nome} />}
       subtitulo={`${rotuloTipoInvestidor(investidor.tipo)} • ${investidor.cidade}, ${investidor.uf}`}
       match={compatibilidade.total}
+      popularidade={rec.item.popularidade}
       onAbrir={onAbrir}
     />
   );

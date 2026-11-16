@@ -52,13 +52,13 @@ const TIDALOG: CounterpartBack = {
   matchScore: 87.5,
 };
 
-test("status: REALIZADA vira confirmada; ida e volta dos demais", () => {
+test("status: REALIZADA vira realizada; ida e volta dos demais", () => {
   assert.equal(fromBackStatus("PENDENTE"), "pendente");
   assert.equal(fromBackStatus("CONFIRMADA"), "confirmada");
   assert.equal(fromBackStatus("RECUSADA"), "recusada");
   assert.equal(fromBackStatus("CANCELADA"), "cancelada");
-  assert.equal(fromBackStatus("REALIZADA"), "confirmada");
-  for (const status of ["pendente", "confirmada", "recusada", "cancelada"] as const) {
+  assert.equal(fromBackStatus("REALIZADA"), "realizada");
+  for (const status of ["pendente", "confirmada", "recusada", "cancelada", "realizada"] as const) {
     assert.equal(fromBackStatus(toBackStatus(status)), status);
   }
 });
@@ -77,7 +77,7 @@ test("horários: sugeridos em ISO do front e confirmado só em CONFIRMADA/REALIZ
   assert.equal(confirmada.horarioConfirmado, "2026-11-13T13:00:00.000Z");
 
   const realizada = reuniaoDoBack({ ...BASE, status: "REALIZADA", startsAt: "2026-11-13T13:00:00Z" });
-  assert.equal(realizada.status, "confirmada");
+  assert.equal(realizada.status, "realizada");
   assert.equal(realizada.horarioConfirmado, "2026-11-13T13:00:00.000Z");
 
   // Reunião antiga sem suggestedTimes: o startsAt vira o único horário

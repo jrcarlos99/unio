@@ -44,7 +44,7 @@ interface BlocoDia {
 
 // Horários que a reunião ocupa na grade: o confirmado, ou os sugeridos
 function horariosNaGrade(reuniao: Reuniao) {
-  return reuniao.status === "confirmada" && reuniao.horarioConfirmado
+  return (reuniao.status === "confirmada" || reuniao.status === "realizada") && reuniao.horarioConfirmado
     ? [reuniao.horarioConfirmado]
     : reuniao.horariosSugeridos;
 }

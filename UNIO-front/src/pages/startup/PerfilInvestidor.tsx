@@ -27,6 +27,9 @@ import TicketCard from "../../components/discovery/TicketCard";
 import WhyList from "../../components/discovery/WhyList";
 import { rotuloTipoInvestidor } from "../../components/discovery/rotulos";
 import { FOCO_VISIVEL } from "../../components/onboarding/selecao";
+import SeloPopularidade from "../../components/popularidade/SeloPopularidade";
+import { useRegistrarVisita } from "../../hooks/useAvaliacoes";
+import { useSessaoReunioes } from "../../hooks/useReunioes";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCarregamento } from "../../hooks/useDescoberta";
 import { useAcoesRecomendacao } from "../../hooks/useRecomendacoes";
@@ -44,6 +47,8 @@ const VOLTAR = { para: "/investidores", rotulo: "Voltar para Investidores" };
 // do perfil da startup visto pelo investidor.
 export default function PerfilInvestidor() {
   const { id = "" } = useParams();
+  // Uma visita por abertura, sem mostrar quem visitou (RF10, ADR-006)
+  useRegistrarVisita(useSessaoReunioes(), id);
   const { user } = useAuth();
 
   const carregar = useCallback(() => obterInvestidor(user, id), [id, user]);
@@ -130,6 +135,7 @@ export default function PerfilInvestidor() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-3xl font-bold text-deepgreen sm:text-4xl">{investidor.nome}</h1>
+                <SeloPopularidade percentual={detalhe.popularidade} tamanho="md" />
                 {investidor.verificado && (
                   <span className={`${PILULA} bg-sage/40 font-semibold text-deepgreen`}>
                     <BadgeCheck size={14} aria-hidden="true" />

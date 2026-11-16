@@ -966,3 +966,203 @@ afeta descoberta, scorecard e comunicação. Ele não cabe numa tarefa de reuni�
 **Pendência para o squad:** persistir o interesse mútuo no back e exigir match em
 `ParticipantService.requireCounterpart` (vale para mensagens e reuniões) e em
 `MeetingCounterpartService`. Sem arquivos alterados nesta decisão.
+
+
+## D040: Resumo público de avaliações só com agregados e mínimo de 3
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** O RF10 pede avaliação pós-interação, mas não diz o que fica visível.
+Até aqui, `GET /api/reviews/received` devolvia a média e a lista completa (com autor,
+nota e comentário) só para o avaliado, e não havia como o outro lado ver a reputação
+de ninguém. O front quer mostrar a popularidade em porcentagem no dashboard da
+startup, no perfil visto pelo outro lado e nos cards de descoberta.
+
+**Alternativas:**
+
+- (a) Expor a lista de avaliações (nota e autor) para quem consulta o perfil
+- (b) Expor só a média, mesmo com 1 avaliação
+- (c) Expor só agregados, com um mínimo de avaliações para mostrar a média
+
+**Decisão:** (c). `GET /api/reviews/summary/{userId}` devolve só
+`{ userId, totalReviews, averageRating, percentage, visible }`. Com menos de 3
+avaliações (`ReviewService.MIN_REVIEWS_VISIBLE`), `averageRating` e `percentage` são
+nulos e `visible` é falso. `percentage = round(média / 5 * 100)`, igual ao
+`calcularPercentual` do front. Pode consultar o próprio usuário ou um usuário ativo do
+papel complementar; qualquer outro caso (mesmo papel, removido, inexistente) responde
+404, sem revelar se o id existe.
+
+**Justificativa:** com 1 ou 2 avaliações a média identifica quem avaliou (numa reunião
+1 a 1, a outra parte sabe que a nota veio dela) e é estatisticamente frágil. O mínimo
+de 3 protege o avaliador e evita que uma nota isolada marque o perfil. Lista de
+autores e notas não tem finalidade para quem só quer decidir se marca uma reunião
+(LGPD, minimização).
+
+**Impacto:** `review/dto/ReviewSummaryResponse.java` (novo),
+`review/service/ReviewService.java` (`summary`, `summaryOf`, `percentageOf`),
+`review/repository/InteractionReviewRepository.java` (`countByReviewedId`),
+`review/controller/ReviewController.java`,
+`communication/service/ParticipantService.java` (`findUser`, `complementary`, só
+reaproveitados, sem mudar a regra de `requireCounterpart`). Testes em
+`ReviewServiceTest` e `PopularityIntegrationTest`.
+
+
+## D041: Contagem de visitas ao perfil agregada, uma por visitante por dia
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** O dashboard da startup e a aba Popularidade do investidor mostram
+"visitas ao perfil" (total de 28 dias, variação e série semanal). Não havia registro
+de visitas no back. Guardar quem visitou quem é dado pessoal e pode revelar interesse
+comercial de um investidor por uma startup.
+
+**Alternativas:**
+
+- (a) Contador simples por perfil, sem visitante (não impede inflar com cliques
+  repetidos nem permite apagar na exclusão de conta)
+- (b) Log de cada abertura, com visitante e horário
+- (c) Uma linha por visitante, por perfil, por dia, sem horário; a API só devolve totais
+
+**Decisão:** (c). Migration `V25__create_profile_views.sql` cria `profile_views`
+(`id`, `target_user_id`, `viewer_user_id`, `viewed_on DATE`) com
+`UNIQUE (target_user_id, viewer_user_id, viewed_on)` e
+`CHECK (target_user_id <> viewer_user_id)`. `POST /api/profile-views` com
+`{ targetUserId }` grava com `INSERT ... ON CONFLICT DO NOTHING` e responde 204.
+Auto-visita e visitante do mesmo papel do alvo são ignorados (também 204); alvo
+inexistente ou removido responde 404. O dia segue o fuso America/Recife. O visitante
+nunca sai em nenhuma resposta.
+
+**Justificativa:** LGPD, minimização e finalidade: a finalidade é mostrar ao dono do
+perfil quanto ele é visto, e para isso basta o total. O visitante fica gravado só para
+garantir "uma por dia" e para apagar na exclusão de conta (D044). Sem horário, o
+registro não permite reconstruir a navegação de ninguém. O `ON CONFLICT` evita erro e
+corrida entre cliques repetidos.
+
+**Impacto:** pacote novo `popularity` (`entity/ProfileView`,
+`repository/ProfileViewRepository`, `service/PopularityService.registerView`,
+`controller/PopularityController`, `dto/ProfileViewRequest`), migration V25. Testes de
+visita duplicada, auto-visita e mesmo papel em `PopularityIntegrationTest`.
+
+
+## D042: Popularidade própria e fora do score de compatibilidade
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** O front mostra a popularidade (porcentagem das notas) e quer usá-la para
+ordenar recomendações. O score de compatibilidade (D001 a D025) mede aderência de
+tese, não reputação, e sua política é versionada.
+
+**Alternativas:**
+
+- (a) Somar a popularidade ao score de compatibilidade no back
+- (b) Usar a popularidade como critério de ordenação no ranking do back
+- (c) Manter o score como está e entregar a popularidade separada; o front decide a
+  ordenação
+
+**Decisão:** (c). `GET /api/profile/me/popularity` devolve o resumo da D040 mais
+`meetingsCompleted` (reuniões REALIZADAS do usuário), `profileViews28d`,
+`profileViewsPrev28d`, `weeklyViews` (4 janelas de 7 dias, `{ weekStart, views }`) e
+`interestsReceived`, que fica **0** porque o interesse mútuo ainda não existe no back
+(D039). Score, política de score, autenticação e regras de reunião não mudam. A única
+consulta nova em reuniões é `MeetingRepository.countByParticipantAndStatus` (leitura).
+
+**Justificativa:** misturar reputação no score quebraria a explicabilidade (D010) e
+faria uma nota de reunião mudar a "compatibilidade" exibida. No front, a popularidade
+entra só como desempate e bônus pequeno de ordenação (no máximo 5 pontos), nunca no
+número exibido (ADR-006 do front).
+
+**Pendência para o squad:** decidir se a popularidade entra no ranking do back
+(`/api/recommendations`) e preencher `interestsReceived` quando o interesse mútuo
+existir.
+
+**Impacto:** `popularity/service/PopularityService.myPopularity`,
+`popularity/dto/PopularityResponse`, `popularity/dto/WeeklyViewsDto`,
+`communication/repository/MeetingRepository.java`. Teste
+`popularidadePropriaTrazAgregadosSemExporVisitantes`.
+
+
+## D043: Comentário da avaliação opcional, gravado e oculto para todos os usuários
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** `POST /api/meetings/{id}/reviews` aceita `comment` (até 1000
+caracteres). `GET /api/meetings/{id}/reviews` e `GET /api/reviews/received`
+devolviam esse texto ao autor e ao avaliado. O grupo decidiu que só a nota é visível
+(ADR-006 do front): texto livre sobre uma pessoa, exibido a ela ou a terceiros, gera
+exposição e conflito sem ajudar a decisão de marcar reunião.
+
+**Alternativas:**
+
+- (a) Remover o campo e a coluna
+- (b) Mostrar o comentário só ao avaliado
+- (c) Manter o campo opcional e gravado, fora de todas as respostas a STARTUP e
+  INVESTOR
+
+**Decisão:** (c). `ReviewResponse` (e, por ela, `ReceivedReviewsResponse`) não tem
+mais `comment`; o `ReviewService.toResponse` não lê o texto. A coluna
+`interaction_reviews.comment` e a validação `@Size(max = 1000)` continuam. O export
+LGPD do próprio autor (`reviewsWritten`) continua com o texto que ele escreveu; em
+`reviewsReceived` o texto sai. Na exclusão de conta, `clearCommentsWrittenBy` (T13)
+continua apagando os comentários do titular. Não há tela nem endpoint de leitura de
+comentários.
+
+**Justificativa:** finalidade declarada: moderação (abuso, assédio, fraude) e melhoria
+da plataforma. Para isso basta guardar; exibir não tem finalidade. O autor tem direito
+de acesso ao que escreveu (LGPD, art. 18), por isso o export mantém o texto dele.
+
+**Pendências para o squad:**
+
+- Acesso do ADMIN (moderação) aos comentários: endpoint e tela, com registro em
+  auditoria.
+- Prazo de retenção dos comentários (sugestão: apagar o texto depois de N meses).
+- Texto de consentimento LGPD: avisar que comentários de avaliação são coletados,
+  não são exibidos e servem à moderação e à melhoria da plataforma.
+- `GET /api/meetings/{id}/reviews` e o export ainda mostram ao avaliado quem deu qual
+  nota naquela reunião (`reviewer` + `rating`). O front não usa isso; avaliar se deve
+  sair também.
+
+**Impacto:** `review/dto/ReviewResponse.java`, `review/dto/ReceivedReviewsResponse.java`
+(documentação), `review/service/ReviewService.java`, `review/controller/ReviewController.java`
+(Swagger), `privacy/service/DataPrivacyService.java` (`reviewsData` com
+`includeComment`). Teste `comentarioEhGravadoMasNaoApareceEmNenhumaResposta` cobre
+POST, as duas listas, o resumo e a popularidade.
+
+
+## D044: Visitas e avaliações na exclusão e no export de conta (T13)
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** A exclusão de conta é por anonimização (D029): registros compartilhados
+ficam sem conteúdo pessoal. A D041 cria um registro novo que liga duas pessoas
+(visitante e visitado).
+
+**Alternativas:**
+
+- (a) Manter as visitas e só anonimizar o usuário
+- (b) Apagar as visitas em que o titular é visitante ou visitado
+
+**Decisão:** (b). `DataPrivacyService.deleteAccount` chama
+`ProfileViewRepository.deleteAllInvolving(userId)`. No export, `profileViewsMade`
+lista os perfis que o titular visitou e o dia (são dados dele) e
+`profileViewsReceivedTotal` traz só o total recebido, sem os visitantes (dados de
+terceiros). As avaliações seguem a T13: a nota fica (é da outra pessoa e compõe a
+popularidade dela), o comentário escrito pelo titular é apagado.
+
+**Justificativa:** sem a conta, a visita não tem finalidade (o perfil sumiu ou o
+visitante saiu) e o total do outro lado só perde um número. Mostrar no export quem
+visitou o titular exporia terceiros.
+
+**Impacto:** `privacy/service/DataPrivacyService.java`,
+`popularity/repository/ProfileViewRepository.java`
+(`findByViewerUserIdOrderByViewedOnDesc`, `countByTargetUserId`, `deleteAllInvolving`),
+`DataPrivacyServiceTest` (verifica a exclusão das visitas).

@@ -1,10 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Bell, CalendarCheck, CalendarClock, CalendarX, type LucideIcon } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Bell, CalendarCheck, CalendarClock, CalendarX, Star, type LucideIcon } from "lucide-react";
 import { useSessaoReunioes } from "../../hooks/useReunioes";
+import { listarPendentesDeAvaliacao } from "../../services/avaliacoesService";
 import { assinarReunioes, listarNotificacoes, marcarNotificacoesLidas } from "../../services/reunioesService";
-import type { NotificacaoReuniao, TipoNotificacao } from "../../types/reunioes";
+import type { NotificacaoReuniao, Reuniao, TipoNotificacao } from "../../types/reunioes";
 import { FOCO_VISIVEL } from "../onboarding/selecao";
+import AvaliarReuniaoModal from "../reunioes/AvaliarReuniaoModal";
 
 const ICONES: Record<TipoNotificacao, LucideIcon> = {
   recebida: CalendarClock,
@@ -12,6 +14,7 @@ const ICONES: Record<TipoNotificacao, LucideIcon> = {
   aceita: CalendarCheck,
   recusada: CalendarX,
   cancelada: CalendarX,
+  avaliar: Star,
 };
 
 // "agora", "há 5 min", "há 2 h", "há 3 dias"
@@ -35,6 +38,8 @@ export default function SinoNotificacoes({ className }: { className: string }) {
   const [aberto, setAberto] = useState(false);
   const [notificacoes, setNotificacoes] = useState<NotificacaoReuniao[]>([]);
   const [versao, setVersao] = useState(0);
+  const [avaliando, setAvaliando] = useState<Reuniao | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let ativo = true;
@@ -61,6 +66,22 @@ export default function SinoNotificacoes({ className }: { className: string }) {
   }, [aberto]);
 
   const naoLidas = notificacoes.filter((n) => !n.lida).length;
+
+  // "Avalie a reunião com...": abre o modal aqui mesmo. Se já foi avaliada
+  // (ou não está mais realizada), leva ao detalhe da reunião.
+  async function abrirAvaliacao(notificacao: NotificacaoReuniao) {
+    setAberto(false);
+    try {
+      const pendente = (await listarPendentesDeAvaliacao(sessao)).find((r) => r.id === notificacao.reuniaoId);
+      if (pendente) {
+        setAvaliando(pendente);
+        return;
+      }
+    } catch {
+      // segue para o detalhe
+    }
+    navigate(`/reunioes?reuniao=${encodeURIComponent(notificacao.reuniaoId)}`);
+  }
 
   function alternar() {
     const abrir = !aberto;
@@ -105,22 +126,34 @@ export default function SinoNotificacoes({ className }: { className: string }) {
           ) : (
             <ul className="max-h-80 overflow-y-auto">
               {notificacoes.slice(0, 8).map((notificacao) => {
-                const Icone = ICONES[notificacao.tipo];
+                const Icone = ICONES[notificacao.tipo] ?? CalendarClock;
+                const classe = `flex w-full gap-3 px-4 py-3 text-left text-sm hover:bg-lightgray/40 ${FOCO_VISIVEL} focus-visible:ring-inset ${
+                  notificacao.lida ? "" : "bg-sage/10"
+                }`;
+                const conteudo = (
+                  <>
+                    <Icone size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0">
+                      <span className="block">{notificacao.texto}</span>
+                      <span className="block text-xs text-deepgreen/70">{haQuanto(notificacao.em)}</span>
+                    </span>
+                  </>
+                );
                 return (
                   <li key={notificacao.id}>
-                    <Link
-                      to={`/reunioes?reuniao=${encodeURIComponent(notificacao.reuniaoId)}`}
-                      onClick={() => setAberto(false)}
-                      className={`flex gap-3 px-4 py-3 text-sm hover:bg-lightgray/40 ${FOCO_VISIVEL} focus-visible:ring-inset ${
-                        notificacao.lida ? "" : "bg-sage/10"
-                      }`}
-                    >
-                      <Icone size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
-                      <span className="min-w-0">
-                        <span className="block">{notificacao.texto}</span>
-                        <span className="block text-xs text-deepgreen/70">{haQuanto(notificacao.em)}</span>
-                      </span>
-                    </Link>
+                    {notificacao.tipo === "avaliar" ? (
+                      <button type="button" onClick={() => void abrirAvaliacao(notificacao)} className={classe}>
+                        {conteudo}
+                      </button>
+                    ) : (
+                      <Link
+                        to={`/reunioes?reuniao=${encodeURIComponent(notificacao.reuniaoId)}`}
+                        onClick={() => setAberto(false)}
+                        className={classe}
+                      >
+                        {conteudo}
+                      </Link>
+                    )}
                   </li>
                 );
               })}
@@ -135,6 +168,7 @@ export default function SinoNotificacoes({ className }: { className: string }) {
           </Link>
         </div>
       )}
+      {avaliando && <AvaliarReuniaoModal sessao={sessao} reuniao={avaliando} onFechar={() => setAvaliando(null)} />}
     </div>
   );
 }

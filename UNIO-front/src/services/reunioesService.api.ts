@@ -28,6 +28,7 @@ import {
   derivarNotificacoes,
   fotografar,
   juntarNotificacoes,
+  textoAvaliar,
   vistaDe,
   type ListaVista,
 } from "./reunioesNotificacoes";
@@ -332,8 +333,31 @@ export async function responderSolicitacao(
   return enviar(sessao, () => api.post<MeetingResponseBack>(rota(id, "counter-proposal"), { suggestedTimes }));
 }
 
-export async function cancelarReuniao(sessao: SessaoReunioes, id: string): Promise<Reuniao> {
-  return enviar(sessao, () => api.post<MeetingResponseBack>(rota(id, "cancel")));
+// Motivo opcional (ex.: "Não aconteceu"): vai como { reason } (MeetingCancelRequest)
+export async function cancelarReuniao(sessao: SessaoReunioes, id: string, motivo?: string): Promise<Reuniao> {
+  const limpo = motivo?.trim();
+  return enviar(sessao, () => api.post<MeetingResponseBack>(rota(id, "cancel"), limpo ? { reason: limpo } : undefined));
+}
+
+// "Compareci": POST /complete (CONFIRMADA → REALIZADA, vale para os dois
+// participantes). A notificação "avaliar" de quem clicou é criada aqui; a da
+// outra parte sai da comparação de listas (reunioesNotificacoes.ts).
+export async function marcarComoRealizada(sessao: SessaoReunioes, id: string): Promise<Reuniao> {
+  const reuniao = await enviar(sessao, () => api.post<MeetingResponseBack>(rota(id, "complete")));
+  const userKey = chaveDe(sessao);
+  if (userKey) {
+    const nova: NotificacaoReuniao = {
+      id: novoId(),
+      tipo: "avaliar",
+      reuniaoId: reuniao.id,
+      texto: textoAvaliar(reuniao),
+      em: new Date().toISOString(),
+      lida: false,
+    };
+    gravarJson(chaveNotificacoes(userKey), juntarNotificacoes([nova], lerNotificacoes(userKey)));
+    avisar();
+  }
+  return reuniao;
 }
 
 // Confirmada → pendente com novos horários, agora propostos por você

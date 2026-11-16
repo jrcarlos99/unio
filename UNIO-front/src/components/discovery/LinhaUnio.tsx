@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronRight, Sparkles } from "lucide-react";
+import SeloPopularidade from "../popularidade/SeloPopularidade";
 import MatchRing from "./MatchRing";
 
 interface LinhaUnioProps {
@@ -8,6 +9,8 @@ interface LinhaUnioProps {
   avatar: ReactNode;
   subtitulo: string;
   match: number;
+  // Popularidade visível em % (selo pequeno); nula: sem selo
+  popularidade?: number | null;
   onAbrir: () => void;
 }
 
@@ -18,7 +21,7 @@ export function idLinhaUnio(id: string) {
 
 // Cartão em linha de "Meus unios" (startup para o investidor ou investidor
 // para a startup). O cartão inteiro é um botão que abre o popup do unio.
-export default function LinhaUnio({ id, nome, avatar, subtitulo, match, onAbrir }: LinhaUnioProps) {
+export default function LinhaUnio({ id, nome, avatar, subtitulo, match, popularidade, onAbrir }: LinhaUnioProps) {
   return (
     <li>
       <button
@@ -36,6 +39,7 @@ export default function LinhaUnio({ id, nome, avatar, subtitulo, match, onAbrir 
               <Sparkles size={12} aria-hidden="true" />
               Deu match!
             </span>
+            <SeloPopularidade percentual={popularidade} />
           </span>
           <span className="mt-0.5 block text-sm text-deepgreen/75">{subtitulo}</span>
         </span>

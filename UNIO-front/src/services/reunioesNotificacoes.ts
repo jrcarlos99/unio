@@ -34,6 +34,11 @@ export function fotografar(reunioes: Reuniao[]): ListaVista {
   return lista;
 }
 
+// Notificação "avaliar" (RF10, ADR-006): mesmo texto nos dois modos
+export function textoAvaliar(reuniao: Pick<Reuniao, "contraparte">) {
+  return `Avalie a reunião com ${reuniao.contraparte.nome}`;
+}
+
 function quando(iso: string) {
   return `${formatarDataCurta(iso)} às ${formatarHora(iso)}`;
 }
@@ -49,6 +54,11 @@ function avisoDaMudanca(antes: ReuniaoVista | undefined, reuniao: Reuniao): { ti
     return ehRecebida(reuniao) ? { tipo: "recebida", texto: `${nome} solicitou uma reunião: ${reuniao.assunto}.` } : null;
   }
   if (antes.status === reuniao.status && antes.solicitante === reuniao.solicitante) return null;
+
+  // A outra parte marcou "Compareci" (vale para a reunião inteira)
+  if (reuniao.status === "realizada") {
+    return antes.status === "confirmada" ? { tipo: "avaliar", texto: textoAvaliar(reuniao) } : null;
+  }
 
   if (ehRecebida(reuniao)) {
     if (antes.status === "confirmada") return { tipo: "proposta", texto: `${nome} pediu para remarcar a reunião.` };
@@ -71,7 +81,8 @@ function avisoDaMudanca(antes: ReuniaoVista | undefined, reuniao: Reuniao): { ti
 
 // Avisos novos (mais recente primeiro). "recebida": pendente da outra parte
 // que não estava na última lista; "aceita", "recusada" e "cancelada": o status
-// de uma reunião mudou; "proposta": a outra parte devolveu com outros horários.
+// de uma reunião mudou; "proposta": a outra parte devolveu com outros horários;
+// "avaliar": a reunião confirmada virou realizada.
 export function derivarNotificacoes(
   anterior: ListaVista,
   atuais: Reuniao[],

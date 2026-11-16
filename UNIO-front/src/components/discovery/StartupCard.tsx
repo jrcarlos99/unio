@@ -36,6 +36,7 @@ export default function StartupCard({
       avatar={<StartupLogo startup={startup} />}
       categoria={startup.categoria}
       match={compatibilidade.total}
+      popularidade={item.popularidade}
       melhorMatch={melhorMatch}
       deuMatch={statusInteresse === "match"}
       chips={[

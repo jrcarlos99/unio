@@ -20,7 +20,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Documentos do projeto
 
-- `docs/decisoes.md` — decisões de design (D001 a D039)
+- `docs/decisoes.md`: decisões de design (D001 a D044)
 - `docs/dominio.md` — especificação de domínio
 - `docs/contrato/contrato-v2.md` — contrato ativo da API
 - `docs/contrato/contrato-onboarding.md`: onboarding e criação de perfil a partir dele
@@ -67,6 +67,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] T07 — Log de Auditoria (RNF10) — 2026-10-26
 - [x] T08 — Consentimento LGPD (RF11 + RNF03) — 2026-10-26
 - [x] T11 — Upload de pitch (RF06) — 2026-10-20
+- [x] RF10 popularidade: `GET /api/reviews/summary/{userId}`, `GET /api/profile/me/popularity`, `POST /api/profile-views`, comentário fora das respostas (D040 a D044, `V25__create_profile_views.sql`), 2026-11-16
 
 ### Bloco E — Testes (pendente)
 
@@ -107,7 +108,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [ ] RF04 — Visualização de perfis compatíveis
 - [x] RF05 — Comunicação (mensagens + reuniões) — T09a/T09b; reuniões com até 3 horários, contraproposta, remarcação, formato e local (D032 a D039, V24)
 - [x] RF08 — Moderação de cadastros
-- [x] RF10 — Feedback pós-interação — T12
+- [x] RF10: Feedback pós-interação (T12); resumo público só com agregados e mínimo de 3 avaliações, popularidade própria, visitas ao perfil e comentário oculto (D040 a D044, V25)
 - [x] RF11 — Consentimento LGPD
 
 ### RNF
@@ -138,12 +139,16 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Branch atual
 
-- `front-carolina` (onboarding cria perfil; reuniões integradas ao back, D032 a D039)
+- `feat/avaliacao-popularidade` (a partir de `front-carolina`): avaliação pós-reunião e popularidade (D040 a D044; ADR-006 do front)
 
 ## Próximo passo
 
 - Front: integrar mensagens, avaliação e LGPD (`docs/contrato/contrato-comunicacao.md`); reuniões já integradas (ADR-005 do front)
-- Persistir o match mútuo no back e exigir em reuniões e mensagens (D039)
+- Persistir o match mútuo no back e exigir em reuniões e mensagens (D039); depois preencher `interestsReceived` da popularidade (D042)
+- Popularidade no ranking do back, se o produto quiser (hoje só ordena no front, D042)
+- Acesso da moderação (ADMIN) aos comentários das avaliações e prazo de retenção (D043)
+- Texto de consentimento LGPD: avisar que comentários de avaliação são coletados e não exibidos (D043)
+- Front: ligar avaliação e popularidade à API (hoje em modo mock, ADR-006 do front)
 - Notificações de reunião (hoje o front deriva por polling, ADR-005 do front)
 - Aplicar os alertas no Azure e rodar o teste de carga; preencher `docs/testes/teste-de-carga.md`
 - Definir `JWT_SECRET` no App Service
@@ -151,4 +156,4 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Fora do MVP (trabalho futuro)
 
-Ver D011, D025, D027 e as pendências da D028, D030, D035 e D039 em `docs/decisoes.md`.
+Ver D011, D025, D027 e as pendências da D028, D030, D035, D039, D042 e D043 em `docs/decisoes.md`.

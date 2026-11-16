@@ -39,6 +39,7 @@ export default function InvestorCard({
       avatar={<AvatarIniciais nome={investidor.nome} />}
       categoria={investidor.segmentosInteresse.slice(0, 2).join(" & ")}
       match={compatibilidade.total}
+      popularidade={item.popularidade}
       melhorMatch={melhorMatch}
       deuMatch={statusInteresse === "match"}
       chips={[

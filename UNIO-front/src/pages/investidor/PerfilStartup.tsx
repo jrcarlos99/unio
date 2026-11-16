@@ -26,6 +26,9 @@ import SecaoPerfil from "../../components/discovery/SecaoPerfil";
 import StartupLogo from "../../components/discovery/StartupLogo";
 import WhyList from "../../components/discovery/WhyList";
 import { FOCO_VISIVEL } from "../../components/onboarding/selecao";
+import SeloPopularidade from "../../components/popularidade/SeloPopularidade";
+import { useRegistrarVisita } from "../../hooks/useAvaliacoes";
+import { useSessaoReunioes } from "../../hooks/useReunioes";
 import { useCarregamento, useUserKey } from "../../hooks/useDescoberta";
 import { useAcoesRecomendacao } from "../../hooks/useRecomendacoes";
 import { obterStartup } from "../../services/discoveryService";
@@ -38,6 +41,8 @@ const CHIP = `${PILULA} font-medium text-deepgreen`;
 // Tela "Perfil da startup" vista pelo investidor (/startups/:id)
 export default function PerfilStartup() {
   const { id = "" } = useParams();
+  // Uma visita por abertura, sem mostrar quem visitou (RF10, ADR-006)
+  useRegistrarVisita(useSessaoReunioes(), id);
   const userKey = useUserKey();
 
   const carregar = useCallback(() => obterStartup(userKey, id), [id, userKey]);
@@ -120,6 +125,7 @@ export default function PerfilStartup() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-3xl font-bold text-deepgreen sm:text-4xl">{startup.nome}</h1>
+                <SeloPopularidade percentual={detalhe.popularidade} tamanho="md" />
                 {startup.verificada && (
                   <span className={`${PILULA} bg-sage/40 font-semibold text-deepgreen`}>
                     <BadgeCheck size={14} aria-hidden="true" />

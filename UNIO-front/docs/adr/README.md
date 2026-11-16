@@ -34,4 +34,5 @@ O que muda, o que fica pendente e os arquivos afetados.
 | [ADR-002](ADR-002-mapeamento-onboarding-dtos.md) | Mapeamento das respostas do onboarding para os DTOs do back | Aceita |
 | [ADR-003](ADR-003-respostas-onboarding-mescla-por-chave.md) | Gravação no endpoint de onboarding sempre por mescla de chave | Aceita |
 | [ADR-004](ADR-004-reunioes.md) | Reuniões entre unios com mock no front e mapeamento isolado para /api/meetings | Superada em parte pela ADR-005 |
-| [ADR-005](ADR-005-reunioes-integradas-ao-back.md) | Reuniões integradas ao /api/meetings, com o mock mantido como modo alternativo | Aceita |
+| [ADR-005](ADR-005-reunioes-integradas-ao-back.md) | Reuniões integradas ao /api/meetings, com o mock mantido como modo alternativo | Aceita (status REALIZADA atualizado pela ADR-006) |
+| [ADR-006](ADR-006-avaliacao-e-popularidade.md) | Avaliação pós-reunião só com nota, popularidade em porcentagem e fluxo "Compareci" | Aceita |
