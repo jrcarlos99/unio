@@ -561,3 +561,408 @@ até a refatoração. Registrar como trabalho futuro (D011).
 
 **Trabalho futuro:** refatorar `updateCurrentProfile` para aceitar
 DTOs tipados por role.
+
+## D028 — Comunicação dentro da plataforma (T09a/T09b) sem exigir match
+
+**Contexto:** RF05 pede mensagens e agendamento de reuniões. O back não tem
+uma entidade de "match"/interesse mútuo — hoje o "unio" é controlado no front
+(localStorage).
+
+**Decisão:** Conversas e reuniões ligam um usuário `STARTUP` a um `INVESTOR`,
+identificados pelo **id do usuário** (`Long`), sem exigir match prévio. O par
+startup/investidor tem uma única conversa (`uk_conversations_pair`). ADMIN não
+participa. Recurso de outra pessoa responde 404 (não 403) para não revelar ids.
+Reuniões têm máquina de estados `PENDENTE → CONFIRMADA → REALIZADA` (ou
+`RECUSADA`/`CANCELADA`) e checagem de conflito de agenda.
+
+**Justificativa:** Entrega RF05 sem bloquear em uma modelagem de match que
+ainda não existe no back. Quando o match for persistido, basta uma checagem em
+`ParticipantService.requireCounterpart`.
+
+**Trabalho futuro:** exigir match; notificações (e-mail/push) de nova mensagem e
+convite; tempo real (WebSocket/SSE) em vez de polling.
+
+
+## D029 — Exclusão de conta por anonimização (T13 / LGPD)
+
+**Contexto:** A LGPD (art. 18) garante eliminação dos dados, mas mensagens,
+reuniões e avaliações também pertencem ao outro participante, e o log de
+auditoria tem base legal própria (segurança/obrigação legal).
+
+**Decisão:** `POST /api/privacy/delete-account` (com senha) **anonimiza** o
+usuário em vez de apagar a linha: e-mail vira `removido-{id}@unio.invalid`,
+documento é apagado, senha trocada por hash aleatório e `deleted_at` é
+preenchido. São apagados perfil, onboarding, pitch, tokens de senha, scores e
+feedbacks do scorecard. Conteúdo das mensagens enviadas vira
+`[mensagem removida a pedido do titular]`, comentários das avaliações escritas
+são apagados (a nota fica para as médias) e reuniões ativas são canceladas. O
+consentimento é marcado como revogado e mantido como prova. Registros de
+auditoria antigos são mantidos; o evento de exclusão é auditado só com o id.
+
+**Justificativa:** Remove os dados pessoais sem quebrar a integridade
+referencial nem o histórico do outro participante.
+
+**Impacto:** Login e tokens antigos deixam de funcionar (o e-mail original não
+existe mais). Usuário removido aparece como "Usuário removido".
+
+**Pendente:** definir com o responsável jurídico o prazo de retenção do
+`audit_logs` e revisar `docs/lgpd.md`.
+
+
+## D030 — Method security ativado e 401 para não autenticado (Bloco E)
+
+**Contexto:** O projeto usava `@PreAuthorize` nos controllers, mas não tinha
+`@EnableMethodSecurity` — as anotações eram ignoradas (só valiam as regras de
+URL do `SecurityConfig`). Requisições sem token recebiam 403 e token
+expirado/adulterado gerava 500 no filtro JWT.
+
+**Decisão:** Ativar `@EnableMethodSecurity`; responder 401 (via
+`HttpStatusEntryPoint`) quando não há autenticação válida; o filtro JWT trata
+`JwtException` e usuário inexistente sem lançar exceção. Criado
+`GlobalExceptionHandler` com formato único de erro (`message` +
+`errors[].defaultMessage`, que o front já lê).
+
+**Impacto:** `GET /api/scorecard/recommendations` passa a ser realmente restrito
+a INVESTOR/ADMIN. O front já trata 401 redirecionando ao login. O teste
+`OnboardingControllerTest.semTokenEhBarrado` foi ajustado de 403 para 401.
+
+
+## D031 — Observabilidade e carga como código (T17/T18)
+
+**Decisão:** Alertas do Azure Monitor versionados em `infra/azure/alerts.bicep`
+(aplicados por `infra/azure/deploy-alerts.sh`) e teste de carga em k6
+(`load-test/k6/unio-load-test.js`) com os critérios de aceite como
+`thresholds`. Documentação em `docs/operacao/alertas-azure.md` e
+`docs/testes/teste-de-carga.md`.
+
+**Justificativa:** Reprodutível por qualquer pessoa da equipe e revisável em PR,
+em vez de configuração manual no portal.
+
+
+## D032: Reunião com até 3 horários sugeridos em tabela própria
+
+Autora: Carol
+Data: 2026-11-08
+Status: Aceita
+
+**Contexto:** A tela de Reuniões do front (ADR-004 e ADR-005 do front) deixa quem
+solicita sugerir até 3 horários, e o convidado escolhe um ao aceitar. A T09b
+(`V20__create_meetings.sql`) guardava um horário só (`starts_at`), então o front
+precisava negociar os horários fora do back.
+
+**Alternativas:**
+
+- (a) Coluna `suggested_times` em texto ou JSON dentro de `meetings`
+- (b) Tabela `meeting_suggested_times` (id, meeting_id, starts_at, position 1 a 3)
+- (c) Uma reunião PENDENTE por horário sugerido, apagando as outras no aceite
+
+**Decisão:** (b). `UNIQUE (meeting_id, position)` e `CHECK (position BETWEEN 1 AND 3)`.
+Os horários ficam em ordem cronológica: a posição 1 é o mais cedo e é ele que fica
+em `starts_at`/`ends_at` enquanto a reunião está PENDENTE. Validação no
+`MeetingService`: de 1 a 3 horários, todos no futuro, sem repetidos (comparados até
+o segundo). `POST /{id}/accept` recebe o corpo opcional `{ "startsAt" }`: com mais
+de um horário ele é obrigatório e precisa ser um dos sugeridos (senão **400**); com
+um horário só, o corpo pode faltar. Ao confirmar, `starts_at` e `ends_at` passam a
+ser os do horário escolhido. As reuniões existentes ganham, na migration, uma linha
+com o `starts_at` atual.
+
+**Justificativa:** (a) não tem integridade nem ordem garantidas pelo banco e
+complica as consultas de intervalo. (c) espalha uma mesma conversa em várias linhas
+e quebra o histórico, as avaliações (T12) e as métricas (T16), que contam reuniões.
+(b) mantém `starts_at` com o significado de sempre, então conflito, conclusão,
+avaliação e exportação LGPD continuam funcionando sem mudança.
+
+**Impacto:**
+
+- Migration `V24__meetings_proposals.sql` (tabela nova e carga das reuniões antigas).
+- `entity/MeetingSuggestedTime.java` (novo), `entity/Meeting.java` (lista
+  `suggestedTimes` com `@OrderBy` e `replaceSuggestedTimes`, que reaproveita as
+  linhas por posição para não violar a UNIQUE), `dto/MeetingAcceptRequest.java`
+  (novo), `dto/MeetingCreateRequest.java`, `service/MeetingService.java`,
+  `controller/MeetingController.java`.
+- `MeetingResponse.suggestedTimes` traz a lista ordenada.
+- Testes: `MeetingServiceTest` (1 e 3 horários, 4 horários dá 400, repetidos,
+  aceite com horário válido e inválido, aceite sem corpo com 1 e com 3 horários) e
+  `MeetingProposalsIntegrationTest`.
+
+
+## D033: Proposta vigente, contraproposta e remarcação
+
+Autora: Carol
+Data: 2026-11-08
+Status: Aceita
+
+**Contexto:** Na T09b só o convidado (`invitee`) aceitava ou recusava, e não havia
+como devolver a proposta com outros horários. O front tem "Propor outros horários"
+numa solicitação recebida e "Remarcar" numa confirmada.
+
+**Alternativas:**
+
+- (a) Criar uma reunião nova a cada contraproposta, recusando a anterior
+- (b) Guardar quem fez a proposta vigente (`proposer_user_id`) e trocar os horários
+  na mesma reunião
+
+**Decisão:** (b). Coluna `proposer_user_id` (FK para `users`, NOT NULL; as linhas
+existentes recebem o `organizer_user_id`). Novo `POST /api/meetings/{id}/counter-proposal`
+com `{ "suggestedTimes": [1 a 3], "message"?: string }`:
+
+- PENDENTE: só quem **não** é o proposer vigente (o proposer recebe **403**);
+- CONFIRMADA: qualquer participante (é a remarcação);
+- outros status: **409**.
+
+O efeito é o mesmo nos dois casos: os horários sugeridos são substituídos, o
+proposer passa a ser quem chamou, o status volta para PENDENTE e `starts_at`/`ends_at`
+refletem o primeiro horário novo (a duração é mantida). A `message`, quando vem,
+substitui a anterior. `accept` e `decline` passam a validar contra o proposer: quem
+responde é sempre o outro participante (**403** para o proposer). O organizador
+continua sendo quem criou a reunião e só ele edita link e local (D036). Na
+contraproposta vale a mesma regra de conflito da criação (D034): **409** só se todos
+os horários novos conflitarem, sem contar a própria reunião.
+
+**Justificativa:** (a) multiplica reuniões para uma única negociação, perde o
+vínculo com avaliações e confunde as métricas. Com (b), a mesma reunião vai e volta
+entre os dois até alguém aceitar, recusar ou cancelar, e a regra "responde quem não
+propôs" vale igual para startup e investidor.
+
+**Impacto:**
+
+- Migration `V24__meetings_proposals.sql` (coluna `proposer_user_id`).
+- `entity/Meeting.java` (`proposer`, `isProposer`, `isResponder`),
+  `entity/MeetingStatus.java` (diagrama e `isActive()`),
+  `dto/MeetingCounterProposalRequest.java` (novo), `service/MeetingService.java`
+  (`counterPropose`, `requireResponder`), `controller/MeetingController.java`.
+- `MeetingResponse.proposedByMe` diz se quem consulta fez a proposta vigente.
+- A mensagem de erro do accept/decline mudou de "Apenas o convidado pode responder
+  ao convite" para "Apenas quem recebeu a proposta pode responder" (o status 403 é o
+  mesmo).
+- Testes: contraproposta pelo convidado e pelo organizador, remarcação de uma
+  CONFIRMADA voltando para PENDENTE, contraproposta em RECUSADA (409).
+
+
+## D034: Conflito de agenda só com reuniões confirmadas
+
+Autora: Carol
+Data: 2026-11-08
+Status: Aceita
+
+**Contexto:** Na T09b, o `countOverlapping` contava reuniões PENDENTE e CONFIRMADA
+e a criação respondia **409** em qualquer sobreposição. Com propostas de vários
+horários, uma pendente não reserva nenhum deles: bloquear por ela impediria duas
+propostas abertas no mesmo dia. O front só **avisa** do conflito ao montar a
+proposta.
+
+**Alternativas:**
+
+- (a) Manter a regra da T09b
+- (b) Nunca bloquear e só avisar
+- (c) Só reuniões CONFIRMADAS ocupam a agenda; bloquear quando não sobra opção
+
+**Decisão:** (c). Mudança de regra em relação à T09b:
+
+- pendentes não bloqueiam nada;
+- criação e contraproposta: **409** só se **todos** os horários sugeridos
+  conflitarem com reuniões CONFIRMADAS de qualquer um dos participantes;
+- aceite: **409** se o horário escolhido conflitar com uma CONFIRMADA (a própria
+  reunião é ignorada).
+
+O `countOverlapping` do `MeetingRepository` continua com a mesma assinatura; o
+`MeetingService` passa só `CONFIRMADA` em `statuses`. `MeetingStatus.blocksSchedule()`
+passou a ser só CONFIRMADA, e o teste de "pode cancelar" usa o novo
+`MeetingStatus.isActive()` (PENDENTE ou CONFIRMADA).
+
+**Justificativa:** (b) deixaria o back aceitar duas reuniões confirmadas no mesmo
+horário. (c) mantém a garantia que importa (ninguém tem duas confirmadas
+sobrepostas) e deixa a negociação livre, como a tela espera.
+
+**Impacto (testes da T09b):**
+
+- `MeetingServiceTest.scheduleComConflitoDeAgendaDevolve409` continua valendo (o
+  único horário conflita com uma confirmada).
+- Novos: `scheduleComAlgunsHorariosOcupadosCriaAReuniao`,
+  `scheduleComTodosOsHorariosOcupadosDevolve409`, `conflitoContaSoReunioesConfirmadas`,
+  `aceitarHorarioQueConflitaComConfirmadaDevolve409`.
+- `CommunicationFlowIntegrationTest.reuniaoAceitaRealizadaEAvaliada`: a segunda
+  proposta no mesmo horário agora é criada (**201**, antes era 409); o conflito
+  aparece ao aceitá-la depois que a primeira foi confirmada (**409**).
+- Arquivos: `repository/MeetingRepository.java` (javadoc),
+  `entity/MeetingStatus.java`, `service/MeetingService.java`.
+
+
+## D035: Assunto, mensagem, formato e local da reunião
+
+Autora: Carol
+Data: 2026-11-08
+Status: Aceita
+
+**Contexto:** A tela pede assunto (4 opções), mensagem de até 280 caracteres,
+formato online ou presencial e, no presencial, local (nome, endereço e
+referência). A T09b só tinha `title`, `agenda` e `meeting_url`.
+
+**Alternativas:**
+
+- (a) Colocar assunto, mensagem e local no texto de `agenda`
+- (b) Colunas próprias em `meetings`
+
+**Decisão:** (b). Colunas novas, todas opcionais exceto o formato:
+`subject VARCHAR(40)`, `message VARCHAR(280)`,
+`format VARCHAR(12) NOT NULL DEFAULT 'ONLINE'` com `CHECK (format IN ('ONLINE','PRESENCIAL'))`,
+`location_name VARCHAR(150)`, `location_address VARCHAR(255)`,
+`location_reference VARCHAR(255)`. Enum `MeetingFormat`. Validações: mensagem até
+280; local só quando `format = PRESENCIAL` (senão **400**); `meetingUrl` continua só
+`https://`. O `subject` é texto livre de até 40 caracteres (o back não fixa as 4
+opções do front).
+
+**Justificativa:** (a) obriga o front a montar e desmontar texto e impede validar
+cada campo. Colunas próprias deixam o contrato claro e o Swagger documentado.
+
+**Impacto:**
+
+- Migration `V24__meetings_proposals.sql`.
+- `entity/MeetingFormat.java` (novo), `entity/Meeting.java`,
+  `dto/MeetingCreateRequest.java`, `dto/MeetingLocationDto.java` (novo),
+  `dto/MeetingResponse.java` (`subject`, `message`, `format`,
+  `location { name, address, reference }`, nulo quando não há local),
+  `service/MeetingService.java`.
+- A exportação LGPD (`DataPrivacyService.meetingsData`) ainda não inclui `subject`,
+  `message` e local: fica como pendência (fora do escopo desta tarefa).
+
+
+## D036: PATCH /api/meetings/{id}/details para link e local
+
+Autora: Carol
+Data: 2026-11-08
+Status: Aceita
+
+**Contexto:** Quem organiza a reunião pode informar ou trocar o link (online) ou o
+local (presencial) depois de criada, inclusive depois de confirmada. A T09b não
+tinha como alterar uma reunião.
+
+**Alternativas:**
+
+- (a) `PUT /api/meetings/{id}` com a reunião inteira
+- (b) `PATCH /api/meetings/{id}/details` só com link e local
+
+**Decisão:** (b). Corpo `{ "meetingUrl"?: string, "location"?: { name, address, reference } }`.
+Só o **organizador** (quem criou; **403** para o outro), com a reunião PENDENTE ou
+CONFIRMADA (**409** nos outros status). Campo ausente fica como está; `meetingUrl`
+vazio apaga o link; `location` substitui o local inteiro e exige `name`. Mesmas
+validações da criação: link só `https://` (**400**), local só em PRESENCIAL (**400**).
+Corpo sem nenhum dos dois: **400**.
+
+**Justificativa:** horários e status têm regras próprias (D032 a D034); um PUT
+genérico abriria caminho para trocar horário sem passar pela proposta. O PATCH
+restrito deixa claro o que o organizador pode mudar sozinho.
+
+**Impacto:** `dto/MeetingDetailsRequest.java` (novo), `dto/MeetingLocationDto.java`,
+`service/MeetingService.java` (`updateDetails`), `controller/MeetingController.java`.
+Sem migration própria (usa as colunas da D035, `V24__meetings_proposals.sql`).
+Testes: `detailsSoPeloOrganizador`, `detailsComLocalEmReuniaoOnlineDevolve400`,
+`detailsAtualizaOLocalDaPresencial`, `detailsEmReuniaoCanceladaDevolve409` e o
+fluxo do `MeetingProposalsIntegrationTest`.
+
+
+## D037: GET /api/meetings/counterparts (com quem marcar reunião)
+
+Autora: Carol
+Data: 2026-11-08
+Status: Aceita
+
+**Contexto:** O campo "Com quem" do modal de reunião precisa de uma lista de
+pessoas reais. O front só tinha os unios do mock; o back não tinha uma listagem de
+usuários do outro papel para quem não é ADMIN.
+
+**Alternativas:**
+
+- (a) Reaproveitar `GET /api/scorecard/recommendations` (só INVESTOR/ADMIN, D030)
+- (b) Endpoint próprio da comunicação
+
+**Decisão:** (b). `GET /api/meetings/counterparts` (STARTUP e INVESTOR) devolve os
+usuários **ativos** (sem `deleted_at`) do papel complementar que **já criaram
+perfil**, com:
+
+`{ userId, name, role, subtitle, segment?, stage?, tipoInvestidor?, ticketMin?, ticketMax?, matchScore? }`
+
+- `name`: `ParticipantService.displayName` (nome da startup; para investidor, a
+  parte do e-mail antes do `@`, como já acontece em conversas e reuniões).
+- `subtitle`: "segmento • estágio" para startup; tipo de perfil (`perfilRisco`) para
+  investidor, ou "Investidor" quando vazio.
+- `matchScore`: `totalScore` mais recente do scorecard entre os dois, lido do
+  `MatchScoreRepository` (só leitura, usando o UUID `new UUID(0, id)` da D018/D025).
+  Nulo quando ainda não foi calculado.
+- Ordenação: maior `matchScore` primeiro, sem score no fim, depois por nome.
+
+**Não expõe:** e-mail, documento, senha, localização, capital procurado, pitch,
+disponibilidade nem qualquer dado de contato. ADMIN recebe **403**.
+
+**Justificativa:** (a) não serve para a startup e devolve o cálculo completo do
+score. Um endpoint enxuto mostra só o necessário para escolher com quem marcar.
+
+**Impacto:** `dto/MeetingCounterpartResponse.java` (novo),
+`service/MeetingCounterpartService.java` (novo, 3 consultas: perfis, usuários e
+scores), `controller/MeetingController.java`. Sem migration. A lista **não** é
+filtrada por match (ver D039). Testes: `MeetingCounterpartServiceTest` (ordem,
+score mais recente, usuário removido fora, retorno sem e-mail e sem documento,
+ADMIN 403) e `MeetingProposalsIntegrationTest.counterpartsSemEmail`.
+
+
+## D038: Compatibilidade com o contrato da T09b
+
+Autora: Carol
+Data: 2026-11-08
+Status: Aceita
+
+**Contexto:** As mudanças das D032 a D036 não podem quebrar quem já usa
+`/api/meetings` com o contrato da T09b (testes de integração, exportação LGPD,
+avaliações e métricas).
+
+**Decisão:**
+
+- `POST /api/meetings` só com `startsAt` continua valendo e vira uma proposta de 1
+  horário. Se vierem `startsAt` e `suggestedTimes`, vale `suggestedTimes`.
+- `title` passa a ser opcional quando vier `subject` (o `subject` vira o título);
+  sem os dois, **400**.
+- `POST /{id}/accept` sem corpo continua valendo quando há um horário só.
+- `MeetingResponse` mantém todos os campos e a ordem da T09b; os novos vêm no fim.
+- `GET /api/meetings` mantém o filtro `status` e ganha o intervalo opcional
+  `?from=&to=` (ISO-8601, `[from, to)`); entram as reuniões com algum horário no
+  intervalo (o confirmado ou, numa PENDENTE, um dos sugeridos). `from >= to` dá **400**.
+- O record `MeetingCreateRequest` ganhou um construtor com os 6 campos antigos.
+
+**Justificativa:** o front e os testes antigos continuam funcionando sem mudança,
+e cada campo novo é opcional.
+
+**Impacto:** `dto/MeetingCreateRequest.java`, `dto/MeetingResponse.java`,
+`service/MeetingService.java` (`listMine` com intervalo, `resolveSuggestedTimes`,
+`resolveTitle`), `controller/MeetingController.java`, migration
+`V24__meetings_proposals.sql` (carga das reuniões existentes). As duas mudanças de
+comportamento visíveis são a regra de conflito (D034) e a validação de accept/decline
+pelo proposer (D033).
+
+
+## D039: Match mútuo continua só no front
+
+Autora: Carol
+Data: 2026-11-08
+Status: Aceita
+
+**Contexto:** A D028 liberou a comunicação sem exigir match porque o back não tem a
+entidade de interesse mútuo. O produto quer reuniões só entre quem deu match, e o
+front controla os unios no mock (localStorage).
+
+**Alternativas:**
+
+- (a) Criar agora a entidade de match no back e exigir em `requireCounterpart`
+- (b) Manter a D028 e registrar a pendência
+
+**Decisão:** (b). Nesta tarefa o back não muda autenticação, scorecard, mensagens,
+avaliações nem a regra de match. `GET /api/meetings/counterparts` e
+`POST /api/meetings` aceitam qualquer usuário ativo do papel complementar com
+perfil. No front, a regra "só com match" continua valendo no modo mock; no modo API
+a lista mostra os usuários reais (ADR-005 do front).
+
+**Justificativa:** o match persistido é uma decisão de produto e de modelo que
+afeta descoberta, scorecard e comunicação. Ele não cabe numa tarefa de reuniões.
+
+**Pendência para o squad:** persistir o interesse mútuo no back e exigir match em
+`ParticipantService.requireCounterpart` (vale para mensagens e reuniões) e em
+`MeetingCounterpartService`. Sem arquivos alterados nesta decisão.

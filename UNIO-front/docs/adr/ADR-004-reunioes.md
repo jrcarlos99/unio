@@ -1,8 +1,15 @@
 # ADR-004: Reuniões entre unios com mock no front e mapeamento isolado para /api/meetings
 
-- **Status:** Proposta
+- **Autora:** Carol
+- **Status:** Superada em parte pela ADR-005
 - **Data:** 2026-11-08
 - **Back:** branch `feat/p2-comunicacao-lgpd-qualidade` (`communication/MeetingController`, `V20__create_meetings.sql`), lida sem alterações
+
+> **Atualização (2026-11-08):** a lacuna descrita abaixo foi resolvida no back com a opção A
+> (D032 a D039 em `unio/docs/decisoes.md`, migration `V24__meetings_proposals.sql`). O serviço
+> agora tem dois modos (mock e API) e o mapeamento saiu do fim do serviço para
+> `services/reunioes.mapping.ts`: ver [ADR-005](ADR-005-reunioes-integradas-ao-back.md). Continuam
+> valendo desta ADR o fuso fixo, o `.ics` gerado no front e o comportamento do modo mock.
 
 ## Contexto
 

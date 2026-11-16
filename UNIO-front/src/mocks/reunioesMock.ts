@@ -11,7 +11,7 @@ import { diaDaSemana, inicioDoDia, somarDias, somarMinutos } from "../utils/data
 
 // MOCK, DADOS DE EXEMPLO: reuniões fictícias para a tela de Reuniões não
 // abrir vazia. O back ainda NÃO tem reuniões com horários sugeridos. Só o
-// services/reunioesService.ts lê daqui.
+// services/reunioesService.mock.ts lê daqui (só no modo mock).
 //
 // São criadas apenas com quem deu match (unios do usuário), sempre relativas
 // a hoje (semana atual do navegador, no fuso de Recife) e marcadas com

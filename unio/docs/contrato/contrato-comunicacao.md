@@ -55,33 +55,92 @@ caso devolve **409**.
 
 ## T09b — Reuniões (`/api/meetings`)
 
+Atualizado em 2026-11-08 com as D032 a D039 (`V24__meetings_proposals.sql`). O
+contrato antigo continua valendo (D038).
+
 | Método | Rota | Quem | Transição |
 |---|---|---|---|
-| POST | `/api/meetings` | qualquer participante | cria `PENDENTE` |
-| GET | `/api/meetings?status=CONFIRMADA` | — | lista (filtro opcional) |
+| POST | `/api/meetings` | qualquer participante | cria `PENDENTE` com 1 a 3 horários sugeridos |
+| GET | `/api/meetings?status=CONFIRMADA&from=...&to=...` | — | lista (filtros opcionais) |
+| GET | `/api/meetings/counterparts` | STARTUP ou INVESTOR | com quem dá para marcar (D037) |
 | GET | `/api/meetings/{id}` | participantes | — |
-| POST | `/api/meetings/{id}/accept` | convidado | `PENDENTE → CONFIRMADA` |
-| POST | `/api/meetings/{id}/decline` | convidado | `PENDENTE → RECUSADA` |
+| POST | `/api/meetings/{id}/accept` | quem não fez a proposta vigente | `PENDENTE → CONFIRMADA` (corpo `{ "startsAt" }`) |
+| POST | `/api/meetings/{id}/decline` | quem não fez a proposta vigente | `PENDENTE → RECUSADA` |
+| POST | `/api/meetings/{id}/counter-proposal` | ver abaixo | `PENDENTE/CONFIRMADA → PENDENTE` |
+| PATCH | `/api/meetings/{id}/details` | organizador | link e/ou local (sem mudar status) |
 | POST | `/api/meetings/{id}/cancel` | qualquer um | `PENDENTE/CONFIRMADA → CANCELADA` (corpo opcional `{ "reason": "..." }`) |
 | POST | `/api/meetings/{id}/complete` | qualquer um, depois do início | `CONFIRMADA → REALIZADA` |
 
 ```json
-// POST /api/meetings
+// POST /api/meetings (formato novo)
+{ "participantId": 12, "subject": "Apresentação de pitch", "durationMinutes": 45,
+  "suggestedTimes": ["2026-11-05T14:00:00-03:00", "2026-11-06T10:00:00-03:00"],
+  "message": "Queremos apresentar a tração do trimestre.",
+  "format": "PRESENCIAL", "locationName": "Porto Digital",
+  "locationAddress": "Rua do Apolo, 181, Recife", "locationReference": "Sala 3" }
+
+// POST /api/meetings (contrato antigo, continua valendo: vira 1 horário sugerido)
 { "participantId": 12, "title": "Primeira conversa", "agenda": "Tese e próximos passos",
   "startsAt": "2026-11-05T14:00:00-03:00", "durationMinutes": 30,
   "meetingUrl": "https://meet.google.com/abc-defg-hij" }
 
-// Meeting (resposta)
-{ "id": 5, "title": "Primeira conversa", "agenda": "Tese e próximos passos",
-  "startsAt": "2026-11-05T17:00:00Z", "endsAt": "2026-11-05T17:30:00Z", "durationMinutes": 30,
-  "meetingUrl": "https://meet.google.com/abc-defg-hij", "status": "PENDENTE", "cancelReason": null,
+// Meeting (resposta): campos da T09b + os novos no fim
+{ "id": 5, "title": "Apresentação de pitch", "agenda": null,
+  "startsAt": "2026-11-05T17:00:00Z", "endsAt": "2026-11-05T17:45:00Z", "durationMinutes": 45,
+  "meetingUrl": null, "status": "PENDENTE", "cancelReason": null,
   "organizer": true, "participant": { "id": 12, "name": "AgroTech PE", "role": "STARTUP", "active": true },
-  "createdAt": "...", "updatedAt": "..." }
+  "createdAt": "...", "updatedAt": "...",
+  "subject": "Apresentação de pitch", "message": "Queremos apresentar a tração do trimestre.",
+  "format": "PRESENCIAL",
+  "location": { "name": "Porto Digital", "address": "Rua do Apolo, 181, Recife", "reference": "Sala 3" },
+  "suggestedTimes": ["2026-11-05T17:00:00Z", "2026-11-06T13:00:00Z"],
+  "proposedByMe": true }
+
+// POST /api/meetings/{id}/accept
+{ "startsAt": "2026-11-06T13:00:00Z" }
+
+// POST /api/meetings/{id}/counter-proposal
+{ "suggestedTimes": ["2026-11-07T15:00:00Z"], "message": "Pode ser nesse dia?" }
+
+// PATCH /api/meetings/{id}/details
+{ "meetingUrl": "https://meet.google.com/abc-defg-hij" }
+{ "location": { "name": "Porto Digital", "address": "Rua do Apolo, 181", "reference": null } }
+
+// GET /api/meetings/counterparts (sem e-mail nem documento)
+[ { "userId": 12, "name": "Tidalog", "role": "STARTUP", "subtitle": "Logística • Seed",
+    "segment": "Logística", "stage": "Seed", "tipoInvestidor": null,
+    "ticketMin": null, "ticketMax": null, "matchScore": 87.5 } ]
 ```
 
-Regras: `startsAt` no futuro; duração de 15 a 240 min; `meetingUrl` opcional,
-começando com `https://`; horário em conflito com outra reunião pendente ou
-confirmada de qualquer um dos dois → **409**. Datas sempre em UTC na resposta.
+Regras:
+
+- **Horários (D032):** de 1 a 3 em `suggestedTimes`, todos no futuro, sem repetidos
+  (4 ou mais → **400**). Com `suggestedTimes`, o `startsAt` é ignorado; sem ele, o
+  `startsAt` vira a lista de 1 (D038). A resposta traz `suggestedTimes` em ordem
+  cronológica; numa PENDENTE, `startsAt`/`endsAt` são os do primeiro horário.
+- **Aceite:** com mais de um horário, o corpo `{ "startsAt" }` é obrigatório e deve
+  ser um dos sugeridos (senão **400**); com um só, o corpo pode faltar. Depois do
+  aceite, `startsAt`/`endsAt` são os do horário escolhido.
+- **Quem responde (D033):** numa PENDENTE, `accept` e `decline` são de quem **não**
+  fez a proposta vigente (`proposedByMe: false`); o proposer recebe **403**.
+- **Contraproposta e remarcação (D033):** numa PENDENTE, só quem não fez a proposta
+  vigente; numa CONFIRMADA, qualquer participante. Troca os horários, quem chamou
+  passa a ser o proposer e o status volta para PENDENTE.
+- **Conflito (D034):** só reuniões CONFIRMADAS ocupam a agenda. Criação e
+  contraproposta → **409** só se todos os horários conflitarem; aceite → **409** se
+  o horário escolhido conflitar.
+- **Título (D038):** `title` é opcional quando vier `subject`; sem os dois → **400**.
+- **Formato e local (D035):** `format` é `ONLINE` (padrão) ou `PRESENCIAL`; local só
+  em PRESENCIAL (senão **400**). `subject` até 40, `message` até 280 caracteres.
+- **Link e local (D036):** só o organizador (`organizer: true`) altera, com a reunião
+  PENDENTE ou CONFIRMADA. `meetingUrl` só `https://` (vazio apaga). Campo ausente
+  fica como está.
+- **Intervalo:** `from` e `to` em ISO-8601, `[from, to)`. Entram as reuniões com
+  algum horário no intervalo (o confirmado ou, numa PENDENTE, um dos sugeridos).
+- **Counterparts (D037):** usuários ativos do papel complementar com perfil criado.
+  `matchScore` é nulo quando o scorecard ainda não calculou o par. **Não** filtra por
+  match mútuo (D039).
+- Duração de 15 a 240 min. Datas sempre em UTC na resposta.
 
 ## T12 — Avaliação pós-interação
 

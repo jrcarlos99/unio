@@ -1,7 +1,6 @@
 import { rotuloTipoInvestidor } from "../components/discovery/rotulos";
-import type { UserProfile } from "../contexts/AuthContext";
 import { FUNDADORES_EXEMPLO, montarExemplos } from "../mocks/reunioesMock";
-import type { PerfilApp, Recomendacao } from "../types/recomendacoes";
+import type { Recomendacao } from "../types/recomendacoes";
 import {
   MAX_CARACTERES_MENSAGEM,
   MAX_HORARIOS_SUGERIDOS,
@@ -14,7 +13,7 @@ import {
   type ParticipanteReuniao,
   type RespostaSolicitacao,
   type Reuniao,
-  type StatusReuniao,
+  type SessaoReunioes,
   type TipoNotificacao,
   type ValorLinkOuLocal,
 } from "../types/reunioes";
@@ -29,20 +28,17 @@ import {
   somarMinutos,
 } from "../utils/datas";
 import { formatarFaixaTicket, formatarMoeda } from "../utils/formatoDescoberta";
-import { gerarConteudoIcs } from "../utils/ics";
 import { iniciais } from "../utils/nomeUsuario";
-import { tituloReuniao, validarLinkHttps } from "../utils/reunioes";
+import { arquivoIcsDaReuniao, validarLinkHttps } from "../utils/reunioes";
 import { chaveUsuario } from "./onboardingService";
+import { gerarCodigo } from "./reunioes.mapping";
 import { listarUnios } from "./recomendacoesService";
 import { gravarBanco, lerBanco, type BancoReunioes, type ReuniaoArmazenada } from "./reunioesStore";
 
-// MOCK, SEM BACK. Único ponto de dados da tela de Reuniões (os dois perfis),
-// do sino de notificações e da bolinha da sidebar. As telas usam SÓ estas
-// funções e os tipos de types/reunioes.ts. Tudo já devolve Promise: para
-// trocar pelo back, reimplementa-se cada função com chamadas HTTP (ver o
-// mapeamento toBack/fromBack no fim do arquivo e o ADR-004) e as telas não
-// mudam. O parâmetro `sessao` só existe por causa do localStorage e dos
-// unios do mock: com a API, o token já identifica o usuário.
+// MOCK, SEM BACK (VITE_MOCK_BACKEND=true). As telas não importam este
+// arquivo: usam services/reunioesService.ts, que escolhe entre este mock e
+// reunioesService.api.ts (ADR-005). As duas implementações têm as mesmas
+// funções e os mesmos tipos (types/reunioes.ts).
 //
 // Regras:
 // - Só é possível solicitar reunião com quem deu match (unios de
@@ -57,10 +53,7 @@ import { gravarBanco, lerBanco, type BancoReunioes, type ReuniaoArmazenada } fro
 // os envios pares ficam pendentes. Os dados de exemplo ficam em
 // mocks/reunioesMock.ts.
 
-export interface SessaoReunioes {
-  user: UserProfile | null;
-  perfil: PerfilApp;
-}
+export type { SessaoReunioes };
 
 const LATENCIA_MS = 250;
 const RESPOSTA_MOCK_MS = 5000;
@@ -97,13 +90,6 @@ function novoId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-// Código curto e estável a partir do id ("UNIO-9842")
-export function gerarCodigo(id: string) {
-  let hash = 0;
-  for (const caractere of id) hash = (hash * 31 + caractere.charCodeAt(0)) >>> 0;
-  return `UNIO-${1000 + (hash % 9000)}`;
 }
 
 function contraparteDe(rec: Recomendacao): ContraparteReuniao {
@@ -159,13 +145,13 @@ function participanteDe(contraparte: ContraparteReuniao, organizador: LadoReunia
       ? { nome: fundador.nome, cargo: fundador.cargo, papel }
       : { nome: `Equipe ${contraparte.nome}`, cargo: "Fundadores", papel };
   }
-  return { nome: contraparte.nome, cargo: contraparte.cargoEmpresa.split(",")[0], papel };
+  return { nome: contraparte.nome, cargo: (contraparte.cargoEmpresa ?? "").split(",")[0], papel };
 }
 
 // Unios com match, prontos para "Com quem"
 export async function listarContrapartes(sessao: SessaoReunioes): Promise<ContraparteReuniao[]> {
   const unios = await listarUnios(sessao.perfil, sessao.user);
-  return unios.map(contraparteDe).sort((a, b) => b.matchPercentual - a.matchPercentual);
+  return unios.map(contraparteDe).sort((a, b) => (b.matchPercentual ?? 0) - (a.matchPercentual ?? 0));
 }
 
 // ---------------------------------------------------------------------------
@@ -482,36 +468,7 @@ export async function definirLinkOuLocal(
 export async function gerarIcs(sessao: SessaoReunioes, id: string): Promise<ArquivoIcs> {
   await esperar();
   const banco = await preparar(sessao);
-  const reuniao = buscar(banco, id);
-  if (reuniao.status !== "confirmada" || !reuniao.horarioConfirmado) {
-    throw new Error("Só reuniões confirmadas podem ir para o calendário.");
-  }
-  const link = reuniao.formato === "online" ? validarLinkHttps(reuniao.link) : null;
-  const local =
-    reuniao.formato === "presencial" && reuniao.local
-      ? [reuniao.local.nome, reuniao.local.endereco].filter(Boolean).join(", ")
-      : undefined;
-  const descricao = [
-    `${reuniao.assunto} com ${reuniao.contraparte.nome} (UNIO).`,
-    reuniao.pauta || reuniao.mensagem,
-    link ? `Link: ${link}` : undefined,
-    reuniao.local?.referencia ? `Referência: ${reuniao.local.referencia}` : undefined,
-    `ID #${reuniao.codigo}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-  return {
-    nomeArquivo: `reuniao-${reuniao.codigo.toLowerCase()}.ics`,
-    conteudo: gerarConteudoIcs({
-      uid: `${reuniao.id}@unio.app`,
-      inicio: reuniao.horarioConfirmado,
-      duracaoMin: reuniao.duracaoMin,
-      titulo: tituloReuniao(reuniao),
-      descricao,
-      ...(local ? { local } : {}),
-      ...(link ? { url: link } : {}),
-    }),
-  };
+  return arquivoIcsDaReuniao(publica(buscar(banco, id)));
 }
 
 // Síncrona de propósito: a tela checa a cada horário digitado. Usa as
@@ -583,58 +540,4 @@ export async function obterProximaConfirmada(sessao: SessaoReunioes, unioId: str
     .filter((r) => !noPassado(somarMinutos(r.horarioConfirmado as string, r.duracaoMin), agora))
     .sort((a, b) => new Date(a.horarioConfirmado as string).getTime() - new Date(b.horarioConfirmado as string).getTime())[0];
   return proxima ? publica(proxima) : null;
-}
-
-// ---------------------------------------------------------------------------
-// Compatibilidade com o back futuro (/api/meetings, branch
-// feat/p2-comunicacao-lgpd-qualidade). Isolado aqui; ver ADR-004.
-// O back não tem horários sugeridos nem local: até ele aceitar, o front envia
-// só o horário aceito (startsAt) e o local vai no texto da pauta.
-// ---------------------------------------------------------------------------
-
-export type StatusBack = "PENDENTE" | "CONFIRMADA" | "RECUSADA" | "CANCELADA" | "REALIZADA";
-
-const PARA_BACK: Record<StatusReuniao, StatusBack> = {
-  pendente: "PENDENTE",
-  confirmada: "CONFIRMADA",
-  recusada: "RECUSADA",
-  cancelada: "CANCELADA",
-};
-
-export function toBackStatus(status: StatusReuniao): StatusBack {
-  return PARA_BACK[status];
-}
-
-// REALIZADA não existe no front: é uma confirmada que já passou
-export function fromBackStatus(status: StatusBack): StatusReuniao {
-  return status === "REALIZADA" ? "confirmada" : (status.toLowerCase() as StatusReuniao);
-}
-
-export interface MeetingCreateRequestBack {
-  participantId: number;
-  title: string;
-  agenda?: string;
-  startsAt: string;
-  durationMinutes: number;
-  meetingUrl?: string;
-}
-
-export function paraMeetingCreateRequest(
-  reuniao: Reuniao,
-  participantId: number,
-  horarioAceito: string,
-): MeetingCreateRequestBack {
-  const local = reuniao.local
-    ? `Local: ${reuniao.local.nome}, ${reuniao.local.endereco}${reuniao.local.referencia ? ` (${reuniao.local.referencia})` : ""}`
-    : undefined;
-  const agenda = [reuniao.assunto, reuniao.pauta || reuniao.mensagem, local].filter(Boolean).join("\n").slice(0, 2000);
-  const link = validarLinkHttps(reuniao.link);
-  return {
-    participantId,
-    title: tituloReuniao(reuniao).slice(0, 150),
-    agenda,
-    startsAt: horarioAceito,
-    durationMinutes: reuniao.duracaoMin,
-    ...(link ? { meetingUrl: link } : {}),
-  };
 }

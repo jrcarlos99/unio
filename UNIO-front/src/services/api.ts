@@ -13,8 +13,11 @@ const api = axios.create({
 // VITE_MOCK_BACKEND=true no .env desconecta o front do back: as requisições
 // passam a ser respondidas por services/mockBackend.ts (carregado só nesse
 // caso). Pra voltar a usar o back de verdade, remova a variável e reinicie
-// o npm run dev.
-if (import.meta.env.VITE_MOCK_BACKEND === "true") {
+// o npm run dev. Serviços que têm mock próprio (ex.: reunioesService) leem
+// esta mesma constante para escolher o modo.
+export const MOCK_BACKEND = import.meta.env.VITE_MOCK_BACKEND === "true";
+
+if (MOCK_BACKEND) {
   const mock = import("./mockBackend");
   api.defaults.adapter = async (config) => (await mock).mockAdapter(config);
 }

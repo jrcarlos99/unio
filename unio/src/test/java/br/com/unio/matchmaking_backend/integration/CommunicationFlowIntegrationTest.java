@@ -104,13 +104,15 @@ class CommunicationFlowIntegrationTest extends IntegrationTestSupport {
                 .andReturn();
         long meetingId = idFrom(created);
 
-        // Mesmo horário para os mesmos participantes → conflito
-        mockMvc.perform(post("/api/meetings").header(HttpHeaders.AUTHORIZATION, startupToken)
+        // D034: pendente não ocupa a agenda, então outra proposta no mesmo horário é criada
+        MvcResult duplicated = mockMvc.perform(post("/api/meetings").header(HttpHeaders.AUTHORIZATION, startupToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"participantId": %d, "title": "Duplicada", "startsAt": "%s", "durationMinutes": 30}
                                 """.formatted(investor.getId(), startsAt.plus(Duration.ofMinutes(10)))))
-                .andExpect(status().isConflict());
+                .andExpect(status().isCreated())
+                .andReturn();
+        long duplicatedId = idFrom(duplicated);
 
         // Organizador não pode aceitar o próprio convite
         mockMvc.perform(post("/api/meetings/{id}/accept", meetingId).header(HttpHeaders.AUTHORIZATION, investorToken))
@@ -119,6 +121,10 @@ class CommunicationFlowIntegrationTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/meetings/{id}/accept", meetingId).header(HttpHeaders.AUTHORIZATION, startupToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMADA"));
+
+        // Com a primeira confirmada, aceitar a duplicada no mesmo horário → conflito
+        mockMvc.perform(post("/api/meetings/{id}/accept", duplicatedId).header(HttpHeaders.AUTHORIZATION, investorToken))
+                .andExpect(status().isConflict());
 
         // Ainda não aconteceu: não pode ser avaliada
         mockMvc.perform(post("/api/meetings/{id}/reviews", meetingId).header(HttpHeaders.AUTHORIZATION, startupToken)

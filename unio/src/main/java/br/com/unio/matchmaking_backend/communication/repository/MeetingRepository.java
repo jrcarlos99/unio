@@ -23,8 +23,10 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     List<Meeting> findAllByParticipant(@Param("userId") Long userId);
 
     /**
-     * Quantas reuniões ativas de qualquer um dos usuários se sobrepõem ao intervalo
-     * [startsAt, endsAt). {@code excludeId} ignora a própria reunião ao confirmar.
+     * Quantas reuniões de qualquer um dos usuários, nos {@code statuses} informados,
+     * se sobrepõem ao intervalo [startsAt, endsAt). {@code excludeId} ignora a própria
+     * reunião. Desde a D034 o MeetingService passa só CONFIRMADA: pendentes não
+     * ocupam a agenda.
      */
     @Query("""
             select count(m) from Meeting m

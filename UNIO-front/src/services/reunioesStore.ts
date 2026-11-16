@@ -1,9 +1,9 @@
 import type { NotificacaoReuniao, Reuniao } from "../types/reunioes";
 
 // MOCK, sem back: persistência das reuniões no localStorage, por e-mail do
-// usuário (unio_reunioes_<email>). Fica separada do reunioesService para o
+// usuário (unio_reunioes_<email>). Fica separada do reunioesService.mock para o
 // dashboardStartupService ler as reuniões confirmadas sem import circular
-// (reunioesService → recomendacoesService → investidoresService →
+// (reunioesService.mock → recomendacoesService → investidoresService →
 // dashboardStartupService). Só esses dois serviços importam este arquivo.
 
 // Campos internos do mock, que não fazem parte do contrato com as telas

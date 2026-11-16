@@ -15,6 +15,7 @@ import { useCarregamento } from "../../hooks/useDescoberta";
 import { useReunioes, useSessaoReunioes } from "../../hooks/useReunioes";
 import { useToast } from "../../hooks/useToast";
 import {
+  REUNIOES_EXIGEM_MATCH,
   cancelarReuniao,
   listarContrapartes,
   responderSolicitacao,
@@ -70,9 +71,15 @@ function horariosNaGrade(reuniao: Reuniao) {
     : reuniao.horariosSugeridos;
 }
 
-const TEXTOS: Record<PerfilApp, { semUnios: string }> = {
-  investidor: { semUnios: "Você só pode solicitar reunião com startups com quem deu match." },
-  startup: { semUnios: "Você só pode solicitar reunião com investidores com quem deu match." },
+const TEXTOS: Record<PerfilApp, { semUnios: string; semContrapartes: string }> = {
+  investidor: {
+    semUnios: "Você só pode solicitar reunião com startups com quem deu match.",
+    semContrapartes: "Ainda não há startups com perfil criado para marcar reunião.",
+  },
+  startup: {
+    semUnios: "Você só pode solicitar reunião com investidores com quem deu match.",
+    semContrapartes: "Ainda não há investidores com perfil criado para marcar reunião.",
+  },
 };
 
 interface EstadoModal {
@@ -92,7 +99,10 @@ export default function PaginaReunioes({ perfil }: { perfil: PerfilApp }) {
   const { carregando, erro, reunioes, recarregar } = useReunioes(sessao, avisarOutraParte);
 
   const carregarUnios = useCallback(() => listarContrapartes(sessao), [sessao]);
-  const { dados: contrapartes } = useCarregamento(carregarUnios, "Não foi possível carregar seus unios.");
+  const { dados: contrapartes } = useCarregamento(
+    carregarUnios,
+    REUNIOES_EXIGEM_MATCH ? "Não foi possível carregar seus unios." : "Não foi possível carregar a lista de pessoas.",
+  );
 
   const agora = useAgora();
   const hoje = hojeChave(agora);
@@ -215,10 +225,12 @@ export default function PaginaReunioes({ perfil }: { perfil: PerfilApp }) {
       {semUnios && (
         <p className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl bg-lightgray/60 px-4 py-3 text-sm">
           <Info size={16} className="shrink-0" aria-hidden="true" />
-          {TEXTOS[perfil].semUnios}
-          <Link to="/meus-unios" className={`rounded font-semibold underline ${FOCO_VISIVEL}`}>
-            Ver Meus unios
-          </Link>
+          {REUNIOES_EXIGEM_MATCH ? TEXTOS[perfil].semUnios : TEXTOS[perfil].semContrapartes}
+          {REUNIOES_EXIGEM_MATCH && (
+            <Link to="/meus-unios" className={`rounded font-semibold underline ${FOCO_VISIVEL}`}>
+              Ver Meus unios
+            </Link>
+          )}
         </p>
       )}
 

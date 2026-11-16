@@ -1,3 +1,6 @@
+import type { UserProfile } from "../contexts/AuthContext";
+import type { PerfilApp } from "./recomendacoes";
+
 // Tipos das reuniões entre unios (investidor e startup que deram match).
 // Não existe chat nem vídeo na plataforma: a reunião tem data, horário e um
 // link (online) ou local (presencial) informado por quem organiza.
@@ -28,23 +31,34 @@ export type LadoReuniao = "eu" | "outro";
 export const MAX_HORARIOS_SUGERIDOS = 3;
 export const MAX_CARACTERES_MENSAGEM = 280;
 
+// Quem chama o serviço de reuniões. No mock identifica o localStorage e os
+// unios; com a API o token já identifica o usuário e o e-mail só separa o que
+// fica guardado no navegador (última lista vista e notificações).
+export interface SessaoReunioes {
+  user: UserProfile | null;
+  perfil: PerfilApp;
+}
+
 export interface ContraparteReuniao {
-  // Mesmo id do unio (startup.id ou investidor.id)
+  // Mock: mesmo id do unio (startup.id ou investidor.id). API: userId do back
   id: string;
   nome: string;
   subtitulo: string;
-  matchPercentual: number;
+  // Sem score calculado (API) o selo de match não aparece
+  matchPercentual?: number;
   iniciais: string;
   tipo: "startup" | "investidor";
-  // Ex.: "Rafael Moura, CEO e cofundador" ou "Investidor Anjo, Recife"
-  cargoEmpresa: string;
+  // Ex.: "Rafael Moura, CEO e cofundador" ou "Investidor Anjo, Recife".
+  // Fica de fora quando o back não traz o dado.
+  cargoEmpresa?: string;
   // Segmento e estágio (startup) ou segmentos e estágios de interesse (investidor)
   selos: string[];
   // "Captação atual" (startup vista pelo investidor) ou "Ticket"/"Mentoria"
   // (investidor visto pela startup)
   destaque?: { rotulo: string; valor: string };
-  // Perfil completo dentro do app
-  perfilHref: string;
+  // Perfil completo dentro do app (só no mock: as páginas de perfil ainda
+  // usam os dados de exemplo)
+  perfilHref?: string;
 }
 
 export interface ParticipanteReuniao {
@@ -70,7 +84,8 @@ export interface Reuniao {
   contraparte: ContraparteReuniao;
   participante?: ParticipanteReuniao;
   assunto: AssuntoReuniao;
-  duracaoMin: DuracaoReuniao;
+  // 30, 45 ou 60 nas telas; reuniões antigas do back podem ter de 15 a 240
+  duracaoMin: number;
   formato: FormatoReuniao;
   mensagem?: string;
   pauta?: string;

@@ -5,7 +5,14 @@ import { Info, MapPin, Video, X } from "lucide-react";
 import { useCarregamento } from "../../hooks/useDescoberta";
 import { useDialogo } from "../../hooks/useDialogo";
 import { useToast } from "../../hooks/useToast";
-import { detectarConflito, listarContrapartes, solicitarReuniao, type SessaoReunioes } from "../../services/reunioesService";
+import {
+  REUNIOES_EXIGEM_MATCH,
+  detectarConflito,
+  listarContrapartes,
+  solicitarReuniao,
+  type SessaoReunioes,
+} from "../../services/reunioesService";
+import { ErroReunioes } from "../../services/reunioes.mapping";
 import {
   ASSUNTOS_REUNIAO,
   DURACOES_REUNIAO,
@@ -34,11 +41,13 @@ const TEXTOS = {
     subtitulo: "Envie uma proposta de agenda direta com startups conectadas",
     placeholder: "Escreva uma mensagem ou pauta breve para o fundador...",
     vazio: "Você ainda não deu match com nenhuma startup.",
+    vazioApi: "Ainda não há startups com perfil criado na plataforma.",
   },
   startup: {
     subtitulo: "Envie uma proposta de agenda direta com investidores conectados",
     placeholder: "Escreva uma mensagem ou pauta breve para o investidor...",
     vazio: "Você ainda não deu match com nenhum investidor.",
+    vazioApi: "Ainda não há investidores com perfil criado na plataforma.",
   },
 };
 
@@ -53,7 +62,10 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
   const { refPainel, aoTeclar } = useDialogo(onFechar, refTitulo);
 
   const carregar = useCallback(() => listarContrapartes(sessao), [sessao]);
-  const { carregando, dados: contrapartes } = useCarregamento(carregar, "Não foi possível carregar seus unios.");
+  const { carregando, dados: contrapartes } = useCarregamento(
+    carregar,
+    REUNIOES_EXIGEM_MATCH ? "Não foi possível carregar seus unios." : "Não foi possível carregar a lista de pessoas.",
+  );
 
   const [unioId, setUnioId] = useState(unioInicial ?? "");
   const [assunto, setAssunto] = useState<AssuntoReuniao | "">("");
@@ -128,6 +140,17 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
       mostrar(`Solicitação enviada para ${contraparte?.nome ?? "seu unio"}.`, "sucesso");
       onFechar();
     } catch (erro) {
+      // 400 do back: o erro vem por campo (reunioes.mapping.ts) e aparece no campo
+      const campos = erro instanceof ErroReunioes ? erro.campos : {};
+      const doBack: Partial<Record<CampoErro, string>> = {
+        ...(campos.unioId ? { unio: campos.unioId } : {}),
+        ...(campos.assunto ? { assunto: campos.assunto } : {}),
+        ...(campos.link ? { link: campos.link } : {}),
+      };
+      if (Object.keys(doBack).length > 0) {
+        setErros(doBack);
+        focarPrimeiroErro(doBack, {});
+      }
       mostrar(erro instanceof Error ? erro.message : "Não foi possível enviar a solicitação.", "erro");
       setEnviando(false);
     }
@@ -178,10 +201,16 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
                 <div className="mt-2 h-16 animate-pulse rounded-2xl bg-lightgray" aria-hidden="true" />
               ) : semUnios ? (
                 <p className="mt-2 rounded-2xl bg-lightgray/50 p-4 text-sm">
-                  {textos.vazio}{" "}
-                  <Link to="/meus-unios" onClick={onFechar} className="font-semibold underline">
-                    Ver Meus unios
-                  </Link>
+                  {REUNIOES_EXIGEM_MATCH ? (
+                    <>
+                      {textos.vazio}{" "}
+                      <Link to="/meus-unios" onClick={onFechar} className="font-semibold underline">
+                        Ver Meus unios
+                      </Link>
+                    </>
+                  ) : (
+                    textos.vazioApi
+                  )}
                 </p>
               ) : (
                 <div className="mt-2 grid max-h-56 grid-cols-1 gap-2 overflow-y-auto p-0.5 sm:grid-cols-2">
@@ -211,9 +240,11 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
                             <span className="block truncate text-sm font-semibold">{contraparte.nome}</span>
                             <span className="block truncate text-xs text-deepgreen/75">{contraparte.subtitulo}</span>
                           </span>
-                          <span className="shrink-0 rounded-full bg-sage/30 px-2 py-0.5 text-xs font-bold">
-                            {contraparte.matchPercentual}%<span className="sr-only"> de match</span>
-                          </span>
+                          {contraparte.matchPercentual !== undefined && (
+                            <span className="shrink-0 rounded-full bg-sage/30 px-2 py-0.5 text-xs font-bold">
+                              {contraparte.matchPercentual}%<span className="sr-only"> de match</span>
+                            </span>
+                          )}
                         </span>
                       </label>
                     );
@@ -389,7 +420,9 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
           <div className="flex flex-col gap-3 border-t border-lightgray px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <p className="flex items-start gap-2 text-xs text-deepgreen/75">
               <Info size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
-              Só é possível solicitar reunião com quem deu match.
+              {REUNIOES_EXIGEM_MATCH
+                ? "Só é possível solicitar reunião com quem deu match."
+                : "Quem recebe escolhe um dos horários, propõe outros ou recusa."}
             </p>
             <div className="flex shrink-0 gap-2">
               <button type="button" onClick={onFechar} className={`${BOTAO_SECUNDARIO} flex-1 sm:flex-none`}>

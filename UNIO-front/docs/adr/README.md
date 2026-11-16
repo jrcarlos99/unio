@@ -9,6 +9,7 @@ arquivo `ADR-NNN-titulo-curto.md` nesta pasta. Decisões do back ficam em
 ```markdown
 # ADR-NNN: Título
 
+- **Autora:** Nome
 - **Status:** Proposta | Aceita | Substituída por ADR-XXX
 - **Data:** AAAA-MM-DD
 
@@ -32,4 +33,5 @@ O que muda, o que fica pendente e os arquivos afetados.
 | [ADR-001](ADR-001-onboarding-cria-perfil.md) | Onboarding como único caminho de criação de perfil | Aceita |
 | [ADR-002](ADR-002-mapeamento-onboarding-dtos.md) | Mapeamento das respostas do onboarding para os DTOs do back | Aceita |
 | [ADR-003](ADR-003-respostas-onboarding-mescla-por-chave.md) | Gravação no endpoint de onboarding sempre por mescla de chave | Aceita |
-| [ADR-004](ADR-004-reunioes.md) | Reuniões entre unios com mock no front e mapeamento isolado para /api/meetings | Proposta |
+| [ADR-004](ADR-004-reunioes.md) | Reuniões entre unios com mock no front e mapeamento isolado para /api/meetings | Superada em parte pela ADR-005 |
+| [ADR-005](ADR-005-reunioes-integradas-ao-back.md) | Reuniões integradas ao /api/meetings, com o mock mantido como modo alternativo | Aceita |

@@ -13,7 +13,7 @@ interface CartaoContraparteProps {
   children?: ReactNode;
 }
 
-// Quem é a outra parte: avatar, nome, cargo/empresa, selos, % de match,
+// Quem é a outra parte: avatar, nome, cargo/empresa, selos, % de match (se houver),
 // link para o perfil completo e a faixa informativa por perfil
 export default function CartaoContraparte({ contraparte, rotuloPerfil, onNavegar, children }: CartaoContraparteProps) {
   return (
@@ -22,19 +22,23 @@ export default function CartaoContraparte({ contraparte, rotuloPerfil, onNavegar
         <AvatarReuniao iniciais={contraparte.iniciais} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-bold">{contraparte.nome}</p>
-          <p className="truncate text-sm text-deepgreen/75">{contraparte.cargoEmpresa}</p>
+          <p className="truncate text-sm text-deepgreen/75">{contraparte.cargoEmpresa ?? contraparte.subtitulo}</p>
         </div>
       </div>
-      <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Resumo">
-        {contraparte.selos.map((selo) => (
-          <li key={selo} className="rounded-full bg-lightgray px-2.5 py-0.5 text-xs font-medium">
-            {selo}
-          </li>
-        ))}
-        <li>
-          <SeloMatch valor={contraparte.matchPercentual} />
-        </li>
-      </ul>
+      {(contraparte.selos.length > 0 || contraparte.matchPercentual !== undefined) && (
+        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Resumo">
+          {contraparte.selos.map((selo) => (
+            <li key={selo} className="rounded-full bg-lightgray px-2.5 py-0.5 text-xs font-medium">
+              {selo}
+            </li>
+          ))}
+          {contraparte.matchPercentual !== undefined && (
+            <li>
+              <SeloMatch valor={contraparte.matchPercentual} />
+            </li>
+          )}
+        </ul>
+      )}
       {contraparte.destaque && (
         <p className="mt-3 rounded-xl bg-lightgray/50 px-3 py-2 text-sm">
           <span className="text-deepgreen/75">{contraparte.destaque.rotulo}: </span>
@@ -42,14 +46,16 @@ export default function CartaoContraparte({ contraparte, rotuloPerfil, onNavegar
         </p>
       )}
       {children}
-      <Link
-        to={contraparte.perfilHref}
-        onClick={onNavegar}
-        className={`mt-3 inline-flex items-center gap-1 rounded text-sm font-semibold hover:underline ${FOCO_VISIVEL}`}
-      >
-        {rotuloPerfil}
-        <ArrowRight size={14} aria-hidden="true" />
-      </Link>
+      {contraparte.perfilHref && (
+        <Link
+          to={contraparte.perfilHref}
+          onClick={onNavegar}
+          className={`mt-3 inline-flex items-center gap-1 rounded text-sm font-semibold hover:underline ${FOCO_VISIVEL}`}
+        >
+          {rotuloPerfil}
+          <ArrowRight size={14} aria-hidden="true" />
+        </Link>
+      )}
     </section>
   );
 }

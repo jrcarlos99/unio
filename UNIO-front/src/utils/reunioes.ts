@@ -1,5 +1,6 @@
-import type { Reuniao, StatusReuniao } from "../types/reunioes";
+import type { ArquivoIcs, Reuniao, StatusReuniao } from "../types/reunioes";
 import { diaSemanaFala, formatarFaixaHorario } from "./datas";
+import { gerarConteudoIcs } from "./ics";
 
 // Textos e links das reuniões usados pelas telas. Links externos (sala da
 // reunião, Google Maps) só são montados a partir de valores validados aqui.
@@ -75,4 +76,38 @@ export function tooltipEvento(reuniao: Reuniao, inicio: string): string {
     inicio,
     reuniao.duracaoMin,
   )}, ${status}`;
+}
+
+// Arquivo .ics de uma reunião confirmada. Gerado sempre no front, nos dois
+// modos do serviço (mock e API).
+export function arquivoIcsDaReuniao(reuniao: Reuniao): ArquivoIcs {
+  if (reuniao.status !== "confirmada" || !reuniao.horarioConfirmado) {
+    throw new Error("Só reuniões confirmadas podem ir para o calendário.");
+  }
+  const link = reuniao.formato === "online" ? validarLinkHttps(reuniao.link) : null;
+  const local =
+    reuniao.formato === "presencial" && reuniao.local
+      ? [reuniao.local.nome, reuniao.local.endereco].filter(Boolean).join(", ")
+      : undefined;
+  const descricao = [
+    `${reuniao.assunto} com ${reuniao.contraparte.nome} (UNIO).`,
+    reuniao.pauta || reuniao.mensagem,
+    link ? `Link: ${link}` : undefined,
+    reuniao.local?.referencia ? `Referência: ${reuniao.local.referencia}` : undefined,
+    `ID #${reuniao.codigo}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return {
+    nomeArquivo: `reuniao-${reuniao.codigo.toLowerCase()}.ics`,
+    conteudo: gerarConteudoIcs({
+      uid: `${reuniao.id}@unio.app`,
+      inicio: reuniao.horarioConfirmado,
+      duracaoMin: reuniao.duracaoMin,
+      titulo: tituloReuniao(reuniao),
+      descricao,
+      ...(local ? { local } : {}),
+      ...(link ? { url: link } : {}),
+    }),
+  };
 }

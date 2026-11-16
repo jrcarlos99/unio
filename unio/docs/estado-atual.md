@@ -1,6 +1,6 @@
 # Estado Atual do Projeto — Scorecard de Matchmaking
 
-Última atualização: 2026-11-07
+Última atualização: 2026-11-08
 
 ## Resumo
 
@@ -20,7 +20,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Documentos do projeto
 
-- `docs/decisoes.md` — decisões de design (D001 a D030)
+- `docs/decisoes.md` — decisões de design (D001 a D039)
 - `docs/dominio.md` — especificação de domínio
 - `docs/contrato/contrato-v2.md` — contrato ativo da API
 - `docs/contrato/contrato-onboarding.md`: onboarding e criação de perfil a partir dele
@@ -105,7 +105,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] RF07 — Autenticação e roles
 - [x] RF09 — Métricas de uso
 - [ ] RF04 — Visualização de perfis compatíveis
-- [x] RF05 — Comunicação (mensagens + reuniões) — T09a/T09b
+- [x] RF05 — Comunicação (mensagens + reuniões) — T09a/T09b; reuniões com até 3 horários, contraproposta, remarcação, formato e local (D032 a D039, V24)
 - [x] RF08 — Moderação de cadastros
 - [x] RF10 — Feedback pós-interação — T12
 - [x] RF11 — Consentimento LGPD
@@ -138,15 +138,17 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Branch atual
 
-- `front-carolina` (onboarding cria perfil, D028 a D030)
+- `front-carolina` (onboarding cria perfil; reuniões integradas ao back, D032 a D039)
 
 ## Próximo passo
 
-- Front: integrar mensagens, reuniões, avaliação e LGPD (`docs/contrato/contrato-comunicacao.md`)
+- Front: integrar mensagens, avaliação e LGPD (`docs/contrato/contrato-comunicacao.md`); reuniões já integradas (ADR-005 do front)
+- Persistir o match mútuo no back e exigir em reuniões e mensagens (D039)
+- Notificações de reunião (hoje o front deriva por polling, ADR-005 do front)
 - Aplicar os alertas no Azure e rodar o teste de carga; preencher `docs/testes/teste-de-carga.md`
 - Definir `JWT_SECRET` no App Service
 - RNF07: rodada com beta testers
 
 ## Fora do MVP (trabalho futuro)
 
-Ver D011, D025, D027 e as pendências da D028 e D030 em `docs/decisoes.md`.
+Ver D011, D025, D027 e as pendências da D028, D030, D035 e D039 em `docs/decisoes.md`.
