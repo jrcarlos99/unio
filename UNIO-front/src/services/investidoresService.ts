@@ -1,9 +1,9 @@
 import type { UserProfile } from "../contexts/AuthContext";
 import { CONTATOS_INVESTIDORES } from "../mocks/contatosMock";
-import { CAPTACAO_MOCK, INVESTIDORES_MOCK } from "../mocks/investidoresMock";
+import { CAPTACAO_MOCK } from "../mocks/investidoresMock";
+import api from "./api";
 import type { DadosUnio, TipoEventoUnio } from "../types/contato";
 import type { StatusInteresse } from "../types/discovery";
-import type { DadosStartup } from "../types/dashboard";
 import type {
   FiltrosInvestidores,
   InvestidorDescoberta,
@@ -13,13 +13,6 @@ import type {
 } from "../types/investidores";
 import { contatoValido } from "../utils/contato";
 import { formatarMoeda } from "../utils/formatoDescoberta";
-import {
-  calcularCompatibilidade,
-  explicarParaStartup,
-  faixaDeCapital,
-  type LadoInvestidor,
-  type LadoStartup,
-} from "./compatibilidade";
 import { obterContextoStartup } from "./dashboardStartupService";
 import { chaveUsuario } from "./onboardingService";
 import { unioLocalStartup as unioLocal } from "./unioLocal";
@@ -46,16 +39,12 @@ import { unioLocalStartup as unioLocal } from "./unioLocal";
 //
 // Salvos e interesses ficam no localStorage, por e-mail do usuário.
 
-const LATENCIA_MS = 350;
+const INVESTOR_ID = "00000000-0000-0000-0000-000000000002";
 
 const chaveInteresses = (userKey: string) => `unio_interesses_startup_${userKey}`;
 const chaveSalvos = (userKey: string) => `unio_salvos_startup_${userKey}`;
 
 type InteressesSalvos = Record<string, Exclude<StatusInteresse, "nenhum">>;
-
-function esperar() {
-  return new Promise((resolve) => setTimeout(resolve, LATENCIA_MS));
-}
 
 // localStorage pode lançar erro (modo privado, cota cheia); nesse caso a tela
 // continua funcionando, só não lembra dos salvos/interesses ao recarregar.
@@ -81,63 +70,52 @@ function gravar(user: UserProfile | null, chave: (userKey: string) => string, va
 const lerInteresses = (user: UserProfile | null) => ler<InteressesSalvos>(user, chaveInteresses, {});
 const lerSalvos = (user: UserProfile | null) => ler<string[]>(user, chaveSalvos, []);
 
-function buscarMock(id: string) {
-  return INVESTIDORES_MOCK.find((item) => item.id === id);
+interface RecommendationResponse {
+  startupId?: unknown;
+  scoreFinal?: unknown;
+  classification?: unknown;
+}
+
+function mapearRecomendacao(data: RecommendationResponse): InvestidorRecomendado | null {
+  if (typeof data.startupId !== "string" || !data.startupId) return null;
+  const score = typeof data.scoreFinal === "number" ? data.scoreFinal : 0;
+  const classification = typeof data.classification === "string" ? data.classification : "Recomendado";
+  const investidor: InvestidorDescoberta = {
+    id: data.startupId,
+    nome: `Startup ${data.startupId.slice(0, 8)}`,
+    tipo: "Ambos",
+    cidade: "",
+    uf: "",
+    verificado: false,
+    tese: classification,
+    segmentosInteresse: [],
+    estagiosInteresse: [],
+    ticketMin: null,
+    ticketMax: null,
+    regioesInteresse: [],
+    disponibilidade: "Média",
+    portfolio: 0,
+    bio: "",
+    tesePrincipal: classification,
+    buscaEmStartups: [],
+    comoApoia: [],
+    desde: new Date().getFullYear(),
+    portfolioPortoDigital: 0,
+    tempoResposta: "",
+    interesseReciproco: false,
+  };
+  return {
+    investidor,
+    compatibilidade: {
+      total: score,
+      notas: { segmento: score, estagio: score, ticket: score, regiao: score, disponibilidade: score },
+    },
+    statusInteresse: "nenhum",
+    salvo: false,
+  };
 }
 
 // "Recife, PE" / "Recife - PE" / "Recife/PE" → cidade e UF
-function separarLocalizacao(texto: string) {
-  const partes = texto.trim().match(/^(.*?)[\s,/-]+([A-Za-z]{2})$/);
-  return partes ? { cidade: partes[1].trim(), uf: partes[2].toUpperCase() } : { cidade: texto.trim(), uf: "" };
-}
-
-function ladoDaStartup(dados: DadosStartup): LadoStartup {
-  const { cidade, uf } = separarLocalizacao(dados.localizacao);
-  return {
-    segmento: dados.segmento,
-    segmentosSecundarios: [],
-    estagio: dados.estagio,
-    cidade,
-    uf,
-    // O cadastro da startup ainda não diz se ela opera remotamente
-    remota: false,
-    necessidades: dados.necessidades,
-    capital: faixaDeCapital(dados.capitalProcurado),
-  };
-}
-
-function ladoDoInvestidor(investidor: InvestidorDescoberta): LadoInvestidor {
-  const temTicket = investidor.ticketMin !== null && investidor.ticketMax !== null;
-  return {
-    segmentosInteresse: investidor.segmentosInteresse,
-    estagiosInteresse: investidor.estagiosInteresse,
-    ticket: temTicket ? [investidor.ticketMin as number, investidor.ticketMax as number] : null,
-    apenasMentor: investidor.tipo === "Mentor",
-    disponibilidade: investidor.disponibilidade,
-    regioesInteresse: investidor.regioesInteresse,
-  };
-}
-
-async function carregarStartup(user: UserProfile | null) {
-  const { dados } = await obterContextoStartup(user);
-  return ladoDaStartup(dados);
-}
-
-function montarVarios(user: UserProfile | null, investidores: InvestidorDescoberta[], startup: LadoStartup) {
-  const interesses = lerInteresses(user);
-  const salvos = lerSalvos(user);
-  return investidores
-    .map(
-      (investidor): InvestidorRecomendado => ({
-        investidor,
-        compatibilidade: calcularCompatibilidade(ladoDoInvestidor(investidor), startup),
-        statusInteresse: interesses[investidor.id] ?? "nenhum",
-        salvo: salvos.includes(investidor.id),
-      }),
-    )
-    .sort((a, b) => b.compatibilidade.total - a.compatibilidade.total);
-}
-
 function normalizar(texto: string) {
   return texto
     .normalize("NFD")
@@ -180,18 +158,20 @@ export async function listarInvestidoresRecomendados(
   user: UserProfile | null,
   filtros: FiltrosInvestidores = {},
 ): Promise<InvestidorRecomendado[]> {
-  const startup = await carregarStartup(user);
-  await esperar();
-  return aplicarFiltrosInvestidores(montarVarios(user, INVESTIDORES_MOCK, startup), filtros);
+  void user;
+  const response = await api.get<RecommendationResponse[]>(
+    `/api/scorecard/recommendations?investorId=${INVESTOR_ID}&limit=10`,
+  );
+  const recomendacoes = response.data
+    .map(mapearRecomendacao)
+    .filter((item): item is InvestidorRecomendado => item !== null);
+  return aplicarFiltrosInvestidores(recomendacoes, filtros);
 }
 
 export async function obterInvestidor(user: UserProfile | null, id: string): Promise<InvestidorDetalhe | null> {
-  const investidor = buscarMock(id);
-  const startup = await carregarStartup(user);
-  await esperar();
-  if (!investidor) return null;
-  const [item] = montarVarios(user, [investidor], startup);
-  return { ...item, motivos: explicarParaStartup(ladoDoInvestidor(investidor), startup, item.compatibilidade) };
+  void user;
+  void id;
+  return null;
 }
 
 export async function salvarInvestidor(user: UserProfile | null, id: string): Promise<void> {
@@ -208,26 +188,16 @@ export async function removerSalvo(user: UserProfile | null, id: string): Promis
 }
 
 export async function listarSalvos(user: UserProfile | null): Promise<InvestidorRecomendado[]> {
-  const startup = await carregarStartup(user);
-  await esperar();
+  const recomendacoes = await listarInvestidoresRecomendados(user);
   const salvos = lerSalvos(user);
-  return montarVarios(
-    user,
-    INVESTIDORES_MOCK.filter((investidor) => salvos.includes(investidor.id)),
-    startup,
-  );
+  return recomendacoes.filter((item) => salvos.includes(item.investidor.id));
 }
 
 // Investidores com match ("Meus unios")
 export async function listarUnios(user: UserProfile | null): Promise<InvestidorRecomendado[]> {
-  const startup = await carregarStartup(user);
-  await esperar();
+  const recomendacoes = await listarInvestidoresRecomendados(user);
   const interesses = lerInteresses(user);
-  return montarVarios(
-    user,
-    INVESTIDORES_MOCK.filter((investidor) => interesses[investidor.id] === "match"),
-    startup,
-  );
+  return recomendacoes.filter((item) => interesses[item.investidor.id] === "match");
 }
 
 export async function obterStatusInteresse(user: UserProfile | null, id: string): Promise<StatusInteresse> {
@@ -237,18 +207,8 @@ export async function obterStatusInteresse(user: UserProfile | null, id: string)
 // A startup demonstra interesse. Se o investidor já tinha demonstrado
 // interesse nela, vira match na hora; senão, fica "enviado".
 export async function registrarInteresse(user: UserProfile | null, id: string): Promise<StatusInteresse> {
-  const investidor = buscarMock(id);
-  if (!investidor) throw new Error("Investidor não encontrado");
-  await esperar();
-  const interesses = lerInteresses(user);
-  const atual = interesses[id];
-  if (atual) return atual;
-  // Depois de um "Desfazer match", o interesse recíproco do mock não vale mais
-  const reciproco = investidor.interesseReciproco && !(user && unioLocal.reciprocoUsado(chaveUsuario(user), id));
-  const novo = reciproco ? "match" : "enviado";
-  gravar(user, chaveInteresses, { ...interesses, [id]: novo });
-  if (novo === "match" && user) unioLocal.registrarMatch(chaveUsuario(user), id);
-  return novo;
+  void user;
+  throw new Error(`Investidor não encontrado: ${id}`);
 }
 
 // Só dá para desfazer enquanto o investidor não respondeu
