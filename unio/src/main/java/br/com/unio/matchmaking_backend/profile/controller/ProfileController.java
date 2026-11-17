@@ -3,7 +3,11 @@ package br.com.unio.matchmaking_backend.profile.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import br.com.unio.matchmaking_backend.auth.service.AuthUser;
 import br.com.unio.matchmaking_backend.profile.dto.InvestorCreateRequest;
+import br.com.unio.matchmaking_backend.profile.dto.PublicInvestorProfileResponse;
+import br.com.unio.matchmaking_backend.profile.dto.PublicStartupProfileResponse;
 import br.com.unio.matchmaking_backend.profile.dto.StartupCreateRequest;
+import br.com.unio.matchmaking_backend.profile.dto.DashboardStartupResponse;
+import br.com.unio.matchmaking_backend.profile.service.DashboardStartupService;
 import br.com.unio.matchmaking_backend.profile.service.ProfileService;
 import jakarta.validation.Valid;
 import java.util.Map;
@@ -14,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,10 +35,31 @@ import org.springframework.web.multipart.MultipartFile;
 public class ProfileController {
 
     private final ProfileService profileService;
+    private final DashboardStartupService dashboardStartupService;
 
     @GetMapping("/profile/me")
     public ResponseEntity<Map<String, Object>> getCurrentProfile(@AuthenticationPrincipal AuthUser authUser) {
         return ResponseEntity.ok(profileService.getCurrentProfile(authUser));
+    }
+
+    @GetMapping("/profile/startup/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<PublicStartupProfileResponse> getPublicStartup(@PathVariable Long id) {
+        return ResponseEntity.ok(profileService.getPublicStartup(id));
+    }
+
+    @GetMapping("/profile/investor/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<PublicInvestorProfileResponse> getPublicInvestor(@PathVariable Long id) {
+        return ResponseEntity.ok(profileService.getPublicInvestor(id));
+    }
+
+    @GetMapping("/profile/startup/dashboard")
+    @PreAuthorize("hasRole('STARTUP')")
+    public ResponseEntity<DashboardStartupResponse> getStartupDashboard(
+            @AuthenticationPrincipal AuthUser authUser
+    ) {
+        return ResponseEntity.ok(dashboardStartupService.getDashboard(authUser));
     }
 
     @PutMapping("/profile/me")

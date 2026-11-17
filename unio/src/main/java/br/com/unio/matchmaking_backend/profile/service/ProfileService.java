@@ -5,6 +5,8 @@ import br.com.unio.matchmaking_backend.auth.entity.User;
 import br.com.unio.matchmaking_backend.auth.repository.UserRepository;
 import br.com.unio.matchmaking_backend.auth.service.AuthUser;
 import br.com.unio.matchmaking_backend.profile.dto.InvestorCreateRequest;
+import br.com.unio.matchmaking_backend.profile.dto.PublicInvestorProfileResponse;
+import br.com.unio.matchmaking_backend.profile.dto.PublicStartupProfileResponse;
 import br.com.unio.matchmaking_backend.profile.dto.StartupCreateRequest;
 import br.com.unio.matchmaking_backend.profile.entity.DisponibilidadeMentoria;
 import br.com.unio.matchmaking_backend.profile.entity.Investor;
@@ -54,6 +56,55 @@ public class ProfileService {
             case INVESTOR -> buildInvestorProfile(user);
             case ADMIN -> buildUserSummary(user);
         };
+    }
+
+    @Transactional(readOnly = true)
+    public PublicStartupProfileResponse getPublicStartup(Long id) {
+        Startup startup = startupRepository.findById(id)
+                .filter(profile -> !profile.getUser().isDeleted())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Perfil Startup não encontrado"));
+
+        User user = startup.getUser();
+        return PublicStartupProfileResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .createdAt(user.getCreatedAt())
+                .nome(startup.getNome())
+                .segmento(startup.getSegmento())
+                .estagio(startup.getEstagio())
+                .localizacao(startup.getLocalizacao())
+                .modeloNegocio(startup.getModeloNegocio())
+                .mercadoAlvo(startup.getMercadoAlvo())
+                .capitalProcurado(startup.getCapitalProcurado())
+                .pitchCanvas(startup.getPitchCanvas())
+                .pitchFileUrl(startup.getPitchFileUrl())
+                .disponibilidade(startup.getDisponibilidade())
+                .disponibilidadeObservacao(startup.getDisponibilidadeObservacao())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public PublicInvestorProfileResponse getPublicInvestor(Long id) {
+        Investor investor = investorRepository.findById(id)
+                .filter(profile -> !profile.getUser().isDeleted())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Perfil Investor não encontrado"));
+
+        User user = investor.getUser();
+        return PublicInvestorProfileResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .createdAt(user.getCreatedAt())
+                .segmentosInteresse(parseStringList(investor.getSegmentosInteresse()))
+                .estagiosInteresse(parseStringList(investor.getEstagiosInteresse()))
+                .ticketMinimo(investor.getTicketMinimo())
+                .ticketMaximo(investor.getTicketMaximo())
+                .regiaoInteresse(investor.getRegiaoInteresse())
+                .perfilRisco(investor.getPerfilRisco())
+                .disponibilidade(investor.getDisponibilidade())
+                .disponibilidadeObservacao(investor.getDisponibilidadeObservacao())
+                .build();
     }
 
     @Transactional

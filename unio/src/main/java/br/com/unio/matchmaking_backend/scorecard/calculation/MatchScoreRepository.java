@@ -16,6 +16,8 @@ public interface MatchScoreRepository extends JpaRepository<MatchScore, Long> {
 
     List<MatchScore> findByStartupId(UUID startupId);
 
+    long countByStartupId(UUID startupId);
+
     Optional<MatchScore> findByInvestorIdAndStartupId(UUID investorId, UUID startupId);
 
     /** T16 — distribuição por classificação calculada no banco (antes era findAll + groupingBy). */
