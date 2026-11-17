@@ -18,6 +18,7 @@ import {
   criarPerfilPeloOnboarding,
   ErroCriacaoPerfil,
   salvarRespostasOnboardingNoBack,
+  salvarStatusOnboardingNoBack,
   type TipoErroCriacaoPerfil,
 } from "../services/perfilOnboardingService";
 
@@ -145,7 +146,11 @@ export function useOnboarding<P extends PerfilComOnboarding>(
       if (!temPerfil) {
         await criarPerfilPeloOnboarding(perfil, respostas);
         await refreshProfile();
-        void salvarRespostasOnboardingNoBack(perfil, respostas);
+        // Em sequência: o back grava a linha inteira, e dois PUT ao mesmo
+        // tempo poderiam apagar o status ou as respostas um do outro
+        void salvarRespostasOnboardingNoBack(perfil, respostas).then(() => salvarStatusOnboardingNoBack("concluido"));
+      } else {
+        void salvarStatusOnboardingNoBack("concluido");
       }
       await markCompleted(userKey, perfil, respostas);
       navigate(config.rotaHome, {
@@ -175,6 +180,7 @@ export function useOnboarding<P extends PerfilComOnboarding>(
     setOcupado(true);
     try {
       await markSkipped(userKey, perfil);
+      void salvarStatusOnboardingNoBack("pulado");
       navigate(config.rotaHome, { replace: true });
     } finally {
       setOcupado(false);

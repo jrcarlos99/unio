@@ -13,6 +13,7 @@ import {
   Search,
   SearchX,
   SlidersHorizontal,
+  TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import InterestFunnel from "../../components/dashboard/InterestFunnel";
@@ -20,6 +21,7 @@ import MetricCard from "../../components/dashboard/MetricCard";
 import PainelCard from "../../components/dashboard/PainelCard";
 import ProfileCompleteness from "../../components/dashboard/ProfileCompleteness";
 import RecommendedInvestorCard from "../../components/dashboard/RecommendedInvestorCard";
+import SeloExemplo from "../../components/dashboard/SeloExemplo";
 import ViewsChart from "../../components/dashboard/ViewsChart";
 import CardPopularidade from "../../components/popularidade/CardPopularidade";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
@@ -69,7 +71,8 @@ function Esqueleto() {
 }
 
 // Home da startup ("Visão geral"). Todos os dados vêm do
-// dashboardStartupService (mock por enquanto).
+// dashboardStartupService: no modo API, visualizações, gráfico, reuniões e
+// popularidade são do back; o resto leva o selo "Dados de exemplo" (ADR-007).
 export default function VisaoGeral() {
   const { user } = useAuth();
   const { mostrar } = useToast();
@@ -113,6 +116,10 @@ export default function VisaoGeral() {
   } else {
     const { resumo, contexto, investidores } = dados;
     const { metricas } = resumo;
+    // Modo API: blocos ainda sem endpoint no back levam o selo (ADR-007)
+    const exemplo = resumo.exemplo;
+    const IconeVariacao = metricas.variacaoVisualizacoes < 0 ? TrendingDown : TrendingUp;
+    const sinalVariacao = metricas.variacaoVisualizacoes > 0 ? "+" : "";
     const totalSemanas = resumo.visualizacoesSemanais.reduce((soma, p) => soma + p.atual, 0);
     const mediaDiaria = totalSemanas / (resumo.visualizacoesSemanais.length * 7);
     const segmento = contexto.dados.segmento ?? "o seu segmento";
@@ -125,12 +132,15 @@ export default function VisaoGeral() {
             rotulo="Visualizações do perfil"
             valor={metricas.visualizacoes}
             icone={Eye}
+            exemplo={exemplo?.visualizacoes}
             rodape={
               <>
                 <span className={SELO}>
-                  <TrendingUp size={12} aria-hidden="true" />+{metricas.variacaoVisualizacoes}%
+                  <IconeVariacao size={12} aria-hidden="true" />
+                  {sinalVariacao}
+                  {metricas.variacaoVisualizacoes}%
                 </span>
-                vs mês anterior
+                {exemplo ? "últimos 28 dias, vs 28 dias anteriores" : "vs mês anterior"}
               </>
             }
           />
@@ -139,6 +149,7 @@ export default function VisaoGeral() {
             rotulo="Investidores interessados"
             valor={metricas.interessados}
             icone={Bookmark}
+            exemplo={exemplo?.interessados}
             para="/investidores?filtro=interessados"
             rodape={
               <>
@@ -154,6 +165,7 @@ export default function VisaoGeral() {
             rotulo="Matches"
             valor={metricas.matches}
             icone={Handshake}
+            exemplo={exemplo?.matches}
             rodape={
               <>
                 <span className={SELO}>
@@ -169,7 +181,7 @@ export default function VisaoGeral() {
             rotulo="Contatos iniciados"
             valor={metricas.contatosIniciados}
             icone={MessageSquare}
-            rodape="via WhatsApp, e-mail ou telefone"
+            rodape={exemplo ? "via WhatsApp, e-mail ou telefone, registrados neste navegador" : "via WhatsApp, e-mail ou telefone"}
           />
           <CardPopularidade
             {...popularidade}
@@ -179,7 +191,7 @@ export default function VisaoGeral() {
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <ViewsChart semanas={resumo.visualizacoesSemanais} mediaDiaria={mediaDiaria} />
+          <ViewsChart semanas={resumo.visualizacoesSemanais} mediaDiaria={mediaDiaria} exemplo={exemplo?.grafico} />
           <ProfileCompleteness completude={contexto.completude} para="/meu-perfil" />
           <InterestFunnel etapas={resumo.funil} benchmark={resumo.benchmark} />
 
@@ -187,13 +199,17 @@ export default function VisaoGeral() {
             titulo="Investidores recomendados"
             subtitulo={`Anjos com alta afinidade com ${segmento} e sua faixa de captação`}
             extra={
-              <Link
-                to="/investidores"
-                className={`inline-flex items-center gap-1 rounded-lg text-sm font-semibold text-deepgreen hover:underline ${FOCO_VISIVEL}`}
-              >
-                Ver todos ({investidores.length})
-                <ArrowRight size={14} aria-hidden="true" />
-              </Link>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* Investidores recomendados ainda são perfis de exemplo (mock) */}
+                {exemplo && <SeloExemplo />}
+                <Link
+                  to="/investidores"
+                  className={`inline-flex items-center gap-1 rounded-lg text-sm font-semibold text-deepgreen hover:underline ${FOCO_VISIVEL}`}
+                >
+                  Ver todos ({investidores.length})
+                  <ArrowRight size={14} aria-hidden="true" />
+                </Link>
+              </div>
             }
           >
             {busca && (

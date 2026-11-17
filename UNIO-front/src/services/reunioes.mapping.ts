@@ -12,6 +12,7 @@ import {
   type ValorLinkOuLocal,
 } from "../types/reunioes.ts";
 import { formatarFaixaTicket } from "../utils/formatoDescoberta.ts";
+import { ehIdDoBack, paraIdDoBack } from "../utils/idsBack.ts";
 import { iniciais } from "../utils/nomeUsuario.ts";
 
 // ---------------------------------------------------------------------------
@@ -244,9 +245,41 @@ export function reuniaoDoBack(
   return reuniao;
 }
 
+// ---------------------------------------------------------------------------
+// Com quem (ADR-007): só ids reais do back viram participantId
+// ---------------------------------------------------------------------------
+
+export const MENSAGEM_ESCOLHA_CADASTRADO = "Escolha um usuário cadastrado da lista.";
+// Popup do unio aberto a partir de um perfil de exemplo (id de mock)
+export const MENSAGEM_CONTATO_EXEMPLO = `Este contato é de exemplo. ${MENSAGEM_ESCOLHA_CADASTRADO}`;
+
+// participantId do POST /api/meetings. Lança ErroReunioes (com o erro no campo
+// "unioId") quando o id não é um inteiro positivo: nunca sai NaN nem null.
+export function idDoParticipante(unioId: string): number {
+  const id = paraIdDoBack(unioId);
+  if (id === null) {
+    throw new ErroReunioes(MENSAGEM_ESCOLHA_CADASTRADO, undefined, { unioId: MENSAGEM_ESCOLHA_CADASTRADO });
+  }
+  return id;
+}
+
+// O id escolhido é um usuário real que está na lista de contrapartes?
+export function contraparteValida(id: string | undefined, contrapartes: readonly { id: string }[]): boolean {
+  return !!id && ehIdDoBack(id) && contrapartes.some((contraparte) => contraparte.id === id);
+}
+
+// Pré-seleção do modal no modo API: o unio do popup só vem marcado se for um
+// usuário real da lista; senão o modal abre sem ninguém escolhido
+export function preSelecaoDeContraparte(
+  unioInicial: string | undefined,
+  contrapartes: readonly { id: string }[],
+): string {
+  return unioInicial && contraparteValida(unioInicial, contrapartes) ? unioInicial : "";
+}
+
 export function paraMeetingCreateRequest(dados: DadosSolicitacao): MeetingCreateRequestBack {
   const corpo: MeetingCreateRequestBack = {
-    participantId: Number(dados.unioId),
+    participantId: idDoParticipante(dados.unioId),
     subject: dados.assunto,
     durationMinutes: dados.duracaoMin,
     suggestedTimes: dados.horarios.map(isoParaBack),

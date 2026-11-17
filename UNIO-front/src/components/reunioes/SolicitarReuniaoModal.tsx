@@ -7,12 +7,19 @@ import { useDialogo } from "../../hooks/useDialogo";
 import { useToast } from "../../hooks/useToast";
 import {
   REUNIOES_EXIGEM_MATCH,
+  REUNIOES_SO_COM_IDS_REAIS,
   detectarConflito,
   listarContrapartes,
   solicitarReuniao,
   type SessaoReunioes,
 } from "../../services/reunioesService";
-import { ErroReunioes } from "../../services/reunioes.mapping";
+import {
+  ErroReunioes,
+  MENSAGEM_CONTATO_EXEMPLO,
+  MENSAGEM_ESCOLHA_CADASTRADO,
+  contraparteValida,
+  preSelecaoDeContraparte,
+} from "../../services/reunioes.mapping";
 import {
   ASSUNTOS_REUNIAO,
   DURACOES_REUNIAO,
@@ -67,7 +74,17 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
     REUNIOES_EXIGEM_MATCH ? "Não foi possível carregar seus unios." : "Não foi possível carregar a lista de pessoas.",
   );
 
-  const [unioId, setUnioId] = useState(unioInicial ?? "");
+  // Escolha feita na lista; null = ainda não escolheu (vale a pré-seleção)
+  const [escolhido, setEscolhido] = useState<string | null>(null);
+  // Modo API: o unio do popup só vem marcado se for um usuário real da lista
+  // (ADR-007). Mock: igual a antes, o unio do popup já vem escolhido.
+  const preSelecionado = REUNIOES_SO_COM_IDS_REAIS
+    ? preSelecaoDeContraparte(unioInicial, contrapartes ?? [])
+    : (unioInicial ?? "");
+  const unioId = escolhido ?? preSelecionado;
+  // Popup aberto a partir de um perfil de exemplo: avisa e não marca ninguém
+  const contatoDeExemplo =
+    REUNIOES_SO_COM_IDS_REAIS && !!unioInicial && !!contrapartes && !preSelecionado && escolhido === null;
   const [assunto, setAssunto] = useState<AssuntoReuniao | "">("");
   const [duracao, setDuracao] = useState<DuracaoReuniao>(30);
   const [formato, setFormato] = useState<FormatoReuniao>("online");
@@ -89,7 +106,11 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
 
   function validar() {
     const novos: Partial<Record<CampoErro, string>> = {};
-    if (!unioId) novos.unio = "Escolha com quem será a reunião.";
+    if (!unioId) {
+      novos.unio = REUNIOES_SO_COM_IDS_REAIS ? MENSAGEM_ESCOLHA_CADASTRADO : "Escolha com quem será a reunião.";
+    } else if (REUNIOES_SO_COM_IDS_REAIS && !contraparteValida(unioId, contrapartes ?? [])) {
+      novos.unio = MENSAGEM_ESCOLHA_CADASTRADO;
+    }
     if (!assunto) novos.assunto = "Escolha o assunto.";
     if (formato === "online" && link.trim() && !validarLinkHttps(link)) {
       novos.link = "Informe um link que comece com https://";
@@ -197,6 +218,12 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
             {/* Com quem */}
             <fieldset>
               <legend className={ROTULO}>Com quem</legend>
+              {contatoDeExemplo && !semUnios && (
+                <p className="mt-2 flex items-start gap-2 rounded-2xl bg-lightgray/60 px-4 py-3 text-sm" role="status">
+                  <Info size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+                  {MENSAGEM_CONTATO_EXEMPLO}
+                </p>
+              )}
               {carregando ? (
                 <div className="mt-2 h-16 animate-pulse rounded-2xl bg-lightgray" aria-hidden="true" />
               ) : semUnios ? (
@@ -224,7 +251,7 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
                           value={contraparte.id}
                           checked={ativo}
                           onChange={() => {
-                            setUnioId(contraparte.id);
+                            setEscolhido(contraparte.id);
                             setErros((atual) => ({ ...atual, unio: undefined }));
                           }}
                           aria-describedby={erros.unio ? `${id}-erro-unio` : undefined}

@@ -25,6 +25,20 @@ export async function readAnswer(key: string): Promise<unknown> {
   return (await readAnswers())[key];
 }
 
+// Status do onboarding guardado no back (PENDENTE, CONCLUIDO ou PULADO).
+// Usado pelo OnboardingGate quando este navegador não tem o status (ADR-007).
+export async function readStatus(): Promise<string> {
+  const { data } = await api.get<OnboardingResponse>(ONBOARDING_URL);
+  return data.status;
+}
+
+// Grava SÓ o status: sem "respostas" no corpo, o back mantém as respostas
+// salvas (OnboardingUpdateRequest: campo ausente = não muda). Não precisa da
+// mescla do updateAnswers, porque não toca nas respostas (ADR-003, ADR-007).
+export async function writeStatus(status: "PENDENTE" | "CONCLUIDO" | "PULADO"): Promise<void> {
+  await api.put<OnboardingResponse>(ONBOARDING_URL, { status });
+}
+
 // Read-modify-write of the whole answers object, for changes that touch more
 // than one key. Returns the answers saved by the backend.
 export async function updateAnswers(

@@ -3,29 +3,38 @@ import { ESTAGIOS, SEGMENTOS_DETALHADOS } from "../data/options";
 import { RESUMO_MOCK } from "../mocks/dashboardStartupMock";
 import type { Estagio, FaixaCapital, Segmento } from "../types";
 import type { CompletudePerfil, DadosStartup, ResumoStartup } from "../types/dashboard";
+import type { Reuniao } from "../types/reunioes";
 import type { RespostasStartup } from "../types/onboarding";
+import { MOCK_BACKEND } from "./api";
+import { obterPopularidade } from "./avaliacoesService";
+import { montarResumoApi } from "./dashboardStartup.mapping";
 import { chaveUsuario, loadAnswers } from "./onboardingService";
+import { listarReunioes } from "./reunioesService";
 import { uniosComReuniaoConfirmada } from "./reunioesStore";
 import { unioLocalStartup } from "./unioLocal";
 
 // Único ponto de dados da home da startup ("Visão geral"). A tela usa SÓ
-// estas funções; quando o back tiver os endpoints, troca-se a implementação
-// aqui por chamadas HTTP (por isso já retornam Promise) e a tela não muda.
+// estas funções.
 //
-// MOCK — o que AINDA NÃO EXISTE no back (levar ao squad):
-// - Métricas do perfil: visualizações (total, variação, série semanal).
-// - Funil de interesse e benchmark de conversão.
+// MODO API (ADR-007): visualizações dos últimos 28 dias, variação e série
+// semanal vêm de GET /api/profile/me/popularity; reuniões marcadas, do
+// GET /api/meetings (CONFIRMADA e REALIZADA). Número real nunca é trocado
+// pelo mock, nem quando é 0. O que o back ainda não tem fica com o mock e o
+// selo "Dados de exemplo" (montarResumoApi, em dashboardStartup.mapping.ts).
+//
+// O que AINDA NÃO EXISTE no back (levar ao squad):
+// - Etapa "Demonstraram interesse" do funil e benchmark de conversão.
 // - Investidores interessados (clicaram "Tenho interesse" na startup) e
 //   matches (a startup também aceitou). Regra de produto: só depois do match
-//   mútuo há conversa/reunião — por isso a home não tem "enviar mensagem".
+//   mútuo há conversa ou reunião, por isso a home não tem "enviar mensagem".
 // - Contatos iniciados: não há chat na plataforma; contam os eventos locais
 //   registrados no popup do unio (services/unioLocal.ts).
-// - Reunião marcada: unios com reunião confirmada (reunioesService, mock em
-//   localStorage) somados, sem repetir unio, aos eventos "reuniao" antigos
-//   do unioLocal (do atalho do Google Agenda, que saiu do popup).
-// Sem nenhum dado, ficam os números do mock.
-// A recomendação de investidores fica em services/investidoresService.ts.
 // - Logo da startup (não há upload), usada na completude do perfil.
+// A recomendação de investidores fica em services/investidoresService.ts.
+//
+// MODO MOCK (VITE_MOCK_BACKEND=true), igual ao de antes: reunião marcada soma
+// os unios com reunião confirmada do mock (localStorage) aos eventos
+// "reuniao" antigos do unioLocal; sem nenhum dado, ficam os números do mock.
 
 const LATENCIA_MS = 350;
 
@@ -33,7 +42,19 @@ function esperar() {
   return new Promise((resolve) => setTimeout(resolve, LATENCIA_MS));
 }
 
+async function obterResumoApi(user: UserProfile | null): Promise<ResumoStartup> {
+  const userKey = user ? chaveUsuario(user) : "";
+  const sessao = { user, perfil: "startup" as const };
+  const [popularidade, reunioes] = await Promise.all([
+    user ? obterPopularidade(sessao).catch(() => null) : Promise.resolve(null),
+    user ? listarReunioes(sessao).catch(() => null) : Promise.resolve([] as Reuniao[]),
+  ]);
+  const contatosIniciados = userKey ? unioLocalStartup.contarUniosComEvento(userKey, "contato") : 0;
+  return montarResumoApi({ popularidade, reunioes, contatosIniciados }, new Date().toISOString());
+}
+
 export async function obterResumo(user: UserProfile | null): Promise<ResumoStartup> {
+  if (!MOCK_BACKEND) return obterResumoApi(user);
   await esperar();
   const userKey = user ? chaveUsuario(user) : "";
   const contatos = userKey ? unioLocalStartup.contarUniosComEvento(userKey, "contato") : 0;

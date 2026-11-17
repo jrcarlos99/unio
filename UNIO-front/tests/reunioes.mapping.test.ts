@@ -5,7 +5,11 @@ import assert from "node:assert/strict";
 import {
   ErroReunioes,
   MENSAGEM_CONFLITO,
+  MENSAGEM_ESCOLHA_CADASTRADO,
   contraparteDoBack,
+  contraparteValida,
+  idDoParticipante,
+  preSelecaoDeContraparte,
   erroDaApi,
   fromBackStatus,
   gerarCodigo,
@@ -253,4 +257,54 @@ test("sem resposta do servidor e erros desconhecidos", () => {
   assert.match(erroDaApi({ isAxiosError: true }, "padrão").message, /conectar ao servidor/);
   assert.equal(erroDaApi(new Error("x"), "padrão").message, "padrão");
   assert.equal(erroDaApi(erroAxios(500, {}), "padrão").message, "padrão");
+});
+
+// ---------------------------------------------------------------------------
+// Com quem: só ids reais do back (ADR-007)
+// ---------------------------------------------------------------------------
+
+const CONTRAPARTES = [{ id: "12" }, { id: "15" }];
+
+test("idDoParticipante: id real vira número; slug de mock lança erro no campo unioId", () => {
+  assert.equal(idDoParticipante("12"), 12);
+  for (const invalido of ["biopay", "", "0", "-4", "3.5", "NaN"]) {
+    assert.throws(
+      () => idDoParticipante(invalido),
+      (erro: unknown) =>
+        erro instanceof ErroReunioes &&
+        erro.message === MENSAGEM_ESCOLHA_CADASTRADO &&
+        erro.campos.unioId === MENSAGEM_ESCOLHA_CADASTRADO,
+      invalido,
+    );
+  }
+});
+
+test("paraMeetingCreateRequest: id de mock não gera corpo com NaN ou null", () => {
+  assert.throws(
+    () =>
+      paraMeetingCreateRequest({
+        unioId: "biopay",
+        assunto: "Mentoria",
+        duracaoMin: 30,
+        formato: "online",
+        horarios: ["2026-11-20T17:00:00.000Z"],
+      }),
+    ErroReunioes,
+  );
+});
+
+test("contraparteValida: precisa ser id real e estar na lista", () => {
+  assert.equal(contraparteValida("12", CONTRAPARTES), true);
+  assert.equal(contraparteValida("99", CONTRAPARTES), false);
+  assert.equal(contraparteValida("biopay", [...CONTRAPARTES, { id: "biopay" }]), false);
+  assert.equal(contraparteValida("", CONTRAPARTES), false);
+  assert.equal(contraparteValida(undefined, CONTRAPARTES), false);
+});
+
+test("preSelecaoDeContraparte: só marca o unio do popup se for usuário real da lista", () => {
+  assert.equal(preSelecaoDeContraparte("15", CONTRAPARTES), "15");
+  assert.equal(preSelecaoDeContraparte("biopay", CONTRAPARTES), "");
+  assert.equal(preSelecaoDeContraparte("99", CONTRAPARTES), "");
+  assert.equal(preSelecaoDeContraparte(undefined, CONTRAPARTES), "");
+  assert.equal(preSelecaoDeContraparte("12", []), "");
 });

@@ -1,13 +1,14 @@
 import axios from "axios";
-import api, { getApiErrorMessage } from "./api";
-import { updateAnswer } from "./onboardingAnswersStore";
+import api, { MOCK_BACKEND, getApiErrorMessage } from "./api";
+import { updateAnswer, writeStatus } from "./onboardingAnswersStore";
+import { statusOnboardingParaBack } from "./onboardingService";
 import {
   montarPayloadInvestidor,
   montarPayloadStartup,
   validarPayloadInvestidor,
   validarPayloadStartup,
 } from "./perfilFromOnboarding";
-import type { RespostasInvestidor, RespostasStartup, PerfilOnboarding } from "../types/onboarding";
+import type { RespostasInvestidor, RespostasStartup, PerfilOnboarding, StatusOnboarding } from "../types/onboarding";
 
 // Criação do perfil no último passo do onboarding (ADR-001 e ADR-002 do front,
 // D028 a D030 do back).
@@ -83,5 +84,17 @@ export async function salvarRespostasOnboardingNoBack<P extends PerfilOnboarding
     }));
   } catch (error) {
     console.warn("Não foi possível guardar as respostas do onboarding no servidor.", error);
+  }
+}
+
+// Concluir e pular também gravam o status no back (PUT só com { status }, sem
+// mexer nas respostas), para o OnboardingGate de outro navegador saber que o
+// wizard já passou (ADR-007). Nunca lança. Modo mock: nada muda.
+export async function salvarStatusOnboardingNoBack(status: Exclude<StatusOnboarding, "pendente">): Promise<void> {
+  if (MOCK_BACKEND) return;
+  try {
+    await writeStatus(statusOnboardingParaBack(status));
+  } catch (error) {
+    console.warn("Não foi possível guardar o status do onboarding no servidor.", error);
   }
 }

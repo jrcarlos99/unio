@@ -16,6 +16,10 @@ export type { SessaoReunioes } from "../types/reunioes";
 // ainda é pendência do back (D039) e a lista mostra os usuários reais
 export const REUNIOES_EXIGEM_MATCH = MOCK_BACKEND;
 
+// Modo API: "Com quem" só aceita usuários reais da lista de contrapartes (id
+// numérico do back); ids de exemplo dos mocks nunca vão ao back (ADR-007)
+export const REUNIOES_SO_COM_IDS_REAIS = !MOCK_BACKEND;
+
 interface ServicoReunioes {
   assinarReunioes: typeof remoto.assinarReunioes;
   listarContrapartes: typeof remoto.listarContrapartes;

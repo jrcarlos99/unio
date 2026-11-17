@@ -309,11 +309,11 @@ async function enviar(
 
 const rota = (id: string, acao: string) => `/api/meetings/${encodeURIComponent(id)}/${acao}`;
 
+// O corpo é montado ANTES da chamada: id de exemplo (mock) lança ErroReunioes
+// com mensagem amigável e nenhuma requisição sai (ADR-007)
 export async function solicitarReuniao(sessao: SessaoReunioes, dados: DadosSolicitacao): Promise<Reuniao> {
-  if (!Number.isFinite(Number(dados.unioId))) {
-    throw new ErroReunioes("Escolha com quem marcar a reunião.", undefined, { unioId: "Escolha com quem marcar a reunião." });
-  }
-  return enviar(sessao, () => api.post<MeetingResponseBack>("/api/meetings", paraMeetingCreateRequest(dados)));
+  const corpo = paraMeetingCreateRequest(dados);
+  return enviar(sessao, () => api.post<MeetingResponseBack>("/api/meetings", corpo));
 }
 
 export async function responderSolicitacao(

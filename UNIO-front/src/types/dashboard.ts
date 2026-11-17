@@ -1,7 +1,8 @@
 import type { Estagio, FaixaCapital, Necessidade, Segmento } from "./index";
 
-// Tipos da home da startup ("Visão geral"). Nada disso existe no back ainda —
-// ver o comentário no topo de services/dashboardStartupService.ts.
+// Tipos da home da startup ("Visão geral"). No modo API, visualizações, série
+// semanal e reuniões vêm do back; o resto ainda é exemplo (ADR-007). Ver o
+// comentário no topo de services/dashboardStartupService.ts.
 
 export interface MetricasStartup {
   visualizacoes: number;
@@ -27,6 +28,18 @@ export interface PontoSemana {
 export interface EtapaFunil {
   rotulo: string;
   valor: number;
+  // Etapa sem dado do back (modo API): mostrada com o aviso "exemplo"
+  exemplo?: boolean;
+}
+
+// Blocos que, no modo API, ainda mostram dados de exemplo (selo "Dados de
+// exemplo"). Ausente no modo mock, que é todo de exemplo e não leva selo.
+export interface BlocosDeExemplo {
+  visualizacoes: boolean;
+  interessados: boolean;
+  matches: boolean;
+  grafico: boolean;
+  funil: boolean;
 }
 
 export interface ResumoStartup {
@@ -38,6 +51,7 @@ export interface ResumoStartup {
   funil: EtapaFunil[];
   // Faixa de mercado da conversão visualização → reunião, em %
   benchmark: { min: number; max: number };
+  exemplo?: BlocosDeExemplo;
 }
 
 // Dados da startup logada usados na home (perfil do back + onboarding)

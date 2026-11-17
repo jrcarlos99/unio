@@ -2,7 +2,7 @@
 
 - **Autora:** Carol
 - **Data:** 2026-11-16
-- **Status:** Aceita
+- **Status:** Aceita, atualizada pela ADR-007 (modo API ligado ao back em 2026-11-16)
 - **Atualiza:** ADR-004 e ADR-005 (`REALIZADA` agora é o status `realizada` do front)
 - **Back:** D040 a D044 em `unio/docs/decisoes.md`, migration `V25__create_profile_views.sql`,
   contrato em `unio/docs/contrato/contrato-comunicacao.md` (seções T12 e RF10)
@@ -53,14 +53,16 @@ como ela influencia a descoberta sem mexer no score de compatibilidade.
    de no máximo 5 pontos) e, empatando, a maior popularidade. O bônus **nunca** é somado ao
    número de compatibilidade exibido: a função só reordena. O back não ordena por popularidade
    (D042), então isto é só do front.
-7. **Modo mock e mapeamento isolado.** `services/avaliacoesService.ts` é o único ponto de
+7. **Dois modos e mapeamento isolado.** `services/avaliacoesService.ts` é o único ponto de
    dados das telas (todas as funções devolvem `Promise`): `listarPendentesDeAvaliacao`,
    `avaliarReuniao` (uma vez, só se realizada), `jaAvaliou`, `obterPopularidade`,
-   `obterPopularidadePublica` e `registrarVisitaPerfil`. Hoje é mock, em `localStorage` por
-   e-mail (`avaliacoesStore.ts`, `unio_avaliacoes_<email>`, com `try/catch`). O mapeamento para
-   a API (`toBackReview`, `fromBackSummary`, `fromBackPopularity`) fica em
-   `services/avaliacoes.mapping.ts`, puro e testado, e é reexportado no bloco final do
-   serviço com o passo a passo para ligar. Se o back devolver `comment`, o mapeamento descarta.
+   `obterPopularidadePublica` e `registrarVisitaPerfil`. No modo mock
+   (`VITE_MOCK_BACKEND=true`), os dados ficam em `localStorage` por e-mail
+   (`avaliacoesStore.ts`, `unio_avaliacoes_<email>`, com `try/catch`). **Desde a ADR-007, o
+   modo API chama o back** (ver a seção "Atualização" abaixo). O mapeamento
+   (`toBackReview`, `fromBackSummary`, `fromBackPopularity`) fica em
+   `services/avaliacoes.mapping.ts`, puro e testado. Se o back devolver `comment`, o
+   mapeamento descarta.
 8. **Dados de exemplo (só no mock).** Para a popularidade sair do zero, cerca de 5 s depois do
    "Compareci" a outra parte "comparece" e avalia você com 5 ou 4 (alternando). Antes disso o
    usuário tem 2 notas de exemplo (abaixo do mínimo), então o primeiro "Compareci" é o que
@@ -91,11 +93,26 @@ como ela influencia a descoberta sem mexer no score de compatibilidade.
   status. `TipoNotificacao` ganhou `avaliar`. `cancelarReuniao` aceita um motivo.
 - Testes: `tests/popularidade.test.ts` (percentual, mínimo, variação, ordenação) e
   `tests/avaliacoes.mapping.test.ts`; `tests/reunioes.mapping.test.ts` atualizado.
-- Pendências: ligar avaliação, popularidade e visitas à API (bloco final de
-  `avaliacoesService.ts`); a startup ainda não tem a aba Popularidade no Meu perfil (só o card
-  no dashboard); interesse mútuo, popularidade no ranking e notificações continuam
-  pendências do back (D039, D042).
+- Pendências: a startup ainda não tem a aba Popularidade no Meu perfil (só o card no
+  dashboard); interesse mútuo, popularidade no ranking e notificações continuam pendências
+  do back (D039, D042). A ligação com a API foi feita na ADR-007.
 - Arquivos novos: `types/avaliacoes.ts`, `utils/popularidade.ts`, `services/avaliacoesService.ts`,
   `services/avaliacoesStore.ts`, `services/avaliacoes.mapping.ts`, `services/popularidadePerfis.ts`,
   `mocks/popularidadeMock.ts`, `hooks/useAvaliacoes.ts`, `components/reunioes/AvaliarReuniaoModal.tsx`,
   `components/popularidade/SeloPopularidade.tsx`, `CardPopularidade.tsx`, `AbaPopularidade.tsx`.
+
+## Atualização (ADR-007, 2026-11-16)
+
+No modo API (`VITE_MOCK_BACKEND` diferente de `"true"`), `avaliacoesService.ts` deixou de
+usar o mock:
+
+| Função | Chamada |
+|---|---|
+| `avaliarReuniao` | `POST /api/meetings/{id}/reviews` com `toBackReview`. "Você já avaliou" (409, ou 400 com a mensagem do back) marca a reunião como avaliada. |
+| `listarPendentesDeAvaliacao`, `jaAvaliou` | Reuniões `REALIZADA` do `GET /api/meetings` e, para cada uma (até 20, as mais recentes), `GET /api/meetings/{id}/reviews`, com cache em memória por usuário. É minha a avaliação cujo `reviewer` é o usuário logado. |
+| `obterPopularidade` | `GET /api/profile/me/popularity` com `fromBackPopularity`. `interestsReceived` vem 0 do back. |
+| `obterPopularidadePublica` | `GET /api/reviews/summary/{id}` só para id numérico; id de exemplo continua no mock. |
+| `registrarVisitaPerfil` | `POST /api/profile-views` só para id numérico, silencioso se falhar. |
+
+O modo mock continua igual ao descrito acima. O item 8 (dados de exemplo e a nota da outra
+parte depois de 5 s) vale só para o modo mock.

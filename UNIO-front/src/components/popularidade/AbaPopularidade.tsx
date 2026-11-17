@@ -1,5 +1,6 @@
 import { CalendarCheck, CircleAlert, Eye, Lock, TrendingDown, TrendingUp, UserCheck } from "lucide-react";
 import { usePopularidade } from "../../hooks/useAvaliacoes";
+import { MOCK_BACKEND } from "../../services/api";
 import type { SessaoReunioes } from "../../services/reunioesService";
 import MetricCard from "../dashboard/MetricCard";
 import ViewsChart from "../dashboard/ViewsChart";
@@ -69,7 +70,8 @@ export default function AbaPopularidade({ sessao }: { sessao: SessaoReunioes }) 
           rotulo="Interesses recebidos"
           valor={carregando || !dados ? "..." : dados.interessesRecebidos}
           icone={UserCheck}
-          rodape="startups que demonstraram interesse"
+          // Modo API: o back devolve 0 até o interesse mútuo existir (D039, D042)
+          rodape={MOCK_BACKEND ? "startups que demonstraram interesse" : "a plataforma ainda não registra interesses"}
         />
       </div>
 

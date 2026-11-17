@@ -46,7 +46,39 @@ function gravar(chave: string, valor: unknown) {
 }
 
 export async function getStatus(userKey: string): Promise<StatusOnboarding> {
-  return ler<RegistroStatus>(chaveStatus(userKey))?.status ?? "pendente";
+  return (await lerStatusLocal(userKey)) ?? "pendente";
+}
+
+// null = este navegador nunca gravou o status (ex.: login em outro navegador).
+// O OnboardingGate usa isso para consultar o back antes de mandar ao wizard.
+export async function lerStatusLocal(userKey: string): Promise<StatusOnboarding | null> {
+  return ler<RegistroStatus>(chaveStatus(userKey))?.status ?? null;
+}
+
+// Grava o status vindo do back (concluído ou pulado em outro navegador)
+export async function gravarStatusLocal(
+  userKey: string,
+  perfil: PerfilOnboarding,
+  status: Exclude<StatusOnboarding, "pendente">,
+): Promise<void> {
+  const registro: RegistroStatus = { status, perfil, atualizadoEm: new Date().toISOString() };
+  gravar(chaveStatus(userKey), registro);
+}
+
+// Status do /api/profile/onboarding (PENDENTE, CONCLUIDO, PULADO) ↔ front.
+// Qualquer outro valor (ou ausente) conta como pendente.
+export type StatusOnboardingBack = "PENDENTE" | "CONCLUIDO" | "PULADO";
+
+export function statusOnboardingDoBack(status: unknown): StatusOnboarding {
+  if (status === "CONCLUIDO") return "concluido";
+  if (status === "PULADO") return "pulado";
+  return "pendente";
+}
+
+export function statusOnboardingParaBack(status: StatusOnboarding): StatusOnboardingBack {
+  if (status === "concluido") return "CONCLUIDO";
+  if (status === "pulado") return "PULADO";
+  return "PENDENTE";
 }
 
 // Conta sem perfil precisa passar pelo onboarding para criá-lo (ADR-001),

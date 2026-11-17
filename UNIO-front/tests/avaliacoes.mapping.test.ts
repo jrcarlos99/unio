@@ -2,12 +2,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  MAX_REUNIOES_CONSULTADAS,
+  avaliacaoEhMinha,
+  ehAvaliacaoRepetida,
   fromBackPopularity,
   fromBackSummary,
+  realizadasParaConsultar,
   toBackReview,
   type PopularityBack,
+  type ReviewBack,
   type ReviewSummaryBack,
 } from "../src/services/avaliacoes.mapping.ts";
+import type { Reuniao, StatusReuniao } from "../src/types/reunioes.ts";
 
 test("toBackReview: nota e comentário opcional sem espaços", () => {
   assert.deepEqual(toBackReview(4), { rating: 4 });
@@ -64,4 +70,93 @@ test("fromBackPopularity: visitas, variação e semanas", () => {
   );
   assert.equal(popularidade.visitas.semanal[3].atual, 19);
   assert.ok(!JSON.stringify(popularidade).includes("ignorado"));
+});
+
+// ---------------------------------------------------------------------------
+// Modo API: pendentes, "já avaliei" e erro de avaliação repetida (ADR-007)
+// ---------------------------------------------------------------------------
+
+function review(reviewerId: number, reviewedId: number): ReviewBack {
+  return {
+    id: reviewerId * 10,
+    meetingId: 5,
+    reviewer: { id: reviewerId, name: "A", role: "STARTUP", active: true },
+    reviewed: { id: reviewedId, name: "B", role: "INVESTOR", active: true },
+    rating: 5,
+    createdAt: "2026-11-16T12:00:00Z",
+  };
+}
+
+test("avaliacaoEhMinha: pelo reviewer igual ao usuário logado", () => {
+  const lista = [review(3, 7)];
+  assert.equal(avaliacaoEhMinha(lista, "3", "7"), true);
+  assert.equal(avaliacaoEhMinha(lista, 7, "3"), false);
+  assert.equal(avaliacaoEhMinha([], "3", "7"), false);
+});
+
+test("avaliacaoEhMinha: sem o meu id, vale a avaliação feita sobre a outra parte", () => {
+  const lista = [review(3, 7)];
+  assert.equal(avaliacaoEhMinha(lista, undefined, "7"), true);
+  assert.equal(avaliacaoEhMinha(lista, null, "3"), false);
+  assert.equal(avaliacaoEhMinha(lista, undefined, "biopay"), false);
+});
+
+test("ehAvaliacaoRepetida: 409 ou 400 do 'já avaliou', não o 409 de reunião não realizada", () => {
+  assert.equal(ehAvaliacaoRepetida(409, "Você já avaliou esta reunião"), true);
+  assert.equal(ehAvaliacaoRepetida(400, "Voce ja avaliou esta reuniao"), true);
+  assert.equal(ehAvaliacaoRepetida(409, undefined), true);
+  assert.equal(
+    ehAvaliacaoRepetida(409, "A avaliação fica disponível depois que a reunião for marcada como realizada"),
+    false,
+  );
+  assert.equal(ehAvaliacaoRepetida(400, undefined), false);
+  assert.equal(ehAvaliacaoRepetida(500, "Você já avaliou esta reunião"), false);
+});
+
+function reuniaoCom(id: string, status: StatusReuniao, horario: string): Reuniao {
+  return {
+    id,
+    unioId: "7",
+    solicitante: "eu",
+    organizador: "eu",
+    contraparte: { id: "7", nome: "Rafael", subtitulo: "Investidor", iniciais: "RA", tipo: "investidor", selos: [] },
+    assunto: "Mentoria",
+    duracaoMin: 30,
+    formato: "online",
+    horariosSugeridos: [horario],
+    horarioConfirmado: horario,
+    status,
+    criadaEm: horario,
+    atualizadaEm: horario,
+    codigo: "UNIO-1234",
+  };
+}
+
+test("realizadasParaConsultar: só realizadas, mais recentes primeiro, até 20", () => {
+  const lista = Array.from({ length: 25 }, (_, i) =>
+    reuniaoCom(String(i + 1), "realizada", new Date(Date.UTC(2026, 9, i + 1, 15)).toISOString()),
+  );
+  lista.push(reuniaoCom("99", "confirmada", "2026-11-30T15:00:00.000Z"));
+  const consultadas = realizadasParaConsultar(lista);
+  assert.equal(consultadas.length, MAX_REUNIOES_CONSULTADAS);
+  assert.equal(consultadas[0].id, "25");
+  assert.ok(consultadas.every((reuniao) => reuniao.status === "realizada"));
+});
+
+test("fromBackPopularity: interestsReceived ausente vira 0 (sem número de exemplo)", () => {
+  const dados = {
+    userId: 7,
+    totalReviews: 1,
+    averageRating: null,
+    percentage: null,
+    visible: false,
+    meetingsCompleted: 1,
+    profileViews28d: 0,
+    profileViewsPrev28d: 0,
+    weeklyViews: [],
+  } as unknown as PopularityBack;
+  const popularidade = fromBackPopularity(dados);
+  assert.equal(popularidade.interessesRecebidos, 0);
+  assert.equal(popularidade.percentual, null);
+  assert.equal(popularidade.visitas.total28d, 0);
 });
