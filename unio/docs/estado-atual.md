@@ -26,14 +26,17 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] T18 — Teste de carga e documento (RNF05) — 2026-10-26
 - [x] T19 — Swagger e README (RNF09) — 2026-10-26
 - [x] T20 — Correção de IDOR e recomendação de investidores (RF03/RF04) — 2026-11-17
+- [x] T21 — Dashboard da Startup (RF09) — 2026-11-17
+- [x] T22 — Detalhes de Perfil Público (RF04) — 2026-11-17
+- [x] T23 — Persistência de Matches e Salvos (RF03) — 2026-11-17
 
 [... Mantenha o resto do documento igual até a seção "Requisitos atendidos"] ...
 
 ### RF
 - [x] RF01 — Cadastro de startups (nome adicionado no T02)
 - [x] RF02 — Cadastro de investidores (T01 adicionou disponibilidade)
-- [x] RF03 — Matchmaking
-- [x] RF04 — Visualização de perfis compatíveis (corrigido T20: recomendação invertida e segurança)
+- [x] RF03 — Matchmaking (incluindo persistência de interesses e matches confirmados no T23)
+- [x] RF04 — Visualização de perfis compatíveis (corrigido T20, T21 e T22)
 - [x] RF05 — Comunicação (mensagens + reuniões) — T09a/T09b
 - [x] RF06 — Pitch/Canvas (T11 adicionou upload)
 - [x] RF07 — Autenticação e roles
