@@ -15,6 +15,22 @@ jobs:
     permissions:
       contents: read #This is required for actions/checkout
 
+    # BANCO DE DADOS TEMPORÁRIO PARA OS TESTES
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: unio
+          POSTGRES_PASSWORD: unio
+          POSTGRES_DB: unio_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -25,8 +41,15 @@ jobs:
           distribution: 'microsoft'
 
       - name: Build with Maven
-        run: mvn clean install -DskipTests
+        run: mvn clean install
         working-directory: ./unio
+        env:
+          # Variáveis para o Spring Boot conectar no banco do container
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/unio_test
+          SPRING_DATASOURCE_USERNAME: unio
+          SPRING_DATASOURCE_PASSWORD: unio
+          # Variáveis de segurança exigidas pelo backend (se necessário)
+          JWT_SECRET: chave-de-teste-super-secreta-com-mais-de-32-caracteres
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
