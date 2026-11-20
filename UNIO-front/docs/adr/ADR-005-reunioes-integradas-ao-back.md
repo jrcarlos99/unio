@@ -2,7 +2,7 @@
 
 - **Autora:** Carol
 - **Data:** 2026-11-08
-- **Status:** Aceita
+- **Status:** Aceita (regra de match e popup do unio atualizados pela ADR-009)
 - **Substitui em parte:** ADR-004 (a lacuna com o back e o "serviço único com mock")
 - **Back:** D032 a D039 em `unio/docs/decisoes.md`, migration `V24__meetings_proposals.sql`,
   contrato em `unio/docs/contrato/contrato-comunicacao.md` (seção T09b)
@@ -97,9 +97,20 @@ sem perder o mock, que continua sendo útil para demonstração e para quem roda
 - São até 3 requisições a cada mudança (página, sidebar e sino). As chamadas simultâneas da
   lista completa são unificadas e as contrapartes ficam em memória por 60 segundos.
 
+> **Atualização (2026-11-16, Carol, ADR-008 e ADR-009):**
+> - O match mútuo agora existe no back (D049), e a reunião exige match nos dois modos
+>   (D051, `REUNIOES_EXIGEM_MATCH = true`).
+> - "Com quem" lista só quem deu match.
+> - O popup do unio usa ids reais, e desfazer o match cancela no back as reuniões futuras
+>   do par.
+> - O funil "Reunião marcada" lê o back desde a ADR-007.
+>
+> As consequências acima sobre o modo API valem só para o histórico.
+
 ## Pendências
 
-- **Match mútuo no back** (D039): hoje a regra "só com match" vale apenas no mock.
+- ~~**Match mútuo no back** (D039): hoje a regra "só com match" vale apenas no mock.~~
+  Resolvida pela D049 e D051 do back (ADR-009).
 - **Notificações no back:** não há e-mail nem push. As notificações dependem de a aba estar
   aberta e ficam só no navegador onde foram vistas.
 - **Tempo real:** o polling de 30 segundos atrasa os avisos.

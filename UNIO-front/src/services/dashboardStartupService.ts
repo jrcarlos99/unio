@@ -8,6 +8,7 @@ import type { RespostasStartup } from "../types/onboarding";
 import { MOCK_BACKEND } from "./api";
 import { obterPopularidade } from "./avaliacoesService";
 import { montarResumoApi } from "./dashboardStartup.mapping";
+import { contarMatches } from "./descobertaApi";
 import { chaveUsuario, loadAnswers } from "./onboardingService";
 import { listarReunioes } from "./reunioesService";
 import { uniosComReuniaoConfirmada } from "./reunioesStore";
@@ -45,12 +46,13 @@ function esperar() {
 async function obterResumoApi(user: UserProfile | null): Promise<ResumoStartup> {
   const userKey = user ? chaveUsuario(user) : "";
   const sessao = { user, perfil: "startup" as const };
-  const [popularidade, reunioes] = await Promise.all([
+  const [popularidade, reunioes, matches] = await Promise.all([
     user ? obterPopularidade(sessao).catch(() => null) : Promise.resolve(null),
     user ? listarReunioes(sessao).catch(() => null) : Promise.resolve([] as Reuniao[]),
+    user ? contarMatches().catch(() => null) : Promise.resolve(0),
   ]);
   const contatosIniciados = userKey ? unioLocalStartup.contarUniosComEvento(userKey, "contato") : 0;
-  return montarResumoApi({ popularidade, reunioes, contatosIniciados }, new Date().toISOString());
+  return montarResumoApi({ popularidade, reunioes, matches, contatosIniciados }, new Date().toISOString());
 }
 
 export async function obterResumo(user: UserProfile | null): Promise<ResumoStartup> {

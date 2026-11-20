@@ -1,16 +1,17 @@
-// Monta o resumo da home da startup ("Visão geral") no MODO API (ADR-007).
-// Função pura, testada em tests/dashboardStartup.mapping.test.ts.
+// Monta o resumo da home da startup ("Visão geral") no MODO API (ADR-007 e
+// ADR-009). Função pura, testada em tests/dashboardStartup.mapping.test.ts.
 //
 // Regra: número real nunca é trocado pelo valor do mock, nem quando é 0.
-// - Do back: visualizações dos últimos 28 dias, variação e série semanal
-//   (GET /api/profile/me/popularity) e reuniões marcadas (CONFIRMADA e
-//   REALIZADA do GET /api/meetings).
+// - Do back: visualizações dos últimos 28 dias, variação e série semanal, e
+//   interesses recebidos (GET /api/profile/me/popularity); matches mútuos
+//   (GET /api/interests/matches); reuniões marcadas (CONFIRMADA e REALIZADA do
+//   GET /api/meetings).
 // - Contatos iniciados: eventos locais do popup do unio (unioLocal.ts). Não
 //   é mock: é a contagem real deste navegador, então 0 fica 0.
-// - Ainda sem endpoint no back (interessados, matches, etapa "Demonstraram
-//   interesse" do funil): continuam com o mock e levam o selo "Dados de
-//   exemplo". Se uma chamada ao back falhar, aquele bloco também volta ao
-//   mock com o selo, para a tela não ficar vazia.
+// - Se uma chamada ao back falhar, aquele bloco volta ao mock com o selo
+//   "Dados de exemplo", para a tela não ficar vazia.
+// - Continuam de exemplo, sem dado no back: "novos esta semana" dos
+//   interessados e o benchmark do funil.
 import { RESUMO_MOCK } from "../mocks/dashboardStartupMock.ts";
 import type { Popularidade } from "../types/avaliacoes.ts";
 import type { EtapaFunil, ResumoStartup } from "../types/dashboard.ts";
@@ -20,6 +21,8 @@ export interface DadosReaisDashboard {
   // null: a chamada ao back falhou
   popularidade: Popularidade | null;
   reunioes: readonly Reuniao[] | null;
+  // Matches mútuos; null: a chamada ao back falhou
+  matches: number | null;
   contatosIniciados: number;
 }
 
@@ -33,10 +36,11 @@ export function montarResumoApi(dados: DadosReaisDashboard, atualizadoEm: string
   const visitas = dados.popularidade?.visitas ?? null;
   const visualizacoes = visitas ? visitas.total28d : RESUMO_MOCK.metricas.visualizacoes;
   const reunioes = dados.reunioes ? contarReunioesMarcadas(dados.reunioes) : null;
+  const interesses = dados.popularidade ? dados.popularidade.interessesRecebidos : null;
 
   const funil: EtapaFunil[] = [
     visitas ? { ...visualizaramMock, valor: visualizacoes } : { ...visualizaramMock, exemplo: true },
-    { ...interesseMock, exemplo: true },
+    interesses !== null ? { ...interesseMock, valor: interesses } : { ...interesseMock, exemplo: true },
     { ...contatoMock, valor: dados.contatosIniciados },
     reunioes !== null ? { ...reuniaoMock, valor: reunioes } : { ...reuniaoMock, exemplo: true },
   ];
@@ -47,6 +51,8 @@ export function montarResumoApi(dados: DadosReaisDashboard, atualizadoEm: string
       ...RESUMO_MOCK.metricas,
       visualizacoes,
       variacaoVisualizacoes: visitas ? visitas.variacaoPercentual : RESUMO_MOCK.metricas.variacaoVisualizacoes,
+      interessados: interesses ?? RESUMO_MOCK.metricas.interessados,
+      matches: dados.matches ?? RESUMO_MOCK.metricas.matches,
       contatosIniciados: dados.contatosIniciados,
     },
     visualizacoesSemanais:
@@ -56,8 +62,8 @@ export function montarResumoApi(dados: DadosReaisDashboard, atualizadoEm: string
     funil,
     exemplo: {
       visualizacoes: !visitas,
-      interessados: true,
-      matches: true,
+      interessados: interesses === null,
+      matches: dados.matches === null,
       grafico: !visitas || visitas.semanal.length === 0,
       funil: funil.some((etapa) => etapa.exemplo),
     },

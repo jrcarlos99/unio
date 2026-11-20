@@ -8,19 +8,19 @@ import type {
   Segmento,
 } from "../types";
 import type {
-  Compatibilidade,
+  CompatibilidadeLocal,
   CriterioCompatibilidade,
   Motivo,
   NotasCompatibilidade,
-  StartupDescoberta,
+  StartupDescobertaCompleta,
   TeseInvestidor,
 } from "../types/discovery";
 import type { RespostasInvestidor } from "../types/onboarding";
 import { formatarFaixaTicket, formatarMoeda } from "../utils/formatoDescoberta";
 
-// PROVISÓRIO — compatibilidade investidor × startup calculada no front, com
-// regras simples, até o motor de matchmaking do back (scorecard) expor o
-// score por par. Funções puras e simétricas: a mesma conta serve ao
+// SÓ NO MODO MOCK: compatibilidade investidor × startup calculada no front,
+// com regras simples. No modo API o score vem do scorecard do back
+// (/api/discovery, ADR-008) e este arquivo não é usado para calcular. Funções puras e simétricas: a mesma conta serve ao
 // investidor (Descobrir) e à startup (Investidores). Trocar por uma chamada
 // HTTP não muda as telas, porque só os serviços (discoveryService e
 // investidoresService) chamam este arquivo.
@@ -102,7 +102,7 @@ export function investidorDaTese(tese: TeseInvestidor): LadoInvestidor {
   };
 }
 
-export function ladoDaStartupDescoberta(startup: StartupDescoberta): LadoStartup {
+export function ladoDaStartupDescoberta(startup: StartupDescobertaCompleta): LadoStartup {
   return {
     segmento: startup.segmento,
     segmentosSecundarios: startup.segmentosSecundarios,
@@ -200,7 +200,7 @@ function notaDisponibilidade(tese: LadoInvestidor, startup: LadoStartup) {
   }
 }
 
-export function calcularCompatibilidade(tese: LadoInvestidor, startup: LadoStartup): Compatibilidade {
+export function calcularCompatibilidade(tese: LadoInvestidor, startup: LadoStartup): CompatibilidadeLocal {
   const notas: NotasCompatibilidade = {
     segmento: notaSegmento(tese, startup),
     estagio: notaEstagio(tese, startup),
@@ -210,15 +210,15 @@ export function calcularCompatibilidade(tese: LadoInvestidor, startup: LadoStart
   };
   const criterios = Object.keys(PESOS) as CriterioCompatibilidade[];
   const total = Math.round(criterios.reduce((soma, c) => soma + notas[c] * PESOS[c], 0));
-  return { total, notas };
+  return { total, notas, fonte: "local" };
 }
 
 // Motivos em linguagem natural para "Por que você viu esta startup". Só
 // entram os critérios que pesaram a favor.
 export function explicarCompatibilidade(
   tese: TeseInvestidor,
-  startup: StartupDescoberta,
-  { notas }: Compatibilidade,
+  startup: StartupDescobertaCompleta,
+  { notas }: CompatibilidadeLocal,
 ): Motivo[] {
   const motivos: Motivo[] = [];
 
@@ -300,7 +300,7 @@ export function explicarCompatibilidade(
 export function explicarParaStartup(
   investidor: LadoInvestidor,
   startup: LadoStartup,
-  { notas }: Compatibilidade,
+  { notas }: CompatibilidadeLocal,
 ): Motivo[] {
   const motivos: Motivo[] = [];
 

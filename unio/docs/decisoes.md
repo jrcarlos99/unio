@@ -582,6 +582,9 @@ ainda não existe no back. Quando o match for persistido, basta uma checagem em
 **Trabalho futuro:** exigir match; notificações (e-mail/push) de nova mensagem e
 convite; tempo real (WebSocket/SSE) em vez de polling.
 
+**Atualização (2026-11-16, Carol):** a parte "sem exigir match" das reuniões foi
+substituída pela D051. Conversas não mudaram.
+
 
 ## D029 — Exclusão de conta por anonimização (T13 / LGPD)
 
@@ -967,6 +970,9 @@ afeta descoberta, scorecard e comunicação. Ele não cabe numa tarefa de reuni�
 `ParticipantService.requireCounterpart` (vale para mensagens e reuniões) e em
 `MeetingCounterpartService`. Sem arquivos alterados nesta decisão.
 
+**Atualização (2026-11-16, Carol):** substituída pela D049 (interesse e match no back)
+e pela D051 (reunião só com match).
+
 
 ## D040: Resumo público de avaliações só com agregados e mínimo de 3
 
@@ -1166,3 +1172,422 @@ visitou o titular exporia terceiros.
 `popularity/repository/ProfileViewRepository.java`
 (`findByViewerUserIdOrderByViewedOnDesc`, `countByTargetUserId`, `deleteAllInvolving`),
 `DataPrivacyServiceTest` (verifica a exclusão das visitas).
+
+
+## D045: Score sob demanda na descoberta e limitação de escala
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** O score só existia quando alguém chamava `POST /api/scorecard/calculate`
+com os dois ids. O front calculava a compatibilidade sozinho, com regras próprias, e
+não havia lista de candidatos no back.
+
+**Alternativas:**
+
+- (a) Calcular todos os pares num job agendado
+- (b) Calcular na criação ou alteração de cada perfil, contra todos os do outro papel
+- (c) Calcular sob demanda na leitura da descoberta, reaproveitando o que já foi gravado
+
+**Decisão:** (c). O `DiscoveryService` monta os candidatos do papel complementar
+(usuários ativos com perfil criado) e, para cada par, usa o `match_scores` da
+política ativa do investidor quando `calculated_at` é posterior ao `updated_at` dos
+dois perfis. Senão, calcula e grava com `ScorePersistenceService.calculateAndPersist`
+(regra de cálculo inalterada). Os perfis ganharam `updated_at`
+(`V27__add_updated_at_to_profiles.sql`), preenchido por `@PrePersist`/`@PreUpdate`.
+Na migração, todos os perfis recebem `now()`, então cada score antigo é recalculado
+uma vez.
+
+**Limitação de escala:** no máximo `unio.discovery.max-calculations-per-request`
+(padrão 200) cálculos por requisição. Pares além disso usam o score antigo, se
+houver, ou ficam fora da página e são contados em `notCalculated`; as leituras
+seguintes completam. Os filtros sem score (busca, segmento, estágio, tipo) são
+aplicados antes do cálculo para gastar menos. A lista ainda carrega todos os perfis
+do outro papel em memória a cada requisição: serve para centenas de usuários, não
+para dezenas de milhares. Para escalar: job assíncrono que recalcula ao salvar o
+perfil, paginação no banco e índice por score.
+
+**Justificativa:** entrega o score real do scorecard nas telas sem job nem fila, e
+o custo fica limitado por requisição.
+
+**Impacto:** `discovery/service/DiscoveryService.java`, `profile/entity/Startup.java`,
+`profile/entity/Investor.java`, `V27__add_updated_at_to_profiles.sql`,
+`application.properties`. Testes: `DiscoveryIntegrationTest`
+(`scoreCriadoNaPrimeiraLeituraEReaproveitadoNaSegunda`,
+`perfilAlteradoDepoisDoCalculoRecalculaOScore`).
+
+
+## D046: Endpoints de descoberta e o que expõem
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** As telas Descobrir (investidor) e Investidores (startup) usavam perfis de
+exemplo do front. O back precisava listar candidatos reais com o score e a explicação.
+
+**Alternativas:**
+
+- (a) Reaproveitar `GET /api/scorecard/recommendations` (só investidor, só lê scores gravados)
+- (b) Um controller novo, `/api/discovery`, para os dois papéis
+
+**Decisão:** (b). `GET /api/discovery/startups` (só INVESTOR) e
+`GET /api/discovery/investors` (só STARTUP), com `q`, `segmento`, `estagio`, `tipo`
+(só investidores; "Investidor Anjo" e "Mentor" incluem "Ambos"), `minScore`, `limit`
+(padrão 20, máximo 100) e `offset`, ordenados por score decrescente.
+`GET /api/discovery/startups/{userId}` e `GET /api/discovery/investors/{userId}` dão o
+detalhe. Lista e detalhe têm o mesmo item: `userId`, `name`
+(`ParticipantService.displayName`), `role`, `profile` (campos públicos), `scoreFinal`,
+`classification`, `dimensions`, `topPositiveFactors`, `topAttentionFactors`,
+`nextStep`, `scorecard { startupId, investorId, scorePolicyId }` (para o feedback),
+`interestStatus` e `saved`.
+
+Campos públicos (`PublicProfileMapper`): startup com `segmento`, `estagio`,
+`localizacao`, `modeloNegocio`, `mercadoAlvo`, `capitalProcurado` e `pitchCanvas`;
+investidor com `segmentosInteresse`, `estagiosInteresse`, `ticketMinimo`,
+`ticketMaximo`, `perfilRisco`, `disponibilidade` e `regiaoInteresse`. Nunca e-mail,
+documento, senha, JSON de onboarding nem o arquivo de pitch. Papel errado: 403. Conta
+sem perfil próprio: 409. Candidato inexistente, removido ou sem perfil: 404.
+
+**Pendências para o squad:** pitch (arquivo) e canvas estruturado continuam fora da
+descoberta: dependem de regra de visibilidade e de moderação, e o canvas vive no JSON
+de onboarding. O nome do investidor ainda é a parte do e-mail antes do "@" (D037),
+porque o perfil de investidor não tem nome.
+
+**Justificativa:** um item só, com tudo que as telas mostram, evita N chamadas por
+card e mantém a regra do que é público num único lugar.
+
+**Impacto:** `discovery/controller/DiscoveryController.java`,
+`discovery/service/DiscoveryService.java`, `discovery/service/PublicProfileMapper.java`,
+`discovery/dto/*`, `docs/contrato/contrato-descoberta.md`. Testes:
+`DiscoveryIntegrationTest` (ordem, filtros, 403, 404, 409, sem campos sensíveis).
+
+
+## D047: Ajustes no cálculo: política pelo perfilRisco, critério eliminatório na descoberta e região
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** O relatório de estado mostrou três problemas no score:
+`ScorePersistenceService.mapToProfileType` devolvia sempre `ANGEL_INVESTOR`; um
+critério CRITICAL violado lança `CRITICAL_CRITERION_VIOLATED`, o que derrubaria a
+lista inteira; e `REGIAO_FIT` comparava texto exato ("Recife, PE" contra
+"Recife / Porto Digital" ou "Nordeste") e quase sempre dava 0.
+
+**Alternativas:**
+
+- Política: (a) manter tudo como anjo; (b) mapear `perfilRisco` para o tipo
+- Critério eliminatório: (a) mudar o `ScoreCalculatorService` para não lançar;
+  (b) tratar na descoberta, por par
+- Região: (a) cadastro de região estruturado; (b) normalizar a comparação de texto
+
+**Decisão:**
+
+1. **Política:** "Mentor" vira `MENTOR`; "Capital de risco" ou "Venture capital" vira
+   `VENTURE_CAPITAL`; qualquer outro valor ("Investidor Anjo", "Ambos"), nulo ou em
+   branco vira `ANGEL_INVESTOR` (sem acento e sem diferença de maiúsculas). Se o tipo
+   não tiver política ativa, usa a de `ANGEL_INVESTOR` em vez de `POLICY_NOT_FOUND`.
+   Como pode haver um score por política no mesmo par, `ExplanationController` passou
+   a usar o mais recente (antes dava erro com dois).
+2. **Critério eliminatório:** o `DiscoveryService` roda o `ScoreCalculatorService`
+   antes de gravar. Com critério CRITICAL violado, o par entra como score 0 e
+   `SEM_MATCH`, com o critério em `topAttentionFactors` e
+   `nextStep.code = CRITICAL_CRITERION_VIOLATED`, sem gravar nada e sem exceção (a
+   exceção dentro da transação a marcaria para rollback). A regra do
+   `ScoreCalculatorService` não mudou.
+3. **Região (`RegionMatcher`):** sem acentos e sem maiúsculas, há acerto quando os
+   textos são iguais (regra antiga), quando a cidade ou a UF da startup aparece como
+   palavra numa região do investidor, quando a região é o nome do estado
+   ("Pernambuco" para PE), quando a região diz "Nordeste" e a UF é do Nordeste, ou
+   quando a região diz "Brasil" ("Todo o Brasil"). "Aberto a startups remotas" não
+   acerta sozinho: o perfil da startup não diz se ela é remota. Pesos, criticidade e o
+   resto do cálculo não mudaram.
+
+**Justificativa:** o tipo de investidor já existe no cadastro e as políticas já
+estavam semeadas; o par ruim não pode esconder os bons; a região do cadastro é texto
+livre, então a comparação precisa tolerar o formato.
+
+**Impacto:** `scorecard/calculation/service/ScorePersistenceService.java`
+(`resolvePolicy`, `mapToProfileType`), `scorecard/calculation/service/RegionMatcher.java`,
+`scorecard/calculation/service/ScoreCalculatorService.java`,
+`scorecard/calculation/MatchScoreRepository.java` (`findAllByInvestorIdAndStartupId`),
+`scorecard/explanation/controller/ExplanationController.java`,
+`discovery/service/DiscoveryService.java`, comentário em `ProfileService`. Testes:
+`RegionAndPolicyTest`, `DiscoveryIntegrationTest`
+(`listaOrdenadaPorScoreComCriticoComoSemMatchESemPerfilFora`).
+
+
+## D048: Scorecard só aceita o próprio par
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** `RecommendationController`, `ExplanationController`,
+`ScorecardCalculationController` e `FeedbackController` aceitavam qualquer
+`investorId`/`startupId`: qualquer usuário logado lia scores de terceiros e gravava
+feedback em nome de outro investidor.
+
+**Alternativas:**
+
+- (a) Tirar os ids da API e usar só o usuário logado
+- (b) Manter os ids e exigir que o lado do papel de quem chama seja o próprio usuário
+
+**Decisão:** (b), em `ScorecardAccess`. O investidor só usa pares em que é o
+`investorId`; a startup, pares em que é o `startupId`; ADMIN, qualquer par. Outro par:
+403. `GET /recommendations` exige `investorId` igual ao do investidor logado. O
+feedback aceita `VIEWED`, `INTERESTED` e `NOT_INTERESTED` dos dois papéis, com o objeto
+`scorecard` do item da descoberta; a checagem de duplicado (409 `FEEDBACK_DUPLICATE`)
+não mudou. Nenhum teste existente dependia do comportamento antigo.
+
+**Justificativa:** mantém o contrato v2 e fecha o acesso a dados de terceiros.
+
+**Impacto:** `scorecard/common/ScorecardAccess.java` e os quatro controllers (também
+com `@Operation`). Testes: `DiscoveryIntegrationTest` (`feedbackSoNoProprioPar`,
+`scorecardNaoAceitaIdsDeOutroUsuario`).
+
+
+## D049: Interesse persistido e match mútuo derivado
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** O interesse e o match ("unio") existiam só no front (D039). O produto
+quer reuniões só entre quem deu match e "Meus unios" com dados reais.
+
+**Alternativas:**
+
+- (a) Tabela de match com status (pendente, aceito)
+- (b) Tabela de interesse por direção; o match é derivado (as duas linhas existem)
+
+**Decisão:** (b). `user_interests (from_user_id, to_user_id, created_at)`, com
+`UNIQUE (from_user_id, to_user_id)`, `CHECK` contra si mesmo e chaves estrangeiras
+para `users` (`V26__create_user_interests_and_saved.sql`). Endpoints em
+`InterestController`:
+
+- `PUT /api/interests/{targetUserId}`: idempotente (`insert ... on conflict do
+  nothing`). Responde `{ status: "ENVIADO" | "MATCH", matchedAt? }`; `matchedAt` é o
+  horário do segundo interesse.
+- `DELETE /api/interests/{targetUserId}`: retira o interesse; se havia match, ele
+  deixa de existir e as reuniões futuras do par são canceladas (D051). Responde
+  `{ status, canceledMeetings }`.
+- `GET /api/interests/matches`: os matches do usuário logado (D052).
+
+Só entre STARTUP e INVESTOR ativos com perfil criado: mesmo papel ou si mesmo, 400;
+alvo inexistente, removido ou sem perfil, 404; quem chama sem perfil, 409. A
+descoberta mostra `interestStatus`: `NONE`, `SENT`, `RECEIVED` ou `MATCH`.
+
+**Justificativa:** sem estado a sincronizar: desfazer é apagar uma linha, e o match
+some sozinho. A regra de papel fica no service porque o papel está em `users`.
+
+**Impacto:** `interest/entity/UserInterest.java`,
+`interest/repository/UserInterestRepository.java`, `interest/service/InterestService.java`,
+`interest/controller/InterestController.java`, `interest/dto/*`, `V26`. Substitui a
+D039. Testes: `InterestIntegrationTest`.
+
+
+## D050: Salvos no back
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** A lista de salvos ficava no `localStorage` do navegador.
+
+**Alternativas:**
+
+- (a) Continuar no front
+- (b) Tabela própria, privada de quem salvou
+
+**Decisão:** (b). `user_saved (user_id, target_user_id, created_at)` com `UNIQUE` e
+chaves estrangeiras (V26). `PUT` e `DELETE /api/saved/{targetUserId}` são idempotentes
+(204); `GET /api/saved` devolve o mesmo resumo dos matches, sem contato. O outro lado
+nunca sabe que foi salvo. Mesmas regras de papel e perfil da D049.
+
+**Justificativa:** os salvos passam a valer em qualquer navegador; não revelam nada a
+terceiros.
+
+**Impacto:** `interest/entity/UserSaved.java`, `interest/repository/UserSavedRepository.java`,
+`InterestService`, `InterestController`. Teste: `salvosSaoIdempotentes`.
+
+
+## D051: Reunião só com match (substitui parcialmente a D028)
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** A D028 liberou reuniões sem match porque o match não existia no back.
+Com a D049 ele existe.
+
+**Alternativas:**
+
+- (a) Exigir match sempre
+- (b) Exigir match por propriedade, ligada por padrão
+
+**Decisão:** (b). Com `unio.communication.require-match=true` (padrão),
+`MeetingService.schedule` chama `ParticipantService.requireMatchToMeet` e responde 403
+"Vocês precisam dar match (interesse mútuo) para marcar uma reunião";
+`GET /api/meetings/counterparts` lista só quem deu match. Reuniões já existentes não
+mudam: aceitar, contrapropor, cancelar e concluir seguem como antes. Ao desfazer um
+match (`DELETE /api/interests/...`), `MeetingService.cancelFutureBetween` cancela as
+reuniões CONFIRMADA com início no futuro e as PENDENTE com algum horário sugerido no
+futuro, com o motivo "Match desfeito". Reuniões passadas ficam, para poderem ser
+concluídas e avaliadas.
+
+Substitui a D028 só na parte "sem exigir match" das reuniões. Conversas
+(`/api/conversations`) não mudam: o produto decidiu que não há chat (contato externo
+depois do match), e elas ficam fora do escopo.
+
+Os testes de reunião antigos (`CommunicationFlowIntegrationTest`,
+`MeetingProposalsIntegrationTest`) criam o match no setup (`createMatch` em
+`IntegrationTestSupport`). Os testes de unidade montam o `ParticipantService` com o
+construtor de dois argumentos, que deixa a regra desligada (`MeetingMatchPolicy.disabled()`).
+
+**Justificativa:** a propriedade permite desligar a regra numa demonstração sem
+mudar código.
+
+**Impacto:** `communication/service/MeetingMatchPolicy.java`,
+`communication/service/ParticipantService.java`, `communication/service/MeetingService.java`,
+`communication/service/MeetingCounterpartService.java`,
+`communication/repository/MeetingRepository.java` (`findActiveBetween`),
+`application.properties`. Testes: `reuniaoSemMatchRetornaErroClaroEContrapartesSoComMatch`,
+`desfazerMatchCancelaReunioesFuturas`.
+
+
+## D052: E-mail do outro lado só depois do match
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** A plataforma não tem chat: depois do match, o contato é externo. O front
+mostrava contatos de exemplo. O cadastro só tem e-mail (telefone e WhatsApp não
+existem no back).
+
+**Alternativas:**
+
+- (a) Campos de contato novos no perfil
+- (b) Usar o e-mail da conta, só depois do match
+
+**Decisão:** (b). `GET /api/interests/matches` é o único endpoint que devolve o e-mail
+de outra pessoa (`contact.email`), e só de quem tem match mútuo com o usuário logado.
+Descoberta, salvos, contrapartes e reuniões continuam sem e-mail. Se o match for
+desfeito, o e-mail deixa de aparecer.
+
+**Justificativa:** finalidade declarada (LGPD, art. 6º, I): permitir o contato depois
+do interesse mútuo. Antes do match não há finalidade.
+
+**Pendências para o squad:** texto LGPD e do termo de uso avisando que o e-mail é
+compartilhado com quem der match; telefone e WhatsApp opcionais no perfil, se o
+produto quiser.
+
+**Impacto:** `interest/dto/ContactDto.java`, `interest/dto/ConnectionResponse.java`,
+`InterestService.matches`. Teste: `emailNaoApareceAntesDoMatch`.
+
+
+## D053: Métricas novas de interesse e match
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** `AdminMetricsResponse.totalMatches` conta linhas de `match_scores`
+(pares com score), não matches mútuos. `GET /api/profile/me/popularity` devolvia
+`interestsReceived` 0 (D042).
+
+**Alternativas:**
+
+- (a) Mudar o significado de `totalMatches`
+- (b) Campos novos, sem remover nem mudar os existentes
+
+**Decisão:** (b). `AdminMetricsResponse` ganhou `interestsSent` (linhas de
+`user_interests`) e `mutualMatches` (pares com as duas linhas, cada par contado uma
+vez). `totalMatches` continua igual. `interestsReceived` da popularidade passou a ser a
+contagem real de linhas com `to_user_id` do usuário logado, sem dizer de quem.
+
+**Justificativa:** não quebra o painel nem os clientes atuais.
+
+**Impacto:** `admin/dto/AdminMetricsResponse.java`, `admin/service/AdminMetricsService.java`,
+`popularity/service/PopularityService.java`, `UserInterestRepository.countMutualMatches`.
+Testes: `AdminMetricsServiceTest`, `metricasDoAdminContamMatchesMutuos`,
+`interesseUnilateralNaoViraMatchEBilateralVira`.
+
+Sobre o comentário da avaliação: continua gravado e oculto em todas as respostas,
+como decidido na D043. Nada mudou nesta entrega.
+
+
+## D054: Primeiro administrador por variável de ambiente e bootstrap no corpo
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** Não havia conta ADMIN no banco, e a API não deixava criar a primeira: o
+cadastro recusa ADMIN e `POST /api/admin/bootstrap-admin` exige ADMIN e recebia e-mail
+e senha na query string (que fica em log de acesso, histórico e proxy).
+
+**Alternativas:**
+
+- (a) Migration com um administrador fixo
+- (b) Endpoint público de primeiro acesso
+- (c) Seed na subida a partir de variáveis de ambiente
+
+**Decisão:** (c). `AdminSeedRunner` lê `unio.admin.email` e `unio.admin.password`
+(`UNIO_ADMIN_EMAIL` e `UNIO_ADMIN_PASSWORD`) e cria o administrador só se ainda não
+existir nenhum ADMIN, a senha tiver 8 caracteres ou mais e o e-mail não for de outra
+conta. Sem as variáveis, não faz nada. A senha nunca vai para log, código ou arquivo
+versionado. `bootstrap-admin` continua só para ADMIN e passou a receber
+`{ email, password }` no corpo (`BootstrapAdminRequest`, com validação e `toString` sem
+a senha); query string não funciona mais.
+
+**Justificativa:** (a) poria uma credencial no repositório; (b) abriria a criação de
+administrador para qualquer um.
+
+**Como usar:** definir as duas variáveis no ambiente do back e reiniciar. Depois do
+primeiro login, as variáveis podem ser removidas.
+
+**Impacto:** `profile/config/AdminSeedRunner.java`, `profile/dto/BootstrapAdminRequest.java`,
+`profile/controller/AdminController.java`, `auth/repository/UserRepository.java`
+(`existsByRole`), `application.properties`. Testes: `AdminSeedRunnerTest`,
+`AdminBootstrapIntegrationTest`.
+
+
+## D055: Interesses e salvos na exclusão e no export de conta
+
+Autora: Carol
+Data: 2026-11-16
+Status: Aceita
+
+**Contexto:** A D049 e a D050 criaram registros que ligam duas pessoas.
+
+**Alternativas:**
+
+- (a) Manter as linhas e só anonimizar o usuário
+- (b) Apagar as linhas em que o titular aparece
+
+**Decisão:** (b). `DataPrivacyService.deleteAccount` apaga os interesses enviados e
+recebidos e os salvos do titular e sobre ele. Os matches somem junto. No export,
+`interestsSent` e `saved` listam os alvos e as datas (dados do titular), e
+`interestsReceivedTotal` traz só o total, sem dizer quem (dados de terceiros), como na
+D044.
+
+**Justificativa:** sem a conta, interesse e salvo não têm finalidade.
+
+**Impacto:** `privacy/service/DataPrivacyService.java`, `deleteAllInvolving` nos dois
+repositórios. Teste: `DataPrivacyServiceTest`.
+
+
+## Fora de escopo desta entrega (registrado, não implementado)
+
+- Chat (`/api/conversations`): o produto decidiu que não há chat; o contato é externo,
+  depois do match.
+- Telefone e WhatsApp no perfil.
+- Pitch e canvas públicos e regra de visibilidade (dependem de moderação e do JSON de
+  onboarding).
+- Notificações em tempo real.
+- Popularidade no ranking do back (a ordem da descoberta é só o score; D042).
+- Aprovar e rejeitar cadastros (moderação) não têm endpoint.

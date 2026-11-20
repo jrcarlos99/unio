@@ -68,6 +68,7 @@ public class MeetingService {
     public MeetingResponse schedule(AuthUser authUser, MeetingCreateRequest request) {
         User me = participantService.requireCommunicatingUser(authUser);
         User other = participantService.requireCounterpart(me, request.participantId());
+        participantService.requireMatchToMeet(me, other);
 
         List<Instant> times = validateSuggestedTimes(resolveSuggestedTimes(request));
         Duration duration = Duration.ofMinutes(request.durationMinutes());
@@ -276,6 +277,39 @@ public class MeetingService {
         meeting.setStatus(MeetingStatus.CANCELADA);
         meeting.setCancelReason(blankToNull(reason));
         return toResponse(meetingRepository.save(meeting), authUser.getId());
+    }
+
+    /**
+     * D051: ao desfazer um match, cancela as reuniões futuras do par: CONFIRMADA
+     * com início depois de agora e PENDENTE com algum horário sugerido depois de
+     * agora. Reuniões passadas (inclusive confirmadas ainda não concluídas) ficam,
+     * para poderem ser concluídas e avaliadas. Devolve quantas foram canceladas.
+     */
+    @Transactional
+    public int cancelFutureBetween(Long userA, Long userB, String reason) {
+        Instant now = now();
+        int canceled = 0;
+        for (Meeting meeting : meetingRepository.findActiveBetween(userA, userB, EnumSet.of(
+                MeetingStatus.PENDENTE, MeetingStatus.CONFIRMADA))) {
+            boolean future = meeting.getStatus() == MeetingStatus.CONFIRMADA
+                    ? meeting.getStartsAt().isAfter(now)
+                    : pendingHasFutureTime(meeting, now);
+            if (future) {
+                meeting.setStatus(MeetingStatus.CANCELADA);
+                meeting.setCancelReason(reason);
+                meetingRepository.save(meeting);
+                canceled++;
+            }
+        }
+        return canceled;
+    }
+
+    private static boolean pendingHasFutureTime(Meeting meeting, Instant now) {
+        List<Instant> times = meeting.suggestedInstants();
+        if (times.isEmpty()) {
+            return meeting.getStartsAt() != null && meeting.getStartsAt().isAfter(now);
+        }
+        return times.stream().anyMatch(time -> time.isAfter(now));
     }
 
     /** Marca como realizada uma reunião confirmada cujo horário já começou (libera a avaliação, T12). */

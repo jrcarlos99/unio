@@ -44,6 +44,17 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 
     long countByStatus(MeetingStatus status);
 
+    /** Reuniões entre os dois usuários (em qualquer papel) nos status informados (D051). */
+    @Query("""
+            select m from Meeting m
+            where m.status in :statuses
+              and ((m.organizer.id = :userA and m.invitee.id = :userB)
+                or (m.organizer.id = :userB and m.invitee.id = :userA))
+            """)
+    List<Meeting> findActiveBetween(@Param("userA") Long userA,
+                                    @Param("userB") Long userB,
+                                    @Param("statuses") Collection<MeetingStatus> statuses);
+
     /** Reuniões de um participante num status (ex.: REALIZADA na popularidade, D042). */
     @Query("""
             select count(m) from Meeting m

@@ -1,4 +1,4 @@
-import type { StartupDescoberta } from "../types/discovery";
+import type { StartupDescobertaCompleta } from "../types/discovery";
 
 // MOCK — startups fictícias para as telas do investidor ("Descobrir" e
 // "Perfil da startup"). O back ainda NÃO tem listagem de startups
@@ -15,7 +15,7 @@ import type { StartupDescoberta } from "../types/discovery";
 
 export const TESOURARIA_MOCK = { percentualAlocado: 42, total: 2_500_000 };
 
-export const STARTUPS_MOCK: StartupDescoberta[] = [
+export const STARTUPS_MOCK: StartupDescobertaCompleta[] = [
   {
     id: "biopay",
     nome: "BioPay",

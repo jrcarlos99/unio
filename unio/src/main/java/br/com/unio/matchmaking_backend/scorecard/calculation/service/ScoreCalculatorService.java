@@ -87,8 +87,9 @@ public class ScoreCalculatorService {
                     startup.getCapitalProcurado(),
                     investor.getTicketMinimo(),
                     investor.getTicketMaximo());
-            case "REGIAO_FIT" -> evaluateExactMatch(
-                    startup.getLocalizacao(), investor.getRegiaoInteresse());
+            // D047: sem acentos, por cidade, por UF e "Nordeste" (ver RegionMatcher)
+            case "REGIAO_FIT" -> RegionMatcher.matches(
+                    startup.getLocalizacao(), investor.getRegiaoInteresse()) ? HUNDRED : ZERO;
             case "MODELO_NEGOCIO_FIT" -> new BigDecimal("50");
             default -> new BigDecimal("50");
         };

@@ -3,6 +3,7 @@ import { Lock } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCarregamento } from "../../hooks/useDescoberta";
 import { useToast } from "../../hooks/useToast";
+import { MOCK_BACKEND } from "../../services/api";
 import { obterMeuContato, salvarMeuContato } from "../../services/contatoService";
 import type { Contato } from "../../types/contato";
 import { formatarTelefone, mascararTelefone, normalizarTelefone, validarEmail } from "../../utils/contato";
@@ -119,9 +120,34 @@ function Formulario({ inicial }: { inicial: Contato }) {
   );
 }
 
+// Modo API: o back só compartilha o e-mail da conta com quem der match (D052).
+// Telefone e WhatsApp não existem no back; gravar aqui no navegador enganaria,
+// porque o outro lado não veria. Pendência para o squad (ADR-009).
+function ContatoDoCadastro() {
+  return (
+    <section
+      aria-labelledby="titulo-contatos"
+      className="mt-6 rounded-3xl border border-lightgray bg-white p-5 shadow-soft sm:p-6"
+    >
+      <h2 id="titulo-contatos" className="text-xl font-bold text-deepgreen">
+        Contatos para matches
+      </h2>
+      <p className="mt-1 flex items-start gap-2 text-sm text-deepgreen/80">
+        <Lock size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+        Quem der match com você recebe o e-mail da sua conta, e só depois do match. Telefone e WhatsApp ainda não
+        estão disponíveis na plataforma.
+      </p>
+    </section>
+  );
+}
+
 // "Contatos para matches": WhatsApp, e-mail e telefone do próprio usuário,
-// mostrados só a quem der match com ele (no popup do unio)
+// mostrados só a quem der match com ele (no popup do unio). Só no modo mock.
 export default function ContatosForm() {
+  return MOCK_BACKEND ? <ContatosLocais /> : <ContatoDoCadastro />;
+}
+
+function ContatosLocais() {
   const { user } = useAuth();
   const carregar = useCallback(() => obterMeuContato(user), [user]);
   const { carregando, dados } = useCarregamento(carregar, "Não foi possível carregar seus contatos.");

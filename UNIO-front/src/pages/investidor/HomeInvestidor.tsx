@@ -15,6 +15,7 @@ import { ESTAGIOS, SEGMENTOS } from "../../data/options";
 import { alterarItem, useCarregamento, useUserKey } from "../../hooks/useDescoberta";
 import { useAcoesRecomendacao } from "../../hooks/useRecomendacoes";
 import {
+  DESCOBERTA_REAL,
   aplicarFiltros,
   listarStartupsRecomendadas,
   obterTeseInvestidor,
@@ -122,7 +123,8 @@ export default function HomeInvestidor() {
         }
         cartoes={[
           { rotulo: "Seu ticket médio", valor: dados ? textoTicket(dados.tese) : "" },
-          { rotulo: "Tesouraria alocada", valor: dados?.tesouraria ?? "" },
+          // A tesouraria só existe nos dados de exemplo (modo mock)
+          dados?.tesouraria === null ? undefined : { rotulo: "Tesouraria alocada", valor: dados?.tesouraria ?? "" },
         ]}
       />
 
@@ -178,8 +180,12 @@ export default function HomeInvestidor() {
         vazio={
           <AvisoEstado
             icone={SearchX}
-            titulo="Ainda não há startups recomendadas"
-            texto="Complete sua tese para recebermos startups que combinam com você."
+            titulo={DESCOBERTA_REAL ? "Ainda não há startups cadastradas" : "Ainda não há startups recomendadas"}
+            texto={
+              DESCOBERTA_REAL
+                ? "Quando startups criarem o perfil, elas aparecem aqui com o score de compatibilidade."
+                : "Complete sua tese para recebermos startups que combinam com você."
+            }
             acao={
               <Link to="/onboarding/investidor?passo=1" className={BOTAO_CLARO}>
                 Configurar Tese

@@ -4,6 +4,7 @@ import br.com.unio.matchmaking_backend.auth.entity.Role;
 import br.com.unio.matchmaking_backend.auth.entity.User;
 import br.com.unio.matchmaking_backend.auth.repository.UserRepository;
 import br.com.unio.matchmaking_backend.auth.service.JwtService;
+import br.com.unio.matchmaking_backend.interest.repository.UserInterestRepository;
 import com.jayway.jsonpath.JsonPath;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,12 +39,21 @@ abstract class IntegrationTestSupport {
     @Autowired
     protected PasswordEncoder passwordEncoder;
 
+    @Autowired
+    protected UserInterestRepository userInterestRepository;
+
     protected User createUser(Role role) {
         return userRepository.save(User.builder()
                 .email(role.name().toLowerCase() + "-" + UUID.randomUUID() + "@teste.unio")
                 .passwordHash(passwordEncoder.encode(DEFAULT_PASSWORD))
                 .role(role)
                 .build());
+    }
+
+    /** D051: reunião só com match mútuo; os testes de reunião criam o match no setup. */
+    protected void createMatch(User a, User b) {
+        userInterestRepository.insertIfAbsent(a.getId(), b.getId());
+        userInterestRepository.insertIfAbsent(b.getId(), a.getId());
     }
 
     protected String bearer(User user) {

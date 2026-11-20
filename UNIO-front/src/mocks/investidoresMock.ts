@@ -1,4 +1,4 @@
-import type { InvestidorDescoberta } from "../types/investidores";
+import type { InvestidorDescobertaCompleto } from "../types/investidores";
 
 // MOCK — investidores e mentores fictícios para a startup (aba "Investidores",
 // Salvos, Meus unios, perfil do investidor e bloco "Investidores
@@ -16,7 +16,7 @@ import type { InvestidorDescoberta } from "../types/investidores";
 // Captação da startup logada — fictício até o back ter a rodada
 export const CAPTACAO_MOCK = { captado: 180_000, meta: 300_000 };
 
-export const INVESTIDORES_MOCK: InvestidorDescoberta[] = [
+export const INVESTIDORES_MOCK: InvestidorDescobertaCompleto[] = [
   {
     id: "marcos-andrade",
     nome: "Marcos Andrade",

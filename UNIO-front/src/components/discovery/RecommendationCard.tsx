@@ -34,7 +34,8 @@ interface RecommendationCardProps {
   chips: ChipCard[];
   descricao: string;
   principal: MetricaCard & { icone: LucideIcon };
-  secundaria: MetricaCard;
+  // Sem o dado (modo API), a métrica da direita não aparece
+  secundaria?: MetricaCard;
   // Botões do rodapé (ficam por cima do link do card)
   acoes: ReactNode;
 }
@@ -64,6 +65,8 @@ function Selo({ categoria, melhorMatch, deuMatch }: Pick<RecommendationCardProps
       </span>
     );
   }
+  // Sem categoria (perfil do back sem segmento): sem selo, mas o espaço fica
+  if (!categoria) return <span aria-hidden="true" />;
   return (
     <span className={`${SELO} bg-lightgray/70 font-medium text-deepgreen`}>
       <span className="h-1.5 w-1.5 rounded-full bg-deepgreen" aria-hidden="true" />
@@ -124,14 +127,14 @@ export default function RecommendationCard({
       </div>
 
       <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Características">
-        {chips.map((chip) => (
+        {chips.filter((chip) => chip.texto).map((chip) => (
           <li key={chip.texto} className={`rounded-md px-2 py-0.5 text-xs ${ESTILO_CHIP[chip.estilo]}`}>
             {chip.texto}
           </li>
         ))}
       </ul>
 
-      <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-deepgreen/80">{descricao}</p>
+      {descricao && <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-deepgreen/80">{descricao}</p>}
 
       <div className="mt-auto pt-5">
         <div className="flex items-end justify-between gap-3 border-t border-lightgray pt-4">
@@ -144,10 +147,12 @@ export default function RecommendationCard({
               <p className="text-lg font-bold leading-tight text-deepgreen">{principal.valor}</p>
             </div>
           </div>
-          <div className="shrink-0 text-right">
-            <p className="text-xs text-deepgreen/75">{secundaria.rotulo}</p>
-            <p className="text-sm font-semibold text-deepgreen">{secundaria.valor}</p>
-          </div>
+          {secundaria && (
+            <div className="shrink-0 text-right">
+              <p className="text-xs text-deepgreen/75">{secundaria.rotulo}</p>
+              <p className="text-sm font-semibold text-deepgreen">{secundaria.valor}</p>
+            </div>
+          )}
         </div>
 
         <div className="relative z-10 mt-4 flex items-start gap-2">{acoes}</div>

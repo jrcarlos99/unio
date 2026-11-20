@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -31,8 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
  * complementar que já criaram perfil. Expõe só dados de vitrine do perfil e o nome
  * de exibição do {@link ParticipantService}; nunca e-mail nem documento.
  *
- * <p>O match mútuo ainda não existe no back (D028, D039): a lista não é filtrada por
- * ele. O {@code matchScore} vem do scorecard (só leitura) quando já foi calculado.
+ * <p>D051: com {@code unio.communication.require-match} ligada (padrão), a lista só
+ * tem quem deu match mútuo com o usuário logado. O {@code matchScore} vem do
+ * scorecard (só leitura) quando já foi calculado.
  */
 @Service
 @RequiredArgsConstructor
@@ -52,7 +55,10 @@ public class MeetingCounterpartService {
         List<MeetingCounterpartResponse> result = me.getRole() == Role.INVESTOR
                 ? startups(me)
                 : investors(me);
+        // D051: com a regra de match ligada, só quem deu match mútuo
+        Optional<Set<Long>> onlyMatched = participantService.meetingCounterpartFilter(me);
         return result.stream()
+                .filter(item -> onlyMatched.map(ids -> ids.contains(item.userId())).orElse(true))
                 .sorted(Comparator.comparing(MeetingCounterpartResponse::matchScore,
                                 Comparator.nullsLast(Comparator.reverseOrder()))
                         .thenComparing(MeetingCounterpartResponse::name, String.CASE_INSENSITIVE_ORDER))

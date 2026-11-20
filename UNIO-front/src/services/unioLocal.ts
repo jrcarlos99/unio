@@ -1,9 +1,15 @@
 import type { TipoEventoUnio } from "../types/contato";
 
-// MOCK — estado local dos unios, igual para os dois perfis (o investidor usa o
-// prefixo "" e a startup "startup_"). O back ainda NÃO tem: data do match,
-// desfazer match e eventos de contato/reunião. Só o discoveryService, o
-// investidoresService e o dashboardStartupService usam este arquivo.
+// Estado local dos unios, igual para os dois perfis (o investidor usa o
+// prefixo "" e a startup "startup_"). ADR-008:
+// - Só no modo mock (os .mock.ts): data do match, desfazer e "recíproco já
+//   usado". No modo API isso vem do back (/api/interests) e estas funções não
+//   são chamadas.
+// - Nos dois modos: eventos de contato do popup do unio (registrarEvento e
+//   contagens), que alimentam "Contatos iniciados" do dashboard. Não existe
+//   endpoint para isso no back; a contagem é deste navegador.
+// Não há .mock/.api separados porque a parte que muda de modo já está dentro
+// dos serviços que escolhem o modo.
 //
 // - data do match:           unio_match_datas_<prefixo><email>  { id: ISO }
 // - recíproco já usado:      unio_reciprocos_usados_<prefixo><email>  [id]

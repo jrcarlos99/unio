@@ -17,7 +17,9 @@ import { useCarregamento } from "../../hooks/useDescoberta";
 import { useReunioes, useSessaoReunioes } from "../../hooks/useReunioes";
 import { useToast } from "../../hooks/useToast";
 import {
+  ORIENTACAO_SEM_MATCH,
   REUNIOES_EXIGEM_MATCH,
+  linkParaDarMatch,
   cancelarReuniao,
   listarContrapartes,
   responderSolicitacao,
@@ -72,17 +74,6 @@ function horariosNaGrade(reuniao: Reuniao) {
     ? [reuniao.horarioConfirmado]
     : reuniao.horariosSugeridos;
 }
-
-const TEXTOS: Record<PerfilApp, { semUnios: string; semContrapartes: string }> = {
-  investidor: {
-    semUnios: "Você só pode solicitar reunião com startups com quem deu match.",
-    semContrapartes: "Ainda não há startups com perfil criado para marcar reunião.",
-  },
-  startup: {
-    semUnios: "Você só pode solicitar reunião com investidores com quem deu match.",
-    semContrapartes: "Ainda não há investidores com perfil criado para marcar reunião.",
-  },
-};
 
 interface EstadoModal {
   unioId?: string;
@@ -230,14 +221,12 @@ export default function PaginaReunioes({ perfil }: { perfil: PerfilApp }) {
       </div>
 
       {semUnios && (
-        <p className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl bg-lightgray/60 px-4 py-3 text-sm">
+        <p className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl bg-lightgray/60 px-4 py-3 text-sm" role="status">
           <Info size={16} className="shrink-0" aria-hidden="true" />
-          {REUNIOES_EXIGEM_MATCH ? TEXTOS[perfil].semUnios : TEXTOS[perfil].semContrapartes}
-          {REUNIOES_EXIGEM_MATCH && (
-            <Link to="/meus-unios" className={`rounded font-semibold underline ${FOCO_VISIVEL}`}>
-              Ver Meus unios
-            </Link>
-          )}
+          {ORIENTACAO_SEM_MATCH}
+          <Link to={linkParaDarMatch(perfil).para} className={`rounded font-semibold underline ${FOCO_VISIVEL}`}>
+            {linkParaDarMatch(perfil).rotulo}
+          </Link>
         </p>
       )}
 

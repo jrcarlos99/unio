@@ -2,7 +2,8 @@
 
 - **Autora:** Carol
 - **Data:** 2026-11-16
-- **Status:** Aceita, atualizada pela ADR-007 (modo API ligado ao back em 2026-11-16)
+- **Status:** Aceita, atualizada pela ADR-007 (modo API ligado ao back em 2026-11-16) e pela
+  ADR-008 (interesses recebidos reais e selos de popularidade nas listas reais)
 - **Atualiza:** ADR-004 e ADR-005 (`REALIZADA` agora é o status `realizada` do front)
 - **Back:** D040 a D044 em `unio/docs/decisoes.md`, migration `V25__create_profile_views.sql`,
   contrato em `unio/docs/contrato/contrato-comunicacao.md` (seções T12 e RF10)
@@ -116,3 +117,12 @@ usar o mock:
 
 O modo mock continua igual ao descrito acima. O item 8 (dados de exemplo e a nota da outra
 parte depois de 5 s) vale só para o modo mock.
+
+## Atualização (ADR-008, 2026-11-16, Carol)
+
+- `interessesRecebidos` deixou de ser sempre 0: é a contagem real de interesses recebidos
+  (D053 do back).
+- Com ids reais em Descobrir e Investidores, o selo de popularidade das listas e dos
+  perfis usa `GET /api/reviews/summary/{id}`, e a visita usa `POST /api/profile-views`.
+- A ordenação com bônus de popularidade (item de ordenação desta ADR) é aplicada sobre a
+  lista já ordenada pelo score do back.

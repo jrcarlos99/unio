@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useParams } from "react-router-dom";
 import {
   BadgeCheck,
+  Banknote,
   ChartPie,
   CircleAlert,
   Info,
@@ -33,6 +34,7 @@ import { useCarregamento, useUserKey } from "../../hooks/useDescoberta";
 import { useAcoesRecomendacao } from "../../hooks/useRecomendacoes";
 import { obterStartup } from "../../services/discoveryService";
 import type { AlteracaoRecomendacao } from "../../types/recomendacoes";
+import { localDaStartup, textoCapital } from "../../utils/perfilDescoberta";
 
 // Pílulas do cabeçalho; a cor do texto fica em cada uso para não conflitar
 const PILULA = "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs";
@@ -143,12 +145,14 @@ export default function PerfilStartup() {
                 <li className={`${PILULA} border-[1.5px] border-deepgreen bg-sage/20 font-semibold text-deepgreen`}>
                   {startup.segmento}
                 </li>
-                <li className={`${CHIP} bg-lightgray`}>{startup.estagio}</li>
-                <li className={`${CHIP} bg-lightgray`}>
-                  <MapPin size={12} aria-hidden="true" />
-                  {startup.cidade}, {startup.uf}
-                </li>
-                <li className={`${CHIP} bg-lightgray`}>Fundada em {startup.fundacao}</li>
+                {startup.estagio && <li className={`${CHIP} bg-lightgray`}>{startup.estagio}</li>}
+                {localDaStartup(startup) && (
+                  <li className={`${CHIP} bg-lightgray`}>
+                    <MapPin size={12} aria-hidden="true" />
+                    {localDaStartup(startup)}
+                  </li>
+                )}
+                {startup.fundacao !== null && <li className={`${CHIP} bg-lightgray`}>Fundada em {startup.fundacao}</li>}
               </ul>
             </div>
           </div>
@@ -177,16 +181,21 @@ export default function PerfilStartup() {
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="min-w-0 space-y-6 xl:col-span-2">
           <SecaoPerfil titulo="Sobre a startup" icone={Info}>
-            <p className="leading-relaxed text-deepgreen/90">{startup.descricao}</p>
-            <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {startup.descricao && <p className="mb-5 leading-relaxed text-deepgreen/90">{startup.descricao}</p>}
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
                 { rotulo: "Modelo de negócio", valor: startup.modeloNegocio },
                 { rotulo: "Mercado-alvo", valor: startup.mercadoAlvo },
                 {
                   rotulo: "Tamanho de equipe",
-                  valor: `${startup.tamanhoEquipe} ${startup.tamanhoEquipe === 1 ? "colaborador" : "colaboradores"}`,
+                  valor:
+                    startup.tamanhoEquipe === null
+                      ? ""
+                      : `${startup.tamanhoEquipe} ${startup.tamanhoEquipe === 1 ? "colaborador" : "colaboradores"}`,
                 },
-              ].map(({ rotulo, valor }) => (
+              ]
+                .filter(({ valor }) => valor)
+                .map(({ rotulo, valor }) => (
                 <div key={rotulo} className="rounded-2xl border border-lightgray bg-lightgray/30 p-4">
                   <dt className="text-xs text-deepgreen/75">{rotulo}</dt>
                   <dd className="mt-1 font-bold text-deepgreen">{valor}</dd>
@@ -195,20 +204,29 @@ export default function PerfilStartup() {
             </dl>
           </SecaoPerfil>
 
-          <SecaoPerfil
-            titulo="Canvas do pitch"
-            icone={Table2}
-            selo={<span className={`${CHIP} bg-lightgray`}>Dossiê UNIO Audit</span>}
-          >
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <PitchCanvasCard titulo="Problema" icone={TriangleAlert} texto={startup.canvas.problema} />
-              <PitchCanvasCard titulo="Solução" icone={Lightbulb} texto={startup.canvas.solucao} />
-              <PitchCanvasCard titulo="Mercado" icone={ChartPie} texto={startup.canvas.mercado} />
-              <PitchCanvasCard titulo="Tração" icone={TrendingUp} texto={startup.canvas.tracao} />
-            </div>
-          </SecaoPerfil>
+          {/* Canvas e rodada só existem nos dados de exemplo: no modo API não aparecem (ADR-008) */}
+          {startup.canvas && (
+            <SecaoPerfil
+              titulo="Canvas do pitch"
+              icone={Table2}
+              selo={<span className={`${CHIP} bg-lightgray`}>Dossiê UNIO Audit</span>}
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <PitchCanvasCard titulo="Problema" icone={TriangleAlert} texto={startup.canvas.problema} />
+                <PitchCanvasCard titulo="Solução" icone={Lightbulb} texto={startup.canvas.solucao} />
+                <PitchCanvasCard titulo="Mercado" icone={ChartPie} texto={startup.canvas.mercado} />
+                <PitchCanvasCard titulo="Tração" icone={TrendingUp} texto={startup.canvas.tracao} />
+              </div>
+            </SecaoPerfil>
+          )}
 
-          <CapitalCard captacao={startup.captacao} />
+          {startup.captacao ? (
+            <CapitalCard captacao={startup.captacao} />
+          ) : (
+            <SecaoPerfil titulo="Capital procurado" icone={Banknote}>
+              <p className="text-3xl font-bold tracking-tight text-deepgreen">{textoCapital(startup)}</p>
+            </SecaoPerfil>
+          )}
         </div>
 
         <div className="min-w-0 space-y-6">

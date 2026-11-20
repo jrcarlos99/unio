@@ -35,6 +35,8 @@ class CommunicationFlowIntegrationTest extends IntegrationTestSupport {
     void setUp() {
         startup = createUser(Role.STARTUP);
         investor = createUser(Role.INVESTOR);
+        // D051: reunião só entre quem deu match mútuo
+        createMatch(startup, investor);
         startupToken = bearer(startup);
         investorToken = bearer(investor);
     }

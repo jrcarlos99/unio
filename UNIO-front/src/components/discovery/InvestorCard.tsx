@@ -1,6 +1,7 @@
 import { Banknote, HandHelping } from "lucide-react";
 import type { InvestidorRecomendado } from "../../types/investidores";
 import { formatarFaixaTicket } from "../../utils/formatoDescoberta";
+import { juntarPartes, localDoInvestidor } from "../../utils/perfilDescoberta";
 import AvatarIniciais from "./AvatarIniciais";
 import InteresseButton from "./InteresseButton";
 import RecommendationCard from "./RecommendationCard";
@@ -35,7 +36,7 @@ export default function InvestorCard({
       titulo={investidor.nome}
       verificado={investidor.verificado}
       rotuloVerificado="Verificado"
-      subtitulo={`${investidor.cidade}, ${investidor.uf} • ${rotuloTipoInvestidor(investidor.tipo)}`}
+      subtitulo={juntarPartes(localDoInvestidor(investidor), rotuloTipoInvestidor(investidor.tipo))}
       avatar={<AvatarIniciais nome={investidor.nome} />}
       categoria={investidor.segmentosInteresse.slice(0, 2).join(" & ")}
       match={compatibilidade.total}
@@ -58,8 +59,10 @@ export default function InvestorCard({
             }
       }
       secundaria={
-        soMentora
-          ? { rotulo: "Disponibilidade", valor: investidor.disponibilidade }
+        soMentora || investidor.portfolio === null
+          ? investidor.disponibilidade
+            ? { rotulo: "Disponibilidade", valor: investidor.disponibilidade }
+            : undefined
           : { rotulo: "Investimentos", valor: `${investidor.portfolio} startups` }
       }
       acoes={

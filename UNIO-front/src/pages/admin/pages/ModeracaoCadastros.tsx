@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AdminPageHeader from "../components/AdminPageHeader";
+import AvisoPendencia from "../components/AvisoPendencia";
 import DataTable from "../components/DataTable";
 import StatusBadge from "../components/StatusBadge";
 import Modal from "../components/Modal";
@@ -68,6 +69,10 @@ export default function ModeracaoCadastros() {
         title="Moderação de Cadastros"
         subtitle="Aprove ou rejeite os cadastros de startups e investidores da plataforma."
       />
+      <AvisoPendencia>
+        Aprovar e rejeitar ainda não ficam salvos: o back-end não tem endpoint de moderação. A lista mostra os
+        usuários cadastrados, mas o status volta para Pendente ao recarregar a página.
+      </AvisoPendencia>
       {isLoading && <p className="mb-4 text-sm text-deepgreen">Carregando usuários...</p>}
       {erroApi && <p className="mb-4 text-sm text-red-600">{erroApi}</p>}
 

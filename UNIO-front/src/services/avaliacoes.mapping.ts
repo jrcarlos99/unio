@@ -122,8 +122,8 @@ export function fromBackPopularity(dados: PopularityBack): Popularidade {
         anterior: anteriorSemanal,
       })),
     },
-    // Sempre 0 por enquanto: o interesse mútuo ainda não existe no back (D039,
-    // D042). As telas mostram o número como veio, sem trocar por exemplo.
+    // Contagem real de interesses recebidos (user_interests, D053 do back).
+    // As telas mostram o número como veio, sem trocar por exemplo.
     interessesRecebidos: dados.interestsReceived ?? 0,
   };
 }

@@ -165,8 +165,10 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
   async function confirmarDesfazer() {
     setDesfazendo(true);
     try {
-      await desfazerMatch(rec, user);
-      const canceladas = await cancelarReunioesDoUnio(sessao, unioId);
+      // Modo API: o back já cancelou as reuniões futuras e diz quantas. Mock:
+      // quem cancela é o reunioesService.
+      const resultado = await desfazerMatch(rec, user);
+      const canceladas = resultado.reunioesCanceladas ?? (await cancelarReunioesDoUnio(sessao, unioId));
       mostrar(
         canceladas > 0
           ? `Match desfeito com ${nome}. ${canceladas === 1 ? "1 reunião cancelada" : `${canceladas} reuniões canceladas`}.`

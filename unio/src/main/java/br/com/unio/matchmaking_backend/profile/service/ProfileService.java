@@ -323,9 +323,10 @@ public class ProfileService {
         return users;
     }
 
-    // D030: sem perfilRisco o ScorePersistenceService não acha política (POLICY_NOT_FOUND).
-    // Qualquer valor não nulo leva hoje à política ANGEL_INVESTOR (ver D025, item 2);
-    // "Investidor Anjo" é o rótulo que o front usa para esse tipo.
+    // D030: perfilRisco vazio vira "Investidor Anjo" no cadastro. Desde a D047 o
+    // ScorePersistenceService escolhe a política pelo perfilRisco ("Mentor",
+    // "Capital de risco"/"Venture capital", o resto é ANGEL_INVESTOR) e também
+    // trata nulo ou em branco como ANGEL_INVESTOR.
     private String perfilRiscoOuPadrao(String perfilRisco) {
         return perfilRisco == null || perfilRisco.isBlank() ? PERFIL_RISCO_PADRAO : perfilRisco.trim();
     }

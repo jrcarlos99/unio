@@ -12,6 +12,7 @@ import ProfileStatusBadge from "../../components/profile/visibility/ProfileStatu
 import VisibilitySection from "../../components/profile/visibility/VisibilitySection";
 import Tabs, { TabPanel, type TabItem } from "../../components/ui/Tabs";
 import ContatosForm from "../../components/unios/ContatosForm";
+import PrivacidadeDados from "../../components/profile/PrivacidadeDados";
 import { useStartupDocuments } from "../../hooks/useStartupDocuments";
 import { useProfileVisibility } from "../../hooks/useProfileVisibility";
 import { useStartupProfileEditor } from "../../hooks/useStartupProfileEditor";
@@ -113,6 +114,7 @@ export default function StartupProfile() {
         {content}
 
         <ContatosForm />
+        <PrivacidadeDados />
       </TabPanel>
       
        <TabPanel idPrefix={TABS_ID} tab="equipe" activeTab={activeTab} className="mt-6">

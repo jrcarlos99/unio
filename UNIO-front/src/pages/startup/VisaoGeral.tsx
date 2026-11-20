@@ -21,7 +21,6 @@ import MetricCard from "../../components/dashboard/MetricCard";
 import PainelCard from "../../components/dashboard/PainelCard";
 import ProfileCompleteness from "../../components/dashboard/ProfileCompleteness";
 import RecommendedInvestorCard from "../../components/dashboard/RecommendedInvestorCard";
-import SeloExemplo from "../../components/dashboard/SeloExemplo";
 import ViewsChart from "../../components/dashboard/ViewsChart";
 import CardPopularidade from "../../components/popularidade/CardPopularidade";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
@@ -71,8 +70,10 @@ function Esqueleto() {
 }
 
 // Home da startup ("Visão geral"). Todos os dados vêm do
-// dashboardStartupService: no modo API, visualizações, gráfico, reuniões e
-// popularidade são do back; o resto leva o selo "Dados de exemplo" (ADR-007).
+// dashboardStartupService e do investidoresService: no modo API,
+// visualizações, gráfico, interessados, matches, reuniões, popularidade e os
+// investidores recomendados (top 3 por score do back) são reais; o que falhar
+// ao carregar leva o selo "Dados de exemplo" (ADR-007 e ADR-009).
 export default function VisaoGeral() {
   const { user } = useAuth();
   const { mostrar } = useToast();
@@ -152,12 +153,16 @@ export default function VisaoGeral() {
             exemplo={exemplo?.interessados}
             para="/investidores?filtro=interessados"
             rodape={
-              <>
-                <span className={SELO}>
-                  <TrendingUp size={12} aria-hidden="true" />+{metricas.interessadosNovosSemana} novos
-                </span>
-                esta semana
-              </>
+              exemplo && !exemplo.interessados ? (
+                "demonstraram interesse em você"
+              ) : (
+                <>
+                  <span className={SELO}>
+                    <TrendingUp size={12} aria-hidden="true" />+{metricas.interessadosNovosSemana} novos
+                  </span>
+                  esta semana
+                </>
+              )
             }
           />
           <MetricCard
@@ -167,13 +172,23 @@ export default function VisaoGeral() {
             icone={Handshake}
             exemplo={exemplo?.matches}
             rodape={
-              <>
-                <span className={SELO}>
-                  <CircleCheck size={12} aria-hidden="true" />
-                  Teses alinhadas
-                </span>
-                ({metricas.scoreMinimoMatches}%+ score)
-              </>
+              exemplo && !exemplo.matches ? (
+                <>
+                  <span className={SELO}>
+                    <CircleCheck size={12} aria-hidden="true" />
+                    Interesse mútuo
+                  </span>
+                  com investidores
+                </>
+              ) : (
+                <>
+                  <span className={SELO}>
+                    <CircleCheck size={12} aria-hidden="true" />
+                    Teses alinhadas
+                  </span>
+                  ({metricas.scoreMinimoMatches}%+ score)
+                </>
+              )
             }
           />
           <MetricCard
@@ -200,8 +215,7 @@ export default function VisaoGeral() {
             subtitulo={`Anjos com alta afinidade com ${segmento} e sua faixa de captação`}
             extra={
               <div className="flex flex-wrap items-center justify-end gap-2">
-                {/* Investidores recomendados ainda são perfis de exemplo (mock) */}
-                {exemplo && <SeloExemplo />}
+                {/* Modo API: os três com maior score do back (/api/discovery/investors) */}
                 <Link
                   to="/investidores"
                   className={`inline-flex items-center gap-1 rounded-lg text-sm font-semibold text-deepgreen hover:underline ${FOCO_VISIVEL}`}

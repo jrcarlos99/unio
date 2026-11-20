@@ -1,6 +1,6 @@
 import { Banknote } from "lucide-react";
 import type { StartupRecomendada } from "../../types/discovery";
-import { formatarMoeda } from "../../utils/formatoDescoberta";
+import { juntarPartes, localDaStartup, textoCapital } from "../../utils/perfilDescoberta";
 import InteresseButton from "./InteresseButton";
 import RecommendationCard from "./RecommendationCard";
 import SalvarButton from "./SalvarButton";
@@ -32,7 +32,7 @@ export default function StartupCard({
       titulo={startup.nome}
       verificado={startup.verificada}
       rotuloVerificado="Verificada"
-      subtitulo={`${startup.cidade}, ${startup.uf} • ${startup.captacao.rodada}`}
+      subtitulo={juntarPartes(localDaStartup(startup), startup.captacao?.rodada ?? startup.estagio)}
       avatar={<StartupLogo startup={startup} />}
       categoria={startup.categoria}
       match={compatibilidade.total}
@@ -45,8 +45,8 @@ export default function StartupCard({
         ...(startup.tags[0] ? [{ texto: startup.tags[0], estilo: "suave" as const }] : []),
       ]}
       descricao={startup.descricao}
-      principal={{ icone: Banknote, rotulo: "Captação", valor: `Busca ${formatarMoeda(startup.captacao.meta)}` }}
-      secundaria={startup.metrica}
+      principal={{ icone: Banknote, rotulo: startup.captacao ? "Captação" : "Capital procurado", valor: textoCapital(startup) }}
+      secundaria={startup.metrica ?? undefined}
       acoes={
         <>
           <div className="min-w-0 flex-1">

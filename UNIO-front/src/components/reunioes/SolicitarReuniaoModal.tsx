@@ -6,8 +6,10 @@ import { useCarregamento } from "../../hooks/useDescoberta";
 import { useDialogo } from "../../hooks/useDialogo";
 import { useToast } from "../../hooks/useToast";
 import {
+  ORIENTACAO_SEM_MATCH,
   REUNIOES_EXIGEM_MATCH,
   REUNIOES_SO_COM_IDS_REAIS,
+  linkParaDarMatch,
   detectarConflito,
   listarContrapartes,
   solicitarReuniao,
@@ -48,13 +50,11 @@ const TEXTOS = {
     subtitulo: "Envie uma proposta de agenda direta com startups conectadas",
     placeholder: "Escreva uma mensagem ou pauta breve para o fundador...",
     vazio: "Você ainda não deu match com nenhuma startup.",
-    vazioApi: "Ainda não há startups com perfil criado na plataforma.",
   },
   startup: {
     subtitulo: "Envie uma proposta de agenda direta com investidores conectados",
     placeholder: "Escreva uma mensagem ou pauta breve para o investidor...",
     vazio: "Você ainda não deu match com nenhum investidor.",
-    vazioApi: "Ainda não há investidores com perfil criado na plataforma.",
   },
 };
 
@@ -228,16 +228,14 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
                 <div className="mt-2 h-16 animate-pulse rounded-2xl bg-lightgray" aria-hidden="true" />
               ) : semUnios ? (
                 <p className="mt-2 rounded-2xl bg-lightgray/50 p-4 text-sm">
-                  {REUNIOES_EXIGEM_MATCH ? (
-                    <>
-                      {textos.vazio}{" "}
-                      <Link to="/meus-unios" onClick={onFechar} className="font-semibold underline">
-                        Ver Meus unios
-                      </Link>
-                    </>
-                  ) : (
-                    textos.vazioApi
-                  )}
+                  {textos.vazio} {ORIENTACAO_SEM_MATCH}{" "}
+                  <Link
+                    to={linkParaDarMatch(sessao.perfil).para}
+                    onClick={onFechar}
+                    className="font-semibold underline"
+                  >
+                    {linkParaDarMatch(sessao.perfil).rotulo}
+                  </Link>
                 </p>
               ) : (
                 <div className="mt-2 grid max-h-56 grid-cols-1 gap-2 overflow-y-auto p-0.5 sm:grid-cols-2">

@@ -5,6 +5,9 @@
 - **Data:** 2026-11-08
 - **Back:** branch `feat/p2-comunicacao-lgpd-qualidade` (`communication/MeetingController`, `V20__create_meetings.sql`), lida sem alterações
 
+> **Atualização (2026-11-16, Carol):** a regra "reunião só com quem deu match" passou a valer
+> também no modo API, garantida pelo back (D051, [ADR-009](ADR-009-reuniao-so-com-match-contato-e-dashboard.md)).
+
 > **Atualização (2026-11-16):** `REALIZADA` agora é um status do front (`realizada`), marcado com
 > "Compareci" depois do fim da reunião e que libera a avaliação. O item 2 abaixo ("`REALIZADA`
 > vira `confirmada`") não vale mais: ver [ADR-006](ADR-006-avaliacao-e-popularidade.md).

@@ -5,6 +5,7 @@ import br.com.unio.matchmaking_backend.auth.service.AuthUser;
 import br.com.unio.matchmaking_backend.communication.entity.MeetingStatus;
 import br.com.unio.matchmaking_backend.communication.repository.MeetingRepository;
 import br.com.unio.matchmaking_backend.communication.service.ParticipantService;
+import br.com.unio.matchmaking_backend.interest.repository.UserInterestRepository;
 import br.com.unio.matchmaking_backend.popularity.dto.PopularityResponse;
 import br.com.unio.matchmaking_backend.popularity.dto.WeeklyViewsDto;
 import br.com.unio.matchmaking_backend.popularity.repository.ProfileViewRepository;
@@ -43,14 +44,17 @@ public class PopularityService {
     private final MeetingRepository meetingRepository;
     private final ParticipantService participantService;
     private final ReviewService reviewService;
+    private final UserInterestRepository interestRepository;
     private final Clock clock;
 
     @Autowired
     public PopularityService(ProfileViewRepository profileViewRepository,
                              MeetingRepository meetingRepository,
                              ParticipantService participantService,
-                             ReviewService reviewService) {
-        this(profileViewRepository, meetingRepository, participantService, reviewService, Clock.system(ZONE));
+                             ReviewService reviewService,
+                             UserInterestRepository interestRepository) {
+        this(profileViewRepository, meetingRepository, participantService, reviewService, interestRepository,
+                Clock.system(ZONE));
     }
 
     /** Construtor com relógio controlável, usado nos testes. */
@@ -58,11 +62,13 @@ public class PopularityService {
                              MeetingRepository meetingRepository,
                              ParticipantService participantService,
                              ReviewService reviewService,
+                             UserInterestRepository interestRepository,
                              Clock clock) {
         this.profileViewRepository = profileViewRepository;
         this.meetingRepository = meetingRepository;
         this.participantService = participantService;
         this.reviewService = reviewService;
+        this.interestRepository = interestRepository;
         this.clock = clock;
     }
 
@@ -118,8 +124,8 @@ public class PopularityService {
                 views28d,
                 viewsPrev28d,
                 weekly,
-                // O interesse mútuo ainda não existe no back (D039): fica 0 até existir
-                0L);
+                // D053: interesses recebidos de verdade (user_interests, V26), sem dizer de quem
+                interestRepository.countByToUserId(userId));
     }
 
     private LocalDate today() {

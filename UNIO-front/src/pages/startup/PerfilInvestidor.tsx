@@ -36,6 +36,7 @@ import { useAcoesRecomendacao } from "../../hooks/useRecomendacoes";
 import { obterInvestidor } from "../../services/investidoresService";
 import type { AlteracaoRecomendacao } from "../../types/recomendacoes";
 import { formatarFaixaTicket } from "../../utils/formatoDescoberta";
+import { localDoInvestidor, textoDisponibilidade } from "../../utils/perfilDescoberta";
 
 // Pílulas do cabeçalho; a cor do texto fica em cada uso para não conflitar
 const PILULA = "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs";
@@ -153,13 +154,17 @@ export default function PerfilInvestidor() {
                 <li className={`${PILULA} border-[1.5px] border-deepgreen bg-sage/20 font-semibold text-deepgreen`}>
                   {rotuloTipoInvestidor(investidor.tipo)}
                 </li>
-                <li className={`${CHIP} bg-lightgray`}>
-                  <MapPin size={12} aria-hidden="true" />
-                  {investidor.cidade}, {investidor.uf}
-                </li>
-                <li className={`${CHIP} bg-lightgray`}>
-                  {soMentora ? "Mentoria desde" : "Investe desde"} {investidor.desde}
-                </li>
+                {localDoInvestidor(investidor) && (
+                  <li className={`${CHIP} bg-lightgray`}>
+                    <MapPin size={12} aria-hidden="true" />
+                    {localDoInvestidor(investidor)}
+                  </li>
+                )}
+                {investidor.desde !== null && (
+                  <li className={`${CHIP} bg-lightgray`}>
+                    {soMentora ? "Mentoria desde" : "Investe desde"} {investidor.desde}
+                  </li>
+                )}
               </ul>
             </div>
           </div>
@@ -190,13 +195,17 @@ export default function PerfilInvestidor() {
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="min-w-0 space-y-6 xl:col-span-2">
           <SecaoPerfil titulo="Sobre o investidor" icone={Info}>
-            <p className="leading-relaxed text-deepgreen/90">{investidor.bio}</p>
-            <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {(investidor.bio || investidor.tese) && (
+              <p className="mb-5 leading-relaxed text-deepgreen/90">{investidor.bio || investidor.tese}</p>
+            )}
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
                 { rotulo: "Tese principal", valor: investidor.tesePrincipal },
                 { rotulo: "Ticket médio", valor: ticket },
-                { rotulo: "Disponibilidade", valor: investidor.disponibilidade },
-              ].map(({ rotulo, valor }) => (
+                { rotulo: "Disponibilidade", valor: textoDisponibilidade(investidor.disponibilidade) },
+              ]
+                .filter(({ valor }) => valor)
+                .map(({ rotulo, valor }) => (
                 <div key={rotulo} className="rounded-2xl border border-lightgray bg-lightgray/30 p-4">
                   <dt className="text-xs text-deepgreen/75">{rotulo}</dt>
                   <dd className="mt-1 font-bold text-deepgreen">{valor}</dd>
@@ -221,12 +230,20 @@ export default function PerfilInvestidor() {
                 icone={Sprout}
                 texto={investidor.estagiosInteresse.join(", ")}
               />
-              <PitchCanvasCard
-                titulo="O que busca em startups"
-                icone={Target}
-                texto={investidor.buscaEmStartups.join(", ")}
-              />
-              <PitchCanvasCard titulo="Como apoia" icone={HandHelping} texto={investidor.comoApoia.join(", ")} />
+              {/* Só nos dados de exemplo: o back não tem esses campos (ADR-008) */}
+              {investidor.buscaEmStartups.length > 0 && (
+                <PitchCanvasCard
+                  titulo="O que busca em startups"
+                  icone={Target}
+                  texto={investidor.buscaEmStartups.join(", ")}
+                />
+              )}
+              {investidor.comoApoia.length > 0 && (
+                <PitchCanvasCard titulo="Como apoia" icone={HandHelping} texto={investidor.comoApoia.join(", ")} />
+              )}
+              {investidor.regiaoTexto && (
+                <PitchCanvasCard titulo="Região de interesse" icone={MapPin} texto={investidor.regiaoTexto} />
+              )}
             </div>
           </SecaoPerfil>
 

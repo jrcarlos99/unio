@@ -12,9 +12,18 @@ import * as remoto from "./reunioesService.api";
 
 export type { SessaoReunioes } from "../types/reunioes";
 
-// No mock só dá para marcar com quem deu match; com a API, a regra do match
-// ainda é pendência do back (D039) e a lista mostra os usuários reais
-export const REUNIOES_EXIGEM_MATCH = MOCK_BACKEND;
+// Reunião só com quem deu match, nos dois modos: no mock a lista vem dos
+// unios; com a API, o back filtra GET /api/meetings/counterparts e recusa
+// POST /api/meetings sem match (D051 do back, ADR-009)
+export const REUNIOES_EXIGEM_MATCH = true;
+
+// Orientação de quando ainda não há match, com o link para achar alguém
+export const ORIENTACAO_SEM_MATCH = "Dê match com alguém para solicitar uma reunião.";
+export function linkParaDarMatch(perfil: "investidor" | "startup") {
+  return perfil === "investidor"
+    ? { para: "/home-investidor", rotulo: "Ir para Descobrir" }
+    : { para: "/investidores", rotulo: "Ir para Investidores" };
+}
 
 // Modo API: "Com quem" só aceita usuários reais da lista de contrapartes (id
 // numérico do back); ids de exemplo dos mocks nunca vão ao back (ADR-007)

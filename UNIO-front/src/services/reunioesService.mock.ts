@@ -28,6 +28,7 @@ import {
   somarMinutos,
 } from "../utils/datas";
 import { formatarFaixaTicket, formatarMoeda } from "../utils/formatoDescoberta";
+import { textoCapital, textoDisponibilidade } from "../utils/perfilDescoberta";
 import { iniciais } from "../utils/nomeUsuario";
 import { arquivoIcsDaReuniao, validarLinkHttps } from "../utils/reunioes";
 import { registrarAvaliacaoRecebidaExemplo } from "./avaliacoesStore";
@@ -113,10 +114,12 @@ function contraparteDe(rec: Recomendacao): ContraparteReuniao {
       tipo: "startup",
       cargoEmpresa: fundador ? `${fundador.nome}, ${fundador.cargo}` : `Equipe ${startup.nome}`,
       selos: [startup.segmento, startup.estagio],
-      destaque: {
-        rotulo: "Captação atual",
-        valor: `${formatarMoeda(startup.captacao.captado)} de ${formatarMoeda(startup.captacao.meta)} (${startup.captacao.rodada})`,
-      },
+      destaque: startup.captacao
+        ? {
+            rotulo: "Captação atual",
+            valor: `${formatarMoeda(startup.captacao.captado)} de ${formatarMoeda(startup.captacao.meta)} (${startup.captacao.rodada})`,
+          }
+        : { rotulo: "Capital procurado", valor: textoCapital(startup) },
       perfilHref: `/startups/${startup.id}`,
     };
   }
@@ -139,7 +142,10 @@ function contraparteDe(rec: Recomendacao): ContraparteReuniao {
           rotulo: "Ticket",
           valor: formatarFaixaTicket(investidor.ticketMin as number, investidor.ticketMax as number, " a "),
         }
-      : { rotulo: "Mentoria", valor: `Só mentoria, disponibilidade ${investidor.disponibilidade.toLowerCase()}` },
+      : {
+          rotulo: "Mentoria",
+          valor: `Só mentoria, disponibilidade ${textoDisponibilidade(investidor.disponibilidade).toLowerCase()}`,
+        },
     perfilHref: `/investidores/${investidor.id}`,
   };
 }

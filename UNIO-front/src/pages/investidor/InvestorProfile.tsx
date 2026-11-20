@@ -13,6 +13,7 @@ import PendingChangesBar from "../../components/profile/PendingChangesBar";
 import ProfilePageSkeleton from "../../components/profile/ProfilePageSkeleton";
 import Tabs, { TabPanel, type TabItem } from "../../components/ui/Tabs";
 import ContatosForm from "../../components/unios/ContatosForm";
+import PrivacidadeDados from "../../components/profile/PrivacidadeDados";
 import { useAuth } from "../../contexts/AuthContext";
 import { DISPONIBILIDADES_DETALHADAS } from "../../data/options";
 import { useCarregamento, useUserKey } from "../../hooks/useDescoberta";
@@ -136,6 +137,7 @@ export default function InvestorProfile() {
         {content}
 
         <ContatosForm />
+        <PrivacidadeDados />
       </TabPanel>
 
       <TabPanel idPrefix={TABS_ID} tab="popularidade" activeTab={activeTab} className="mt-6">

@@ -28,4 +28,10 @@ public class AdminMetricsResponse {
     private long totalReviews;
     /** Média geral das avaliações (1 casa decimal) ou null se ainda não houver avaliações. */
     private Double averageRating;
+
+    // D053: interesse e match mútuo (V26)
+    /** Interesses enviados na plataforma (linhas de user_interests). */
+    private long interestsSent;
+    /** Pares com match mútuo (cada par conta uma vez). totalMatches continua sendo a contagem de scores. */
+    private long mutualMatches;
 }

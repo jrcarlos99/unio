@@ -46,12 +46,13 @@ export interface LogEntry {
 }
 
 // Um card de métrica no topo da Visão Geral: valor + variação + um
-// mini-histórico (sparkline) dos últimos períodos.
+// mini-histórico (sparkline) dos últimos períodos. Variação e sparkline só
+// existem nos dados de exemplo; o back não tem histórico (ADR-010).
 export interface Metrica {
   label: string;
   valor: number;
-  variacaoPercentual: number;
-  sparkline: number[];
+  variacaoPercentual?: number;
+  sparkline?: number[];
 }
 
 export interface FatiaSegmento {

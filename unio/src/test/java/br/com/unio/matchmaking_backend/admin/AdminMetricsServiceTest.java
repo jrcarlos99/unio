@@ -13,6 +13,7 @@ import br.com.unio.matchmaking_backend.communication.repository.MeetingRepositor
 import br.com.unio.matchmaking_backend.communication.repository.MessageRepository;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
+import br.com.unio.matchmaking_backend.interest.repository.UserInterestRepository;
 import br.com.unio.matchmaking_backend.review.repository.InteractionReviewRepository;
 import br.com.unio.matchmaking_backend.scorecard.calculation.MatchScoreRepository;
 import br.com.unio.matchmaking_backend.scorecard.common.MatchScoreClassification;
@@ -32,6 +33,7 @@ class AdminMetricsServiceTest {
         MessageRepository messages = mock(MessageRepository.class);
         MeetingRepository meetings = mock(MeetingRepository.class);
         InteractionReviewRepository reviews = mock(InteractionReviewRepository.class);
+        UserInterestRepository interests = mock(UserInterestRepository.class);
 
         MatchScoreClassification anyClassification = MatchScoreClassification.values()[0];
         when(startups.count()).thenReturn(4L);
@@ -45,9 +47,11 @@ class AdminMetricsServiceTest {
         when(meetings.countByStatus(MeetingStatus.REALIZADA)).thenReturn(2L);
         when(reviews.count()).thenReturn(3L);
         when(reviews.averageRating()).thenReturn(4.6666);
+        when(interests.count()).thenReturn(7L);
+        when(interests.countMutualMatches()).thenReturn(2L);
 
         AdminMetricsResponse metrics = new AdminMetricsService(startups, investors, scores, feedbacks,
-                conversations, messages, meetings, reviews).getMetrics();
+                conversations, messages, meetings, reviews, interests).getMetrics();
 
         assertThat(metrics.getTotalStartups()).isEqualTo(4);
         assertThat(metrics.getDistributionByClassification()).containsEntry(anyClassification.name(), 12L);
@@ -57,5 +61,9 @@ class AdminMetricsServiceTest {
                 .containsEntry("REALIZADA", 2L)
                 .containsEntry("PENDENTE", 0L);
         assertThat(metrics.getAverageRating()).isEqualTo(4.7);
+        // D053: interesse e match mútuo; totalMatches continua sendo a contagem de scores
+        assertThat(metrics.getInterestsSent()).isEqualTo(7);
+        assertThat(metrics.getMutualMatches()).isEqualTo(2);
+        assertThat(metrics.getTotalMatches()).isEqualTo(12);
     }
 }

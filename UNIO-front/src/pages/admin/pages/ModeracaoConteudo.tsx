@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AdminPageHeader from "../components/AdminPageHeader";
+import AvisoPendencia from "../components/AvisoPendencia";
 import { useAudit } from "../context/AuditContext";
 
 // Dados permanecem mockados até existir um endpoint de moderação de conteúdo no back-end.
@@ -39,6 +40,10 @@ export default function ModeracaoConteudo() {
         title="Moderação de Conteúdo"
         subtitle="Pitches e canvases publicados pelas startups na plataforma."
       />
+      <AvisoPendencia>
+        Dados de exemplo: o back-end ainda não tem moderação de conteúdo. Remover um item aqui não muda nada na
+        plataforma.
+      </AvisoPendencia>
 
       {conteudos.length === 0 ? (
         <p className="rounded-2xl border border-deepgreen/10 bg-lightgray p-5 text-center text-deepgreen">

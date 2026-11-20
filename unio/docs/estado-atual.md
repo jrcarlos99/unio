@@ -1,6 +1,6 @@
 # Estado Atual do Projeto — Scorecard de Matchmaking
 
-Última atualização: 2026-11-08
+Última atualização: 2026-11-16
 
 ## Resumo
 
@@ -20,10 +20,11 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Documentos do projeto
 
-- `docs/decisoes.md`: decisões de design (D001 a D044)
+- `docs/decisoes.md`: decisões de design (D001 a D055)
 - `docs/dominio.md` — especificação de domínio
 - `docs/contrato/contrato-v2.md` — contrato ativo da API
 - `docs/contrato/contrato-onboarding.md`: onboarding e criação de perfil a partir dele
+- `docs/contrato/contrato-descoberta.md`: descoberta com score, interesse, match, salvos e administrador (D045 a D055)
 - `docs/implementacao/plano-tarefas.md` — plano de tarefas
 - `docs/planejamento/` — resumos e planejamento de tickets
 
@@ -68,6 +69,16 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] T08 — Consentimento LGPD (RF11 + RNF03) — 2026-10-26
 - [x] T11 — Upload de pitch (RF06) — 2026-10-20
 - [x] RF10 popularidade: `GET /api/reviews/summary/{userId}`, `GET /api/profile/me/popularity`, `POST /api/profile-views`, comentário fora das respostas (D040 a D044, `V25__create_profile_views.sql`), 2026-11-16
+- [x] Integração do matching, 2026-11-16 (autora: Carol):
+  - descoberta com score sob demanda (`/api/discovery`, D045 a D047);
+  - dono do par no scorecard (D048);
+  - interesse, match mútuo e salvos (`/api/interests`, `/api/saved`, D049, D050, `V26`);
+  - reunião só com match (D051);
+  - e-mail só depois do match (D052);
+  - métricas novas (D053);
+  - primeiro administrador por variável de ambiente (D054);
+  - LGPD de interesses e salvos (D055);
+  - `updated_at` nos perfis (`V27`).
 
 ### Bloco E — Testes (pendente)
 
@@ -105,7 +116,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] RF06 — Pitch/Canvas (T11 adicionou upload)
 - [x] RF07 — Autenticação e roles
 - [x] RF09 — Métricas de uso
-- [ ] RF04 — Visualização de perfis compatíveis
+- [x] RF04: Visualização de perfis compatíveis (`/api/discovery`, D045 e D046)
 - [x] RF05 — Comunicação (mensagens + reuniões) — T09a/T09b; reuniões com até 3 horários, contraproposta, remarcação, formato e local (D032 a D039, V24)
 - [x] RF08 — Moderação de cadastros
 - [x] RF10: Feedback pós-interação (T12); resumo público só com agregados e mínimo de 3 avaliações, popularidade própria, visitas ao perfil e comentário oculto (D040 a D044, V25)
@@ -139,21 +150,23 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Branch atual
 
-- `feat/avaliacao-popularidade` (a partir de `front-carolina`): avaliação pós-reunião e popularidade (D040 a D044; ADR-006 do front)
+- `feat/integracao-matching` (a partir de `feat/avaliacao-popularidade`): descoberta, interesse, match, salvos, reunião só com match e administrador (D045 a D055; ADR-008 a ADR-010 do front)
 
 ## Próximo passo
 
 - Front: integrar mensagens, avaliação e LGPD (`docs/contrato/contrato-comunicacao.md`); reuniões já integradas (ADR-005 do front)
-- Persistir o match mútuo no back e exigir em reuniões e mensagens (D039); depois preencher `interestsReceived` da popularidade (D042)
 - Popularidade no ranking do back, se o produto quiser (hoje só ordena no front, D042)
 - Acesso da moderação (ADMIN) aos comentários das avaliações e prazo de retenção (D043)
 - Texto de consentimento LGPD: avisar que comentários de avaliação são coletados e não exibidos (D043)
-- Front: ligar avaliação e popularidade à API (hoje em modo mock, ADR-006 do front)
 - Notificações de reunião (hoje o front deriva por polling, ADR-005 do front)
 - Aplicar os alertas no Azure e rodar o teste de carga; preencher `docs/testes/teste-de-carga.md`
 - Definir `JWT_SECRET` no App Service
 - RNF07: rodada com beta testers
+- Escala da descoberta: recálculo assíncrono ao salvar o perfil e paginação no banco (D045)
+- Pitch e canvas na descoberta, com regra de visibilidade e moderação (D046)
+- Texto LGPD: o e-mail é compartilhado com quem der match (D052); telefone e WhatsApp opcionais
+- Moderação de cadastros (aprovar e rejeitar) ainda sem endpoint
 
 ## Fora do MVP (trabalho futuro)
 
-Ver D011, D025, D027 e as pendências da D028, D030, D035, D039, D042 e D043 em `docs/decisoes.md`.
+Ver D011, D025, D027 e as pendências da D028, D030, D035, D042, D043, D045, D046 e D052 em `docs/decisoes.md`, e a seção "Fora de escopo desta entrega" depois da D055.

@@ -8,7 +8,9 @@ import br.com.unio.matchmaking_backend.communication.dto.ParticipantDto;
 import br.com.unio.matchmaking_backend.profile.entity.Startup;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
 import java.util.Objects;
-import lombok.RequiredArgsConstructor;
+import java.util.Optional;
+import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,13 +21,28 @@ import org.springframework.web.server.ResponseStatusException;
  * usuários do mesmo tipo, com ADMIN ou consigo mesmo.
  */
 @Service
-@RequiredArgsConstructor
 public class ParticipantService {
 
     static final String REMOVED_USER_NAME = "Usuário removido";
+    public static final String MATCH_REQUIRED_MESSAGE =
+            "Vocês precisam dar match (interesse mútuo) para marcar uma reunião";
 
     private final UserRepository userRepository;
     private final StartupRepository startupRepository;
+    private final MeetingMatchPolicy matchPolicy;
+
+    /** Sem a regra de match (D051 desligada); usado pelos testes de unidade. */
+    public ParticipantService(UserRepository userRepository, StartupRepository startupRepository) {
+        this(userRepository, startupRepository, MeetingMatchPolicy.disabled());
+    }
+
+    @Autowired
+    public ParticipantService(UserRepository userRepository, StartupRepository startupRepository,
+                              MeetingMatchPolicy matchPolicy) {
+        this.userRepository = userRepository;
+        this.startupRepository = startupRepository;
+        this.matchPolicy = matchPolicy;
+    }
 
     /** Usuário pelo id, ou null (sem lançar 404). */
     public User findUser(Long userId) {
@@ -74,6 +91,25 @@ public class ParticipantService {
                     "A comunicação deve ser entre uma startup e um investidor");
         }
         return other;
+    }
+
+    /**
+     * D051: para PROPOR reunião, os dois precisam ter dado match mútuo quando
+     * {@code unio.communication.require-match} está ligada (padrão). 403 com
+     * mensagem clara quando não há match.
+     */
+    public void requireMatchToMeet(User me, User other) {
+        if (matchPolicy.required() && !matchPolicy.matched(me.getId(), other.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, MATCH_REQUIRED_MESSAGE);
+        }
+    }
+
+    /**
+     * D051: com a regra ligada, os ids com quem o usuário tem match (as únicas
+     * contrapartes de reunião); com a regra desligada, vazio (sem filtro).
+     */
+    public Optional<Set<Long>> meetingCounterpartFilter(User me) {
+        return matchPolicy.required() ? Optional.of(matchPolicy.matchedUserIds(me.getId())) : Optional.empty();
     }
 
     /** Usuários anonimizados pela exclusão de conta (T13) deixam de estar ativos. */

@@ -2,7 +2,7 @@
 
 - **Autora:** Carol
 - **Data:** 2026-11-16
-- **Status:** Aceita
+- **Status:** Aceita (parte do que era exemplo passou a vir do back: ADR-008 e ADR-009)
 - **Atualiza:** ADR-006 (avaliação e popularidade agora chamam o back no modo API) e ADR-001
   (gate de onboarding)
 - **Back:** sem mudança no back. Usa D040 a D044 (avaliação, popularidade e visitas), D032 a
@@ -160,3 +160,18 @@ WHERE id = <id>;
    `/profile-views`.
    - `/profile-views` só aparece ao abrir um perfil de id real.
    - `/summary` só aparece para id real, e nenhuma tela atual abre perfil de id real.
+
+## Atualização (ADR-008 a ADR-010, 2026-11-16, Carol)
+
+Com a integração do matching, deixaram de ser exemplo no modo API:
+
+- Descobrir, Investidores e os perfis de candidato (`/api/discovery`), incluindo a
+  compatibilidade (scorecard do back), a popularidade e as visitas desses perfis;
+- interesse, salvos, Meus unios, contato (só e-mail) e desfazer match;
+- interessados, matches, a etapa "Demonstraram interesse" e os investidores recomendados do
+  dashboard;
+- Visão geral e Log de auditoria do admin.
+
+Continuam de exemplo ou locais: notificações (derivadas no front), moderação de cadastros e
+de conteúdo (com aviso), "Contatos iniciados" (contagem deste navegador), "+N novos esta
+semana" e o benchmark do funil.
