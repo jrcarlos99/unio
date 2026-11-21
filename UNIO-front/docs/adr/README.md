@@ -41,5 +41,6 @@ O que muda, o que fica pendente e os arquivos afetados.
 | [ADR-009](ADR-009-reuniao-so-com-match-contato-e-dashboard.md) | Reunião só com match nos dois modos, contato só por e-mail e dashboard com dados reais | Aceita (modo mock substituído pela ADR-011) |
 | [ADR-010](ADR-010-admin-e-privacidade-no-modo-api.md) | Admin com métricas e auditoria do back; privacidade e dados no Meu perfil | Aceita (modo mock substituído pela ADR-011) |
 | [ADR-011](ADR-011-producao-sem-mocks.md) | Front só com o back da nuvem, sem mocks e sem dados de exemplo | Aceita |
+| [ADR-012](ADR-012-unificacao-com-o-main.md) | Front da linha da Carol no merge com o main | Aceita |
 
 Auditoria de integração front x back: [`docs/integracao/auditoria-front-back.md`](../integracao/auditoria-front-back.md).

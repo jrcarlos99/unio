@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    public static final String INVALID_CREDENTIALS = "Credenciais inválidas";
 
     private final UserRepository userRepository;
     private final ConsentRecordRepository consentRecordRepository;
@@ -73,13 +76,24 @@ public class AuthService {
                 .build();
     }
 
+    /**
+     * D062: qualquer falha de autenticação no login (senha errada, e-mail inexistente, conta
+     * desativada) responde 401 com a mesma mensagem curta, no JSON padrão do
+     * GlobalExceptionHandler. A mensagem é a mesma em todos os casos para não revelar se o
+     * e-mail existe. "Não autenticado" continua sendo o 401 das rotas protegidas sem token.
+     */
     public AuthResponse login(String email, String password) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email.trim().toLowerCase(Locale.ROOT), password)
-        );
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(normalizedEmail, password)
+            );
+        } catch (AuthenticationException ex) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_CREDENTIALS);
+        }
 
-        User user = userRepository.findByEmail(email.trim().toLowerCase(Locale.ROOT))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciais inválidas"));
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_CREDENTIALS));
 
         String token = jwtService.generateToken(user);
         return AuthResponse.builder()

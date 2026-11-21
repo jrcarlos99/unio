@@ -1,10 +1,10 @@
 # Auditoria da integração front x back
 
 - **Autora:** Carol
-- **Data:** 2026-11-20
-- **Branch:** `feat/producao-sem-mocks` (front e back desta branch)
+- **Data:** 2026-11-20 (inventário refeito em 2026-11-21 sobre o back unido com o `main`)
+- **Branch:** `feat/unificacao-main` (front da Carol e back unido com o `origin/main`)
 - **Back na nuvem:** `https://unio-webapp-ghbmd2a6a4fmc4cb.brazilsouth-01.azurewebsites.net`
-- **Decisões:** ADR-011 (front), D056 e D057 (back)
+- **Decisões:** ADR-011 e ADR-012 (front), D056 a D062 (back)
 
 ## Resumo
 
@@ -12,22 +12,22 @@
 | --- | --- |
 | Chamadas HTTP do front | 53 pontos de chamada em 13 arquivos (12 serviços e o `AuthContext`), todos pelo cliente `api` (axios) com `baseURL` = `VITE_API_URL` |
 | Endpoints distintos que o front usa | 39 (método + rota) |
-| Desses, existem no back desta branch | 39 de 39 (OK) |
-| Desses, existem hoje na nuvem | 23 de 39; faltam 16, e `POST /api/meetings` está no contrato antigo |
+| Desses, existem no back unido (`feat/unificacao-main`, conferido no `/v3/api-docs` rodando) | 39 de 39 (OK) |
+| Desses, existem hoje na nuvem | 23 de 39 até a publicação do merge (a nuvem roda o `main` antigo); 39 de 39 depois dela |
 | Divergências de contrato encontradas | 9, todas corrigidas (seção "Divergências") |
 | Chamadas sem endpoint no back | 0. Itens de tela sem endpoint ficaram escondidos ou com estado vazio honesto (ADR-011, seção 4) |
-| Endpoints do back sem uso no front | 21 de 60 (seção "Endpoints do back sem uso no front") |
+| Endpoints do back sem uso no front | 28 de 67 no back unido; 7 deles vieram do `main` (seção "Endpoints do back sem uso no front") |
 | Fluxo completo contra o back **local** desta branch | 38 de 38 etapas OK |
-| Fluxo completo contra a **nuvem** | 19 OK, 12 falhas: a nuvem roda o `main`, sem as rotas desta branch |
+| Fluxo completo contra a **nuvem** | 19 OK, 12 falhas em 2026-11-20: a nuvem roda o `main`, sem as rotas desta branch |
+| Fluxo completo contra o **back unido** (banco descartável) | 36 de 36 etapas OK em 2026-11-21 (seção "Reinventário depois do merge") |
 | Chamadas a outra URL que não a do back | Nenhuma |
 
-**Atenção:** o App Service publica o `origin/main`, que divergiu desta linha. Na nuvem
-faltam `/api/discovery`, `/api/interests`, `/api/saved`, `/api/meetings/counterparts`,
-`/counter-proposal`, `/details`, `/api/profile/me/popularity`, `/api/profile-views` e
-`/api/reviews/summary/{id}`. As migrations colidem: no `main`, `V23__create_match_interest.sql`;
-aqui, `V23__capital_procurado_opcional.sql`. Publicar esta branch no banco da nuvem sem
-reconciliar faz o Flyway falhar na validação. A integração está completa no código; a
-nuvem precisa receber este código (pendência P1).
+**Atenção (atualizado em 2026-11-21):** o App Service publica o `origin/main`. A branch
+`feat/unificacao-main` une as duas linhas: as migrations da Carol foram renumeradas para
+V24 a V28 depois da `V23__create_match_interest.sql` do `main`, e a V29 junta os
+interesses em `match_interests` (D058, D059). O Flyway foi provado sobre um banco no
+estado do `main`. As rotas que faltam na nuvem passam a existir quando o pull request for
+aceito e o workflow publicar (pendência P1).
 
 ## Como o inventário foi feito
 
@@ -35,7 +35,8 @@ nuvem precisa receber este código (pendência P1).
   (URLs montadas por variável, como `rota(id, "accept")`, foram resolvidas à mão). Busca por
   `fetch(`, `axios.create`, `http://`, `https://`, `localhost`, `8080`, `8081` e `import.meta.env`.
 - **Back:** `@*Mapping` de todos os controllers (60 rotas) e o `/v3/api-docs` local
-  (50 caminhos) e da nuvem (43 caminhos).
+  (50 caminhos) e da nuvem (43 caminhos). Em 2026-11-21, o `/v3/api-docs` do back unido
+  rodando (67 operações) foi cruzado com a coluna Endpoint desta tabela por script.
 - **Formato:** DTOs do back (`record`s e `Map` de `ProfileService`/`AdminService`) contra os
   tipos `*Back` dos mapeamentos do front (`discovery.mapping.ts`, `reunioes.mapping.ts`,
   `avaliacoes.mapping.ts`, `admin.mapping.ts`, `perfilFromOnboarding.ts`).
@@ -47,12 +48,12 @@ nuvem precisa receber este código (pendência P1).
 
 ## Tabela: chamadas do front
 
-Colunas: **Back** = existe no back desta branch; **Nuvem** = existe hoje no App Service;
+Colunas: **Back** = existe no back unido (`feat/unificacao-main`); **Nuvem** = existe hoje no App Service (antes da publicação do merge);
 **Formato** = request e response conferem com o DTO.
 
 | Tela | Função do front | Método | Endpoint | Back | Nuvem | Formato | Erros 400/401/403/404/409 | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Login | `AuthContext.login` | POST | `/api/auth/login` | sim | sim | `{email,password}` → `{token,email,role}` | 401 = mensagem da tela, sem redirecionar | OK |
+| Login | `AuthContext.login` | POST | `/api/auth/login` | sim | sim | `{email,password}` → `{token,email,role}` | 401 "Credenciais inválidas" do back (D062), sem redirecionar; sem corpo = mensagem da tela | OK |
 | Cadastro | `AuthContext.register` | POST | `/api/auth/register` | sim | sim | `{email,password,role,documento,acceptedTerms}` → `AuthResponse` | global (400 por campo, 409 e-mail/documento) | OK |
 | Sessão (todas) | `AuthContext.fetchProfile` | GET | `/api/profile/me` | sim | sim | `Map` do perfil; ADMIN só resumo | 404 = conta sem perfil (vai ao onboarding); 401 = login | OK |
 | Onboarding (fim) | `criarPerfilPeloOnboarding` | POST | `/api/profile/startup` | sim | sim | `StartupCreateRequest` (ADR-002) | 400 validação; 409 = já existe (sucesso) | OK |
@@ -116,6 +117,8 @@ No back:
 | --- | --- | --- | --- |
 | B1 | `CorsConfig` | Origens fixas no código: front em outro endereço fica bloqueado | `unio.cors.allowed-origins` / `UNIO_CORS_ALLOWED_ORIGINS` (D056), com testes |
 | B2 | `ScorecardSeedRunner` | Políticas padrão só no perfil dev: banco novo em produção sem política → descoberta 500 (`POLICY_NOT_FOUND`) | Seed idempotente em qualquer perfil, com chave para desligar (D057), com teste |
+| B3 | Login (merge com o `main`) | Senha errada: 401 sem corpo nesta linha, "Não autenticado" no `main` | 401 "Credenciais inválidas" no JSON padrão (D062), com teste |
+| B4 | Interesse e match (merge com o `main`) | Duas tabelas para o mesmo fato (`match_interests` do `main`, `user_interests` da Carol) | Uma fonte, `match_interests`; as rotas das duas linhas usam a mesma regra (D058) |
 
 Dados de demonstração no back: não há `DataLoader`, endpoint de demo nem migration com
 perfis de teste. O único `INSERT` em migration (`V24`) copia horários de reuniões
@@ -174,6 +177,32 @@ das duas contas no final pela rota de privacidade.
 As 12 falhas da nuvem são todas de rotas que existem só nesta branch. Nenhuma conta e2e
 ficou ativa (11 e 11b nos dois ambientes).
 
+## Reinventário depois do merge (2026-11-21)
+
+O back unido (`feat/unificacao-main`) subiu contra um PostgreSQL descartável (Flyway
+aplicou V1 a V29), sem erro, sem mapeamento ambíguo e sem bean duplicado, com o
+administrador criado pelo seed (`UNIO_ADMIN_EMAIL`/`UNIO_ADMIN_PASSWORD`). O fluxo foi
+feito pela API com duas contas e2e, apagadas no final, e o banco foi descartado.
+
+| Etapa | Resultado |
+| --- | --- |
+| Cadastro startup e investidor; login inválido | OK (201, 201; 401 "Credenciais inválidas") |
+| Perfis e `/api/profile/me` | OK |
+| Descoberta dos dois lados e detalhe | OK (score 92,5) |
+| Perfil público do `main` antes do match | OK (`email` nulo) |
+| Recomendações do `main` (investidor e startup) | OK (sem id na query; e-mail do investidor oculto) |
+| Interesse da startup por `/api/interests` e do investidor por `/api/matches/interest` | OK (`ENVIADO`, depois `MATCHED`) |
+| Matches pelas duas rotas (`/api/interests/matches` com e-mail; `/api/matches`) | OK (o mesmo match) |
+| Salvos | OK |
+| Reunião: propor, aceitar, Compareci antes (409) e depois do horário | OK (`REALIZADA`) |
+| Painel da startup do `main` | OK (`totalMatches` 1) |
+| Avaliação dos dois lados | OK (201, sem comentário na resposta) |
+| Visita, popularidade e resumo público | OK (1 visita, 1 reunião, 1 interesse recebido) |
+| Admin do seed: login, métricas, usuários, auditoria | OK (2 interesses, 1 match mútuo) |
+| Exportação; exclusão das duas contas; login depois | OK (204, 204; 401) |
+| Match some das métricas depois da exclusão | OK (0) |
+| **Total** | **36 de 36 OK** |
+
 ## Endpoints do back sem uso no front
 
 | Endpoint | Motivo |
@@ -184,6 +213,10 @@ ficou ativa (11 e 11b nos dois ambientes).
 | `POST /api/profile/startup/pitch` | Upload de arquivo de pitch sem tela (o pitch fica no JSON do onboarding) |
 | `GET /api/reviews/received` | A tela usa a popularidade agregada |
 | `POST /api/scorecard/calculate`, `GET /api/scorecard/recommendations`, `GET /api/scorecard/{startupId}/explanation` | A descoberta (`/api/discovery`) já calcula e explica |
+| `GET /api/scorecard/recommendations/investors` (do `main`) | Idem; a lista da startup é `/api/discovery/investors` (mesma regra de acesso, D061) |
+| `POST /api/matches/interest`, `GET /api/matches`, `GET /api/matches/saved` (do `main`) | O front usa `/api/interests` e `/api/saved`; as duas interfaces gravam e leem em `match_interests` (D058) |
+| `GET /api/profile/startup/{id}`, `GET /api/profile/investor/{id}` (do `main`) | O perfil no front vem de `/api/discovery/{startups,investors}/{userId}`, com score; mesmas regras de campos públicos (D060) |
+| `GET /api/profile/startup/dashboard` (do `main`) | A Visão geral monta os números com `/api/profile/me/popularity`, `/api/interests/matches` e `/api/meetings`; o painel do `main` usa as mesmas fontes (D060) |
 | `GET /api/admin/policies/current`, `POST /api/admin/policies`, `GET/POST /api/admin/policies/{id}/criteria`, `PUT/DELETE /api/admin/criteria/{id}` | Configuração do algoritmo sem tela no admin |
 | `POST /api/admin/bootstrap-admin` | Feito por variável de ambiente (D054) |
 
@@ -202,8 +235,8 @@ Busca final em `src/` por `fetch(`, `axios.`, `new WebSocket`, `EventSource`, `h
 
 | # | Pendência | Tamanho | Dono |
 | --- | --- | --- | --- |
-| P1 | Publicar no App Service o back desta linha. Antes, reconciliar com o `main`: a `V23` existe com conteúdos diferentes nas duas linhas, e o Flyway da nuvem já aplicou a do `main` | Grande (merge e migration) | Squad |
-| P2 | Mensagem do 401 de login: no `main`, o `RestAuthenticationEntryPoint` responde "Não autenticado" para senha errada; nesta branch o 401 vem sem corpo. Unificar no merge para "Credenciais inválidas" | Pequeno, depende do P1 | Squad |
+| P1 | Publicar no App Service: abrir o pull request de `feat/unificacao-main` para o `main`. A reconciliação das migrations está feita e provada (D059) | Pull request | Carol |
+| P2 | ~~Mensagem do 401 de login~~: resolvida no merge, "Credenciais inválidas" (D062) | Feito | Carol |
 | P3 | Notificações no back (hoje derivadas no front, estado local) | Médio | Squad |
 | P4 | Moderação de cadastros (aprovar e rejeitar) e de conteúdo | Médio | Squad |
 | P5 | Contato além do e-mail, upload de logo, histórico de métricas, data do interesse recebido | Médio | Squad |

@@ -18,7 +18,7 @@ public record PopularityResponse(
         @Schema(description = "Visitas nos últimos 28 dias (hoje incluso)", example = "59") long profileViews28d,
         @Schema(description = "Visitas nos 28 dias anteriores a esses", example = "50") long profileViewsPrev28d,
         @Schema(description = "4 janelas de 7 dias, da mais antiga para a mais recente") List<WeeklyViewsDto> weeklyViews,
-        @Schema(description = "Sempre 0 por enquanto: o interesse mútuo ainda não existe no back (D039)",
-                example = "0") long interestsReceived
+        @Schema(description = "Interesses recebidos (D053), sem dizer de quem; fonte: match_interests (D058)",
+                example = "3") long interestsReceived
 ) {
 }

@@ -30,7 +30,7 @@ public class AdminMetricsResponse {
     private Double averageRating;
 
     // D053: interesse e match mútuo (V26)
-    /** Interesses enviados na plataforma (linhas de user_interests). */
+    /** Interesses enviados na plataforma (linhas ativas de match_interests, D058). */
     private long interestsSent;
     /** Pares com match mútuo (cada par conta uma vez). totalMatches continua sendo a contagem de scores. */
     private long mutualMatches;

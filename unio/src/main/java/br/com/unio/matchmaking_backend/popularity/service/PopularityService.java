@@ -5,7 +5,7 @@ import br.com.unio.matchmaking_backend.auth.service.AuthUser;
 import br.com.unio.matchmaking_backend.communication.entity.MeetingStatus;
 import br.com.unio.matchmaking_backend.communication.repository.MeetingRepository;
 import br.com.unio.matchmaking_backend.communication.service.ParticipantService;
-import br.com.unio.matchmaking_backend.interest.repository.UserInterestRepository;
+import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
 import br.com.unio.matchmaking_backend.popularity.dto.PopularityResponse;
 import br.com.unio.matchmaking_backend.popularity.dto.WeeklyViewsDto;
 import br.com.unio.matchmaking_backend.popularity.repository.ProfileViewRepository;
@@ -44,7 +44,7 @@ public class PopularityService {
     private final MeetingRepository meetingRepository;
     private final ParticipantService participantService;
     private final ReviewService reviewService;
-    private final UserInterestRepository interestRepository;
+    private final MatchInterestRepository interestRepository;
     private final Clock clock;
 
     @Autowired
@@ -52,7 +52,7 @@ public class PopularityService {
                              MeetingRepository meetingRepository,
                              ParticipantService participantService,
                              ReviewService reviewService,
-                             UserInterestRepository interestRepository) {
+                             MatchInterestRepository interestRepository) {
         this(profileViewRepository, meetingRepository, participantService, reviewService, interestRepository,
                 Clock.system(ZONE));
     }
@@ -62,7 +62,7 @@ public class PopularityService {
                              MeetingRepository meetingRepository,
                              ParticipantService participantService,
                              ReviewService reviewService,
-                             UserInterestRepository interestRepository,
+                             MatchInterestRepository interestRepository,
                              Clock clock) {
         this.profileViewRepository = profileViewRepository;
         this.meetingRepository = meetingRepository;
@@ -103,7 +103,7 @@ public class PopularityService {
 
         LocalDate today = today();
         LocalDate windowStart = today.minusDays(WINDOW_DAYS - 1L);
-        long views28d = profileViewRepository.countReceivedBetween(userId, windowStart, today);
+        long views28d = viewsLast28Days(userId);
         long viewsPrev28d = profileViewRepository.countReceivedBetween(
                 userId, windowStart.minusDays(WINDOW_DAYS), windowStart.minusDays(1));
 
@@ -124,8 +124,15 @@ public class PopularityService {
                 views28d,
                 viewsPrev28d,
                 weekly,
-                // D053: interesses recebidos de verdade (user_interests, V26), sem dizer de quem
-                interestRepository.countByToUserId(userId));
+                // D053: interesses recebidos de verdade (match_interests, D058), sem dizer de quem
+                interestRepository.countActiveReceivedBy(userId));
+    }
+
+    /** Visitas recebidas nos últimos 28 dias, hoje incluso (D041). Também usada no painel da startup (D060). */
+    @Transactional(readOnly = true)
+    public long viewsLast28Days(Long userId) {
+        LocalDate today = today();
+        return profileViewRepository.countReceivedBetween(userId, today.minusDays(WINDOW_DAYS - 1L), today);
     }
 
     private LocalDate today() {

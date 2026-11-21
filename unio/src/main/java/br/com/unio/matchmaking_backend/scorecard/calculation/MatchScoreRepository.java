@@ -16,6 +16,8 @@ public interface MatchScoreRepository extends JpaRepository<MatchScore, Long> {
 
     List<MatchScore> findByStartupId(UUID startupId);
 
+    long countByStartupId(UUID startupId);
+
     Optional<MatchScore> findByInvestorIdAndStartupId(UUID investorId, UUID startupId);
 
     /** Pode haver um score por política para o mesmo par (D047). */

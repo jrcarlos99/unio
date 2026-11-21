@@ -54,10 +54,35 @@ public final class ScorecardAccess {
 
     /** Recomendações de startups: o investidorId da query precisa ser o do investidor logado. */
     public static void requireOwnInvestor(AuthUser authUser, UUID investorId) {
+        requireOwnSide(authUser, investorId);
+    }
+
+    /** Recomendações de investidores: o startupId da query precisa ser o da startup logada. */
+    public static void requireOwnStartup(AuthUser authUser, UUID startupId) {
+        requireOwnSide(authUser, startupId);
+    }
+
+    /**
+     * D061: regra única das recomendações (junta a D048 e a correção de IDOR do main, T20).
+     * Sem id na query vale o próprio usuário logado; com id, ele precisa ser o do usuário
+     * logado, exceto para ADMIN. Nenhum papel lê as recomendações de outro usuário.
+     */
+    public static UUID resolveOwnSide(AuthUser authUser, UUID requested) {
+        if (authUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Não autenticado");
+        }
+        if (requested == null) {
+            return scorecardId(authUser.getId());
+        }
+        requireOwnSide(authUser, requested);
+        return requested;
+    }
+
+    private static void requireOwnSide(AuthUser authUser, UUID requested) {
         if (authUser != null && authUser.getRole() == Role.ADMIN) {
             return;
         }
-        if (authUser == null || !Objects.equals(investorId, scorecardId(authUser.getId()))) {
+        if (authUser == null || !Objects.equals(requested, scorecardId(authUser.getId()))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, FORBIDDEN_MESSAGE);
         }
     }

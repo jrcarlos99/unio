@@ -16,8 +16,9 @@ import br.com.unio.matchmaking_backend.communication.repository.ConversationRepo
 import br.com.unio.matchmaking_backend.communication.repository.MeetingRepository;
 import br.com.unio.matchmaking_backend.communication.repository.MessageRepository;
 import br.com.unio.matchmaking_backend.consent.repository.ConsentRecordRepository;
-import br.com.unio.matchmaking_backend.interest.repository.UserInterestRepository;
 import br.com.unio.matchmaking_backend.interest.repository.UserSavedRepository;
+import br.com.unio.matchmaking_backend.interest.service.InterestService;
+import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
 import br.com.unio.matchmaking_backend.onboarding.repository.UserOnboardingRepository;
 import br.com.unio.matchmaking_backend.onboarding.service.OnboardingService;
 import br.com.unio.matchmaking_backend.popularity.repository.ProfileViewRepository;
@@ -81,7 +82,7 @@ public class DataPrivacyService {
     private final MatchScoreRepository matchScoreRepository;
     private final FeedbackEventRepository feedbackEventRepository;
     private final AuditLogRepository auditLogRepository;
-    private final UserInterestRepository interestRepository;
+    private final MatchInterestRepository interestRepository;
     private final UserSavedRepository savedRepository;
     private final AuditService auditService;
 
@@ -114,7 +115,7 @@ public class DataPrivacyService {
         export.put("profileViewsReceivedTotal", profileViewRepository.countByTargetUserId(user.getId()));
         // D055: interesses que o titular enviou e salvos (dele); dos recebidos, só o total
         export.put("interestsSent", interestsSentData(user));
-        export.put("interestsReceivedTotal", interestRepository.countByToUserId(user.getId()));
+        export.put("interestsReceivedTotal", interestRepository.countActiveReceivedBy(user.getId()));
         export.put("saved", savedData(user));
         export.put("auditLog", auditData(user));
         return export;
@@ -337,10 +338,10 @@ public class DataPrivacyService {
     }
 
     private List<Map<String, Object>> interestsSentData(User user) {
-        return interestRepository.findByFromUserId(user.getId()).stream()
+        return interestRepository.findActiveSentBy(user.getId()).stream()
                 .map(interest -> {
                     Map<String, Object> data = new LinkedHashMap<>();
-                    data.put("targetUserId", interest.getToUserId());
+                    data.put("targetUserId", InterestService.otherSide(interest, user.getId()));
                     data.put("createdAt", interest.getCreatedAt());
                     return data;
                 })

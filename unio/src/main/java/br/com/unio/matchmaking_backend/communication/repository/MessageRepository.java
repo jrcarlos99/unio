@@ -23,6 +23,15 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     long countByConversationIdAndSenderIdNotAndReadAtIsNull(Long conversationId, Long userId);
 
+    @Query("""
+            select count(m) from Message m
+            join m.conversation c
+            where (c.startupUser.id = :userId or c.investorUser.id = :userId)
+              and m.sender.id <> :userId
+              and m.readAt is null
+            """)
+    long countUnreadByParticipant(@Param("userId") Long userId);
+
     /** Marca como lidas as mensagens recebidas (enviadas pelo outro participante). */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""

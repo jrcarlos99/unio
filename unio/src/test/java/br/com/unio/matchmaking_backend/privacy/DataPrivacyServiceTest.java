@@ -23,15 +23,15 @@ import br.com.unio.matchmaking_backend.communication.repository.MeetingRepositor
 import br.com.unio.matchmaking_backend.communication.repository.MessageRepository;
 import br.com.unio.matchmaking_backend.consent.entity.ConsentRecord;
 import br.com.unio.matchmaking_backend.consent.repository.ConsentRecordRepository;
-import br.com.unio.matchmaking_backend.interest.repository.UserInterestRepository;
 import br.com.unio.matchmaking_backend.interest.repository.UserSavedRepository;
+import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
 import br.com.unio.matchmaking_backend.onboarding.repository.UserOnboardingRepository;
 import br.com.unio.matchmaking_backend.onboarding.service.OnboardingService;
+import br.com.unio.matchmaking_backend.popularity.repository.ProfileViewRepository;
 import br.com.unio.matchmaking_backend.privacy.service.DataPrivacyService;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
 import br.com.unio.matchmaking_backend.profile.service.ProfileService;
-import br.com.unio.matchmaking_backend.popularity.repository.ProfileViewRepository;
 import br.com.unio.matchmaking_backend.review.repository.InteractionReviewRepository;
 import br.com.unio.matchmaking_backend.scorecard.calculation.MatchScoreRepository;
 import br.com.unio.matchmaking_backend.scorecard.explanation.MatchScoreFactorRepository;
@@ -77,7 +77,7 @@ class DataPrivacyServiceTest {
     @Mock private MatchScoreRepository matchScoreRepository;
     @Mock private FeedbackEventRepository feedbackEventRepository;
     @Mock private AuditLogRepository auditLogRepository;
-    @Mock private UserInterestRepository interestRepository;
+    @Mock private MatchInterestRepository interestRepository; // D058: antes UserInterestRepository
     @Mock private UserSavedRepository savedRepository;
     @Mock private AuditService auditService;
 

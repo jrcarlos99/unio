@@ -9,18 +9,24 @@ import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Date;
 import javax.crypto.SecretKey;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class JwtService {
 
     static final String DEV_DEFAULT_SECRET = "matchmaking-dev-secret-key-very-long-1234567890";
+
+    private final Environment environment;
 
     @Value("${app.jwt.secret:" + DEV_DEFAULT_SECRET + "}")
     private String secret;
@@ -32,6 +38,13 @@ public class JwtService {
 
     @PostConstruct
     void init() {
+        if (Arrays.asList(environment.getActiveProfiles()).contains("prod")
+                && (secret == null || secret.isBlank() || DEV_DEFAULT_SECRET.equals(secret))) {
+            throw new IllegalStateException(
+                    "JWT_SECRET é obrigatório em produção (mínimo 32 caracteres). "
+                            + "Defina a variável de ambiente JWT_SECRET."
+            );
+        }
         if (DEV_DEFAULT_SECRET.equals(secret)) {
             log.warn("app.jwt.secret não configurado: usando a chave padrão de desenvolvimento. "
                     + "Em produção defina a variável de ambiente JWT_SECRET (mínimo 32 caracteres).");

@@ -1,6 +1,6 @@
 # Estado Atual do Projeto — Scorecard de Matchmaking
 
-Última atualização: 2026-11-16
+Última atualização: 2026-11-21
 
 ## Resumo
 
@@ -20,11 +20,11 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Documentos do projeto
 
-- `docs/decisoes.md`: decisões de design (D001 a D057)
+- `docs/decisoes.md`: decisões de design (D001 a D062)
 - `docs/dominio.md` — especificação de domínio
 - `docs/contrato/contrato-v2.md` — contrato ativo da API
 - `docs/contrato/contrato-onboarding.md`: onboarding e criação de perfil a partir dele
-- `docs/contrato/contrato-descoberta.md`: descoberta com score, interesse, match, salvos, administrador e configuração do App Service (D045 a D057)
+- `docs/contrato/contrato-descoberta.md`: descoberta com score, interesse, match, salvos, rotas do `main` com as mesmas regras (D058 a D062), administrador e configuração do App Service
 - `docs/implementacao/plano-tarefas.md` — plano de tarefas
 - `docs/planejamento/` — resumos e planejamento de tickets
 
@@ -59,7 +59,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] Tarefa 12 — Endpoints REST do scorecard (2026-09-12)
 - [x] Tarefa 13 — Feedback persistido (2026-09-12)
 
-### Tickets pós-MVP (outubro)
+### Tickets pós-MVP (outubro e novembro)
 
 - [x] T01 — Disponibilidade do investidor/mentor (RF02) — 2026-10-14
 - [x] T02 — Campo nome na Startup (RF01) — 2026-10-14
@@ -68,24 +68,45 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] T07 — Log de Auditoria (RNF10) — 2026-10-26
 - [x] T08 — Consentimento LGPD (RF11 + RNF03) — 2026-10-26
 - [x] T11 — Upload de pitch (RF06) — 2026-10-20
-- [x] RF10 popularidade: `GET /api/reviews/summary/{userId}`, `GET /api/profile/me/popularity`, `POST /api/profile-views`, comentário fora das respostas (D040 a D044, `V25__create_profile_views.sql`), 2026-11-16
+- [x] T09a — Mensagens (RF05) — 2026-10-26
+- [x] T09b — Agendamento de reuniões (RF05) — 2026-10-26
+- [x] T12 — Avaliação pós-interação (RF10) — 2026-10-26
+- [x] T13 — Exclusão e exportação de dados (RNF03) — 2026-10-26
+- [x] T16 — Métricas de conversas/reuniões/avaliações (RF09) — 2026-10-26
+- [x] T17 — Alertas no Azure (RNF01) — 2026-10-26 (template pronto; aplicar com `infra/azure/deploy-alerts.sh`)
+- [x] T18 — Teste de carga e documento (RNF05) — 2026-10-26 (script pronto; preencher resultados)
+- [x] T19 — Swagger e README (RNF09) — 2026-10-26
+- [x] RF10 popularidade: `GET /api/reviews/summary/{userId}`, `GET /api/profile/me/popularity`, `POST /api/profile-views`, comentário fora das respostas (D040 a D044, hoje `V26__create_profile_views.sql`), 2026-11-16
 - [x] Integração do matching, 2026-11-16 (autora: Carol):
   - descoberta com score sob demanda (`/api/discovery`, D045 a D047);
   - dono do par no scorecard (D048);
-  - interesse, match mútuo e salvos (`/api/interests`, `/api/saved`, D049, D050, `V26`);
+  - interesse, match mútuo e salvos (`/api/interests`, `/api/saved`, D049, D050);
   - reunião só com match (D051);
   - e-mail só depois do match (D052);
   - métricas novas (D053);
   - primeiro administrador por variável de ambiente (D054);
   - LGPD de interesses e salvos (D055);
   - CORS por variável de ambiente (D056) e políticas padrão do scorecard em qualquer perfil (D057);
-  - `updated_at` nos perfis (`V27`).
+  - `updated_at` nos perfis (hoje `V28`).
+- [x] T20 — Correção de IDOR e recomendação de investidores (RF03/RF04) — 2026-11-17 (João Carlos, `main`)
+- [x] T21 — Dashboard da Startup (RF09) — 2026-11-17 (João Carlos, `main`)
+- [x] T22 — Detalhes de Perfil Público (RF04) — 2026-11-17 (João Carlos, `main`)
+- [x] T23 — Persistência de Matches e Salvos (RF03) — 2026-11-17 (João Carlos, `main`)
+- [x] JSON padrão nos 401/403 e `JWT_SECRET` obrigatório em produção — 2026-11 (João Carlos, `main`)
+- [x] Unificação com o `main`, 2026-11-21 (autora: Carol):
+  - interesse e match numa fonte só, `match_interests`; rotas `/api/matches` e `/api/interests` sobre a mesma regra (D058);
+  - migrations da Carol renumeradas para V24 a V28 e `V29__unifica_interesses_em_match_interests.sql` (D059);
+  - perfis públicos e painel da startup do `main` com as regras da descoberta (D060);
+  - uma regra só de acesso às recomendações do scorecard (D061);
+  - login inválido com "Credenciais inválidas" (D062).
 
-### Bloco E — Testes (pendente)
+### Bloco E — Testes
 
-- [ ] Tarefa 14 — Testes unitários
-- [ ] Tarefa 15 — Testes de integração
-- [ ] Tarefa 16 — Hardening
+- [x] Tarefa 14 — Testes unitários (comunicação, reuniões, avaliação, LGPD, métricas) — 2026-10-26
+- [x] Tarefa 15 — Testes de integração (fluxo RF05/RF10, LGPD, segurança) — 2026-10-26
+- [x] Tarefa 16 — Hardening (method security, 401, filtro JWT, erro padrão) — 2026-10-26
+- [x] Testes da unificação com o `main` (`UnificacaoMainIntegrationTest`) — 2026-11-21
+- [ ] Beta testers (parte de RNF07) — pendente
 
 ### Infraestrutura
 
@@ -93,6 +114,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] Actuator + health check funcionando
 - [x] /error liberado em dev
 - [x] Deploy Azure (backend + PostgreSQL)
+- [x] Workflow do GitHub Actions publicando o JAR no App Service (`.github/workflows/main_unio-webapp.yml`, `main`)
 - [x] CORS configurado
 - [x] Frontend React integrado
 - [x] Banco de dados Azure liberado para equipe de IA (usuário somente leitura)
@@ -106,6 +128,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] Calculadora de Match funcionando (score 92.50 exibido)
 - [x] Recomendações funcionando
 - [x] CORS resolvido
+- [x] Front sem dados de exemplo, todo pela API (ADR-011 e ADR-012 do front)
 
 ## Requisitos atendidos (RF/RNF)
 
@@ -113,14 +136,14 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 - [x] RF01 — Cadastro de startups (nome adicionado no T02)
 - [x] RF02 — Cadastro de investidores (T01 adicionou disponibilidade)
-- [x] RF03 — Matchmaking
+- [x] RF03 — Matchmaking (persistência de interesses e matches no T23; uma fonte só na D058)
+- [x] RF04: Visualização de perfis compatíveis (`/api/discovery`, D045 e D046; perfis públicos T22 com as regras da descoberta, D060)
+- [x] RF05 — Comunicação (mensagens + reuniões) — T09a/T09b; reuniões com até 3 horários, contraproposta, remarcação, formato e local (D032 a D039, hoje V25)
 - [x] RF06 — Pitch/Canvas (T11 adicionou upload)
 - [x] RF07 — Autenticação e roles
-- [x] RF09 — Métricas de uso
-- [x] RF04: Visualização de perfis compatíveis (`/api/discovery`, D045 e D046)
-- [x] RF05 — Comunicação (mensagens + reuniões) — T09a/T09b; reuniões com até 3 horários, contraproposta, remarcação, formato e local (D032 a D039, V24)
 - [x] RF08 — Moderação de cadastros
-- [x] RF10: Feedback pós-interação (T12); resumo público só com agregados e mínimo de 3 avaliações, popularidade própria, visitas ao perfil e comentário oculto (D040 a D044, V25)
+- [x] RF09 — Métricas de uso (painel da startup T21, D060)
+- [x] RF10: Feedback pós-interação (T12); resumo público só com agregados e mínimo de 3 avaliações, popularidade própria, visitas ao perfil e comentário oculto (D040 a D044, hoje V26)
 - [x] RF11 — Consentimento LGPD
 
 ### RNF
@@ -139,38 +162,39 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 ## Padrões do projeto (para próximos tickets)
 
 - Package by feature
-- Migrations via Flyway (nunca ddl-auto)
+- Migrations via Flyway (nunca ddl-auto); nunca alterar nem renumerar uma migration que já está no `main` (D059)
 - Bean Validation nos DTOs de create (campos numéricos opcionais usam só `@Positive`, ver D029)
 - Update via Map com validação manual (ver D027)
 - Erros: ResponseStatusException com HttpStatus
 - Autenticação: JWT com roles STARTUP/INVESTOR/ADMIN
-- Testes unitários com Mockito + integração com @SpringBootTest/MockMvc (PostgreSQL local)
+- Testes unitários com Mockito + integração com @SpringBootTest/MockMvc (PostgreSQL do perfil ativo; dá para apontar para um banco descartável com `SPRING_DATASOURCE_URL`)
 - Auditoria via AOP com anotação @Auditable
-- Erros no formato do GlobalExceptionHandler (message + errors[].defaultMessage)
+- Erros no formato do GlobalExceptionHandler (message + errors[].defaultMessage); 401/403 do Spring Security no mesmo formato (`ApiErrorFactory`)
 - @PreAuthorize é aplicado (@EnableMethodSecurity) — ver D030
+- Um conceito, uma implementação: rotas novas delegam à regra que já existe (D058 a D061)
 
 ## Branch atual
 
+- `feat/unificacao-main` (a partir de `feat/producao-sem-mocks` + merge do `origin/main`): unificação descrita em D058 a D062 e na ADR-012 do front. Pronta para pull request no `main`.
 - `feat/producao-sem-mocks` (a partir de `feat/integracao-matching`): CORS por variável de ambiente (D056), políticas padrão do scorecard fora do perfil dev (D057) e front sem mocks (ADR-011 do front). Auditoria front x back em `UNIO-front/docs/integracao/auditoria-front-back.md`.
 - `feat/integracao-matching` (a partir de `feat/avaliacao-popularidade`): descoberta, interesse, match, salvos, reunião só com match e administrador (D045 a D055; ADR-008 a ADR-010 do front)
-- **Atenção:** o App Service roda o `main`, que divergiu desta linha (lá a `V23` é `create_match_interest`; aqui é `capital_procurado_opcional`). Antes de publicar estas branches é preciso reconciliar as migrations com o banco da nuvem.
 
 ## Próximo passo
 
-- Front: integrar mensagens, avaliação e LGPD (`docs/contrato/contrato-comunicacao.md`); reuniões já integradas (ADR-005 do front)
+- Abrir o pull request de `feat/unificacao-main` para o `main`; ao publicar, o Flyway da nuvem aplica V24 a V29 (D059)
+- No App Service: `JWT_SECRET` (obrigatório em produção), `UNIO_ADMIN_EMAIL` e `UNIO_ADMIN_PASSWORD` (D054) e, se o front tiver outro endereço, `UNIO_CORS_ALLOWED_ORIGINS` (D056); reiniciar depois
+- Remover `user_interests` (sem uso desde a V29) numa decisão própria, depois de conferir que está vazia na nuvem
 - Popularidade no ranking do back, se o produto quiser (hoje só ordena no front, D042)
 - Acesso da moderação (ADMIN) aos comentários das avaliações e prazo de retenção (D043)
 - Texto de consentimento LGPD: avisar que comentários de avaliação são coletados e não exibidos (D043)
 - Notificações de reunião (hoje o front deriva por polling, ADR-005 do front)
 - Aplicar os alertas no Azure e rodar o teste de carga; preencher `docs/testes/teste-de-carga.md`
-- Definir `JWT_SECRET` no App Service
-- Definir `UNIO_CORS_ALLOWED_ORIGINS` (D056) e reiniciar o App Service
 - RNF07: rodada com beta testers
 - Escala da descoberta: recálculo assíncrono ao salvar o perfil e paginação no banco (D045)
-- Pitch e canvas na descoberta, com regra de visibilidade e moderação (D046)
+- Pitch e canvas na descoberta e nos perfis públicos, com regra de visibilidade e moderação (D046, D060)
 - Texto LGPD: o e-mail é compartilhado com quem der match (D052); telefone e WhatsApp opcionais
 - Moderação de cadastros (aprovar e rejeitar) ainda sem endpoint
 
 ## Fora do MVP (trabalho futuro)
 
-Ver D011, D025, D027 e as pendências da D028, D030, D035, D042, D043, D045, D046 e D052 em `docs/decisoes.md`, e a seção "Fora de escopo desta entrega" depois da D055.
+Ver D011, D025, D027 e as pendências da D028, D030, D035, D042, D043, D045, D046 e D052 em `docs/decisoes.md`, e a seção "Fora de escopo desta entrega" depois da D062.

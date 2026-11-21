@@ -1,9 +1,15 @@
 package br.com.unio.matchmaking_backend.profile.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import br.com.unio.matchmaking_backend.auth.service.AuthUser;
+import br.com.unio.matchmaking_backend.discovery.service.PublicProfileService;
 import br.com.unio.matchmaking_backend.profile.dto.InvestorCreateRequest;
+import br.com.unio.matchmaking_backend.profile.dto.PublicInvestorProfileResponse;
+import br.com.unio.matchmaking_backend.profile.dto.PublicStartupProfileResponse;
 import br.com.unio.matchmaking_backend.profile.dto.StartupCreateRequest;
+import br.com.unio.matchmaking_backend.profile.dto.DashboardStartupResponse;
+import br.com.unio.matchmaking_backend.profile.service.DashboardStartupService;
 import br.com.unio.matchmaking_backend.profile.service.ProfileService;
 import jakarta.validation.Valid;
 import java.util.Map;
@@ -14,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,10 +37,48 @@ import org.springframework.web.multipart.MultipartFile;
 public class ProfileController {
 
     private final ProfileService profileService;
+    private final DashboardStartupService dashboardStartupService;
+    private final PublicProfileService publicProfileService;
 
     @GetMapping("/profile/me")
     public ResponseEntity<Map<String, Object>> getCurrentProfile(@AuthenticationPrincipal AuthUser authUser) {
         return ResponseEntity.ok(profileService.getCurrentProfile(authUser));
+    }
+
+    @GetMapping("/profile/startup/{id}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Perfil público de uma startup (sem score)",
+            description = "T22 e D060: mesmos campos públicos da descoberta (D046). email só para o titular, "
+                    + "ADMIN ou quem tem match mútuo (D052); pitchFileUrl só para o titular e ADMIN; nos "
+                    + "demais casos, null. Conta inexistente, removida ou sem perfil: 404. Com score e "
+                    + "explicação: GET /api/discovery/startups/{userId}.")
+    public ResponseEntity<PublicStartupProfileResponse> getPublicStartup(@AuthenticationPrincipal AuthUser authUser,
+                                                                         @PathVariable Long id) {
+        return ResponseEntity.ok(publicProfileService.startup(authUser, id));
+    }
+
+    @GetMapping("/profile/investor/{id}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Perfil público de um investidor (sem score)",
+            description = "T22 e D060: mesmos campos públicos da descoberta (D046). email só para o titular, "
+                    + "ADMIN ou quem tem match mútuo (D052); nos demais casos, null. Conta inexistente, "
+                    + "removida ou sem perfil: 404. Com score e explicação: GET /api/discovery/investors/{userId}.")
+    public ResponseEntity<PublicInvestorProfileResponse> getPublicInvestor(@AuthenticationPrincipal AuthUser authUser,
+                                                                           @PathVariable Long id) {
+        return ResponseEntity.ok(publicProfileService.investor(authUser, id));
+    }
+
+    @GetMapping("/profile/startup/dashboard")
+    @PreAuthorize("hasRole('STARTUP')")
+    @Operation(summary = "Números do painel da startup",
+            description = "T21 e D060: totalVisualizacoes são as visitas ao perfil nos últimos 28 dias (a mesma "
+                    + "conta de GET /api/profile/me/popularity); totalMatches são os matches mútuos "
+                    + "(match_interests); totalReunioesAgendadas, as reuniões PENDENTE ou CONFIRMADA; "
+                    + "totalMensagensNaoLidas, as mensagens recebidas não lidas.")
+    public ResponseEntity<DashboardStartupResponse> getStartupDashboard(
+            @AuthenticationPrincipal AuthUser authUser
+    ) {
+        return ResponseEntity.ok(dashboardStartupService.getDashboard(authUser));
     }
 
     @PutMapping("/profile/me")

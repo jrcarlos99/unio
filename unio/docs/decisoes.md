@@ -1353,7 +1353,7 @@ com `@Operation`). Testes: `DiscoveryIntegrationTest` (`feedbackSoNoProprioPar`,
 
 Autora: Carol
 Data: 2026-11-16
-Status: Aceita
+Status: Aceita (armazenamento substituído pela D058: os interesses ficam em match_interests)
 
 **Contexto:** O interesse e o match ("unio") existiam só no front (D039). O produto
 quer reuniões só entre quem deu match e "Meus unios" com dados reais.
@@ -1652,6 +1652,238 @@ código que já era testado em dev e não mexe em bancos que já têm política.
 
 **Impacto:** `scorecard/common/config/ScorecardSeedRunner.java`, `application.properties`.
 Sem migration (nada a criar nem apagar no banco). Teste: `ScorecardSeedRunnerTest`.
+
+
+## D058: Interesse e match numa fonte só: match_interests
+
+Autora: Carol
+Data: 2026-11-21
+Status: Aceita (substitui a parte de armazenamento da D049)
+
+**Contexto:** No merge com o `main`, as duas linhas tinham implementado o mesmo conceito.
+O `main` (T23, João Carlos) criou o pacote `match`: tabela `match_interests` (V23, já
+aplicada no banco da nuvem), uma linha por quem curtiu o par (`startup_id`, `investor_id`,
+`liked_by_user_id`) com status `LIKED`, `MATCHED` ou `REJECTED`, e as rotas
+`POST /api/matches/interest`, `GET /api/matches` e `GET /api/matches/saved`. A linha da
+Carol criou o pacote `interest`: tabela `user_interests` (de/para), match derivado,
+desfazer com cancelamento de reuniões (D051), contato só depois do match (D052), salvos
+(D050), métricas (D053) e LGPD (D055). Duas tabelas para o mesmo fato seriam duas
+fontes de verdade.
+
+**Alternativas:**
+
+- (a) Manter `user_interests` e fazer as rotas do `main` lerem dela
+- (b) Manter `match_interests` (já existe na nuvem) e reimplementar a regra da Carol sobre ela
+- (c) Manter as duas e sincronizar
+
+**Decisão:** (b).
+
+- `MatchInterestRepository` é o único repositório de interesse. Uma linha é "ativa" quando o
+  status não é `REJECTED` e quem curtiu é um dos lados do par. O match mútuo continua
+  derivado (as duas linhas ativas do par), como na D049; o status `MATCHED`/`LIKED` é
+  mantido em dia (`syncPairStatus`) a cada interesse e a cada retirada, para as rotas do `main`.
+- `InterestService` é a única implementação da regra: papéis, perfil próprio (409), alvo
+  ativo com perfil (404), match, desfazer com cancelamento de reuniões futuras, e-mail só
+  nos matches. Grava com `insert ... on conflict` (idempotente; uma linha `REJECTED` volta
+  a valer).
+- `MatchInterestService` (rotas do `main`) mantém as validações e mensagens do contrato
+  dele (ids obrigatórios 400, "em seu próprio nome" 403, outro lado inexistente 404,
+  ADMIN 403) e delega a gravação e as leituras ao `InterestService`. As respostas
+  continuam sendo as linhas de `match_interests`. `GET /api/matches/saved` continua
+  significando "interesses enviados ainda sem match" (status `LIKED`); os salvos de
+  bookmark continuam em `user_saved` (`/api/saved`, D050), que não tem equivalente no `main`.
+- Retirar o interesse (`DELETE /api/interests/{id}`) apaga a linha de quem retirou e
+  devolve a linha do outro lado para `LIKED`. O `main` não tinha "desfazer".
+- `MeetingMatchPolicy` (D051), `PopularityService` (D053), `AdminMetricsService` (D053),
+  `DataPrivacyService` (D055), o painel da startup (D060) e as recomendações (D061) leem
+  do mesmo repositório.
+- `V29__unifica_interesses_em_match_interests.sql` copia as linhas de `user_interests`
+  para `match_interests` (só pares STARTUP x INVESTOR; repetidas são ignoradas), acerta
+  status fora da regra (por exemplo, duas curtidas simultâneas que ficaram `LIKED` dos dois
+  lados) e marca `user_interests` como obsoleta com `COMMENT`. Nada é apagado: a tabela
+  fica, sem uso, até uma decisão própria de removê-la.
+- `UserInterest` e `UserInterestRepository` saíram do código.
+
+**Mudança de comportamento na rota do `main`:** `POST /api/matches/interest` passa a
+exigir o perfil de quem chama (409) e um outro lado ativo (conta removida: 404), as mesmas
+regras de `/api/interests`. Antes ele aceitava quem não tinha perfil. `GET /api/matches` e
+`GET /api/matches/saved` deixam de listar pares com conta removida.
+
+**Justificativa:** a tabela que a nuvem já tem não muda de estrutura (nenhuma migration
+do `main` é tocada), as rotas das duas linhas continuam funcionando e uma regra só decide
+interesse, match e contato.
+
+**Impacto:** `match/repository/MatchInterestRepository.java`,
+`match/service/MatchInterestService.java`, `interest/service/InterestService.java`,
+`communication/service/MeetingMatchPolicy.java`, `popularity/service/PopularityService.java`,
+`admin/service/AdminMetricsService.java`, `privacy/service/DataPrivacyService.java`, V29.
+Testes ajustados (só trocaram o repositório; a regra verificada é a mesma):
+`AdminMetricsServiceTest` (`count()` virou `countActive()`, que ignora `REJECTED`),
+`DataPrivacyServiceTest` (tipo do mock) e `IntegrationTestSupport.createMatch` (grava as
+duas linhas em `match_interests`). Teste novo: `UnificacaoMainIntegrationTest`
+(`rotasDoMainEDaCarolGravamELeemNoMesmoLugar`, `rotaDoMainMantemSuasValidacoes`).
+
+
+## D059: Renumeração das migrations da linha da Carol
+
+Autora: Carol
+Data: 2026-11-21
+Status: Aceita
+
+**Contexto:** O banco da nuvem aplicou as migrations do `main` até a
+`V23__create_match_interest.sql`. A linha da Carol tinha cinco migrations a partir da
+mesma V23, com outro conteúdo (`V23__capital_procurado_opcional.sql` e seguintes). Com
+números repetidos o Flyway não sobe (versão duplicada), e mudar uma migration já aplicada
+quebra a validação de checksum na nuvem.
+
+**Alternativas:**
+
+- (a) Renumerar as migrations do `main`
+- (b) Renumerar as da Carol para depois da última do `main`, na mesma ordem
+
+**Decisão:** (b). Nenhuma migration do `main` muda de número nem de conteúdo. As da Carol
+só mudaram de nome (conteúdo igual):
+
+| Antes | Depois |
+| --- | --- |
+| `V23__capital_procurado_opcional.sql` | `V24__capital_procurado_opcional.sql` |
+| `V24__meetings_proposals.sql` | `V25__meetings_proposals.sql` |
+| `V25__create_profile_views.sql` | `V26__create_profile_views.sql` |
+| `V26__create_user_interests_and_saved.sql` | `V27__create_user_interests_and_saved.sql` |
+| `V27__add_updated_at_to_profiles.sql` | `V28__add_updated_at_to_profiles.sql` |
+| (nova) | `V29__unifica_interesses_em_match_interests.sql` (D058) |
+
+As decisões antigas citam os números antigos (V24 na D032, V25 na D041, V26 na D049 e
+D050, V27 na D045); vale esta tabela.
+
+**Prova:** num PostgreSQL descartável, aplicadas só as migrations do `origin/main` (V1 a
+V23) e inseridos dados no formato que o código do `main` grava (perfis, reunião e
+`match_interests` com `MATCHED` e `LIKED`), o Flyway 12.4.0 com o conjunto unido validou
+V1 a V23 sem erro de checksum e aplicou só V24 a V29. Os dados ficaram (reunião com
+`proposer_user_id` igual ao organizador e 1 horário sugerido; perfis com `updated_at`;
+`capital_procurado` aceitando nulo), e o par com duas curtidas `LIKED` virou `MATCHED`.
+Num segundo banco, parado na V28 com linhas em `user_interests`, a V29 copiou o par mútuo
+como `MATCHED` e o interesse simples como `LIKED`, ignorou a linha STARTUP para STARTUP e
+manteve as 4 linhas de origem.
+
+**Na primeira subida no Azure:** o Flyway da nuvem vê a V23 já aplicada e aplica só V24 a
+V29, nessa ordem. Alteram tabelas com dados: V24 (`startup_profiles`: tira o NOT NULL de
+`capital_procurado`), V25 (`meetings`: colunas novas, `format` NOT NULL com padrão
+`ONLINE`, `proposer_user_id` preenchido com o organizador antes do NOT NULL, e um horário
+sugerido por reunião existente), V28 (`startup_profiles` e `investor_profiles`:
+`updated_at` NOT NULL com padrão `now()`) e V29 (`match_interests`: só `UPDATE` de status
+fora da regra). Nenhuma cria coluna NOT NULL sem valor: todas têm padrão ou preenchimento
+antes da restrição, e `meetings.organizer_user_id` já é NOT NULL desde a V20.
+
+**Impacto:** `src/main/resources/db/migration/V24` a `V29`.
+
+
+## D060: Perfis públicos e painel da startup do main com as regras da descoberta
+
+Autora: Carol
+Data: 2026-11-21
+Status: Aceita
+
+**Contexto:** O `main` (T21 e T22) criou `GET /api/profile/startup/{id}`,
+`GET /api/profile/investor/{id}` e `GET /api/profile/startup/dashboard`. Os perfis
+públicos devolviam e-mail e `pitchFileUrl` a qualquer usuário logado, o que contraria a
+D046 (o que é público é decidido no `PublicProfileMapper`, nunca e-mail nem arquivo de
+pitch) e a D052 (e-mail só depois do match). O painel contava `match_scores` como
+"matches" (pares com score, não matches) e devolvia `totalVisualizacoes` sempre nulo,
+enquanto a linha da Carol já tinha visitas (D041) e matches reais (D049).
+
+**Alternativas:**
+
+- (a) Manter as duas lógicas
+- (b) Manter as rotas e o formato das respostas do `main` e fazer as rotas delegarem às regras únicas
+
+**Decisão:** (b).
+
+- `PublicProfileService` (pacote `discovery`) atende as duas rotas de perfil: busca o
+  perfil, responde 404 para conta inexistente, removida ou sem perfil, e monta os campos a
+  partir do `PublicProfileMapper`. O formato das respostas
+  (`PublicStartupProfileResponse` e `PublicInvestorProfileResponse`) não mudou. `email` só
+  vem para o próprio titular, ADMIN ou quem tem match mútuo; `pitchFileUrl` só para o
+  titular e ADMIN; nos outros casos, `null`. Nome, disponibilidade e observação da
+  disponibilidade continuam públicos nessas rotas.
+- A lógica duplicada saiu do `ProfileService`.
+- `DashboardStartupService`: `totalVisualizacoes` = visitas dos últimos 28 dias
+  (`PopularityService.viewsLast28Days`, a mesma conta da popularidade);
+  `totalMatches` = matches mútuos em `match_interests`. Reuniões agendadas e mensagens não
+  lidas não mudaram. `MatchScoreRepository.countByStartupId` continua no repositório.
+- Os detalhes com score continuam em `/api/discovery/{startups|investors}/{userId}`.
+
+**Justificativa:** o que é público e quando o contato aparece fica num lugar só; as rotas
+do `main` continuam respondendo no mesmo formato.
+
+**Impacto:** `discovery/service/PublicProfileService.java`,
+`profile/controller/ProfileController.java` (com `@Operation`),
+`profile/service/ProfileService.java`, `profile/service/DashboardStartupService.java`,
+`popularity/service/PopularityService.java`. Testes:
+`perfilPublicoSoMostraEmailDepoisDoMatchENuncaOArquivoDePitch`,
+`perfilPublicoDeContaRemovidaDa404`, `dashboardDaStartupContaMatchesReaisEVisitas`.
+
+
+## D061: Uma regra só de acesso às recomendações do scorecard
+
+Autora: Carol
+Data: 2026-11-21
+Status: Aceita (complementa a D048)
+
+**Contexto:** As duas linhas fecharam o mesmo IDOR em `GET /api/scorecard/recommendations`
+de jeitos diferentes. O `main` (T20) tirou o `investorId` da query e passou a usar o
+usuário do token; também criou `GET /api/scorecard/recommendations/investors` para a
+startup, com o e-mail do investidor e um e-mail inventado
+("investidor-desconhecido@unio.com") quando o perfil faltava. A linha da Carol (D048)
+manteve o `investorId` obrigatório e exigiu que fosse o do usuário logado, com ADMIN
+consultando qualquer um (`ScorecardAccess`).
+
+**Alternativas:**
+
+- (a) Ficar só com a do `main` (o ADMIN deixa de consultar um investidor)
+- (b) Ficar só com a da Carol (quebra os clientes do `main`, que não mandam o id)
+- (c) Uma regra que atende os dois contratos
+
+**Decisão:** (c), em `ScorecardAccess.resolveOwnSide`, usada pelas duas rotas: o id na
+query é opcional; sem ele, vale o usuário logado (contrato do `main`); com ele, precisa
+ser o do usuário logado, senão 403, exceto para ADMIN (D048). Nenhum papel lê
+recomendações de outro usuário. Em `/recommendations/investors`, `investorEmail` só vem
+quando há match mútuo (D052); sem match ou sem perfil, `null`, nunca um endereço
+inventado.
+
+**Justificativa:** as duas proteções continuam valendo e nenhum cliente existente quebra.
+
+**Impacto:** `scorecard/common/ScorecardAccess.java`,
+`scorecard/recommendation/controller/RecommendationController.java` (com `@Operation`),
+`scorecard/recommendation/service/RecommendationService.java`. Testes:
+`recomendacoesUsamORegraUnicaDeAcesso`, `recomendacaoDeInvestidorSoMostraEmailDepoisDoMatch`.
+
+
+## D062: Login inválido responde "Credenciais inválidas"
+
+Autora: Carol
+Data: 2026-11-21
+Status: Aceita
+
+**Contexto:** A senha errada lançava a exceção do Spring Security fora do
+`GlobalExceptionHandler`. Na linha da Carol o 401 saía sem corpo; no `main`, com o
+`RestAuthenticationEntryPoint`, saía "Não autenticado", que é a mensagem de rota protegida
+sem token, não de login.
+
+**Alternativas:**
+
+- (a) Tratar `AuthenticationException` no handler global
+- (b) Tratar no `AuthService.login`, só para o login
+
+**Decisão:** (b). Qualquer falha de autenticação no login (senha errada, e-mail
+inexistente, conta desativada) responde 401 com `message: "Credenciais inválidas"` no
+JSON padrão, igual nos três casos para não revelar se o e-mail existe. As rotas
+protegidas sem token continuam com o 401 "Não autenticado" e o 403 "Acesso negado" do
+`main` (`RestAuthenticationEntryPoint`, `RestAccessDeniedHandler`). O front já mostra o
+`message` do back no login sem tratar como sessão expirada (ADR-012 do front).
+
+**Impacto:** `auth/service/AuthService.java`. Teste:
+`loginInvalidoRespondeCredenciaisInvalidas`.
 
 
 ## Fora de escopo desta entrega (registrado, não implementado)

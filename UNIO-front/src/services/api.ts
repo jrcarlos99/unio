@@ -117,7 +117,8 @@ export function getApiErrorMessage(error: unknown, fallback: string) {
       if (textos) return textos;
     }
     // Sem texto do back: mensagem pelo status. No login, 401 é senha ou e-mail
-    // errado (o back pode responder sem corpo): vale a mensagem da tela.
+    // errado. O back unificado responde "Credenciais inválidas" no JSON padrão
+    // (D062 do back, ADR-012); se vier sem corpo (versão antiga), vale a mensagem da tela.
     if (error.response.status === 401) {
       return ehRotaSemSessao(error.config?.url) ? fallback : "Sua sessão expirou. Entre novamente.";
     }

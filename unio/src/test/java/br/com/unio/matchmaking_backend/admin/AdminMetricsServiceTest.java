@@ -11,9 +11,9 @@ import br.com.unio.matchmaking_backend.communication.entity.MeetingStatus;
 import br.com.unio.matchmaking_backend.communication.repository.ConversationRepository;
 import br.com.unio.matchmaking_backend.communication.repository.MeetingRepository;
 import br.com.unio.matchmaking_backend.communication.repository.MessageRepository;
+import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
-import br.com.unio.matchmaking_backend.interest.repository.UserInterestRepository;
 import br.com.unio.matchmaking_backend.review.repository.InteractionReviewRepository;
 import br.com.unio.matchmaking_backend.scorecard.calculation.MatchScoreRepository;
 import br.com.unio.matchmaking_backend.scorecard.common.MatchScoreClassification;
@@ -33,7 +33,8 @@ class AdminMetricsServiceTest {
         MessageRepository messages = mock(MessageRepository.class);
         MeetingRepository meetings = mock(MeetingRepository.class);
         InteractionReviewRepository reviews = mock(InteractionReviewRepository.class);
-        UserInterestRepository interests = mock(UserInterestRepository.class);
+        // D058: interesses e matches vêm de match_interests (antes user_interests)
+        MatchInterestRepository interests = mock(MatchInterestRepository.class);
 
         MatchScoreClassification anyClassification = MatchScoreClassification.values()[0];
         when(startups.count()).thenReturn(4L);
@@ -47,7 +48,7 @@ class AdminMetricsServiceTest {
         when(meetings.countByStatus(MeetingStatus.REALIZADA)).thenReturn(2L);
         when(reviews.count()).thenReturn(3L);
         when(reviews.averageRating()).thenReturn(4.6666);
-        when(interests.count()).thenReturn(7L);
+        when(interests.countActive()).thenReturn(7L);
         when(interests.countMutualMatches()).thenReturn(2L);
 
         AdminMetricsResponse metrics = new AdminMetricsService(startups, investors, scores, feedbacks,

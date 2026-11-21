@@ -12,10 +12,10 @@ import br.com.unio.matchmaking_backend.interest.dto.ContactDto;
 import br.com.unio.matchmaking_backend.interest.dto.InterestResponse;
 import br.com.unio.matchmaking_backend.interest.dto.InterestStatus;
 import br.com.unio.matchmaking_backend.interest.dto.InterestWithdrawResponse;
-import br.com.unio.matchmaking_backend.interest.entity.UserInterest;
 import br.com.unio.matchmaking_backend.interest.entity.UserSaved;
-import br.com.unio.matchmaking_backend.interest.repository.UserInterestRepository;
 import br.com.unio.matchmaking_backend.interest.repository.UserSavedRepository;
+import br.com.unio.matchmaking_backend.match.entity.MatchInterest;
+import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
 import br.com.unio.matchmaking_backend.scorecard.calculation.MatchScore;
@@ -40,9 +40,13 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * D049 a D052: interesse, match mútuo derivado, salvos e contato depois do match.
  *
+ * <p>D058: é a única implementação de interesse e match. Grava em match_interests (V23),
+ * a mesma tabela das rotas /api/matches do main, que delegam a este service
+ * ({@code MatchInterestService}).
+ *
  * <ul>
  *   <li>Interesse e salvo só entre STARTUP e INVESTOR ativos, com perfil criado.</li>
- *   <li>Match = as duas linhas em user_interests; não há tabela de match.</li>
+ *   <li>Match = as duas linhas ativas do par em match_interests (o status MATCHED é mantido em dia).</li>
  *   <li>Retirar o interesse desfaz o match e cancela as reuniões futuras do par.</li>
  *   <li>O e-mail do outro lado só sai em {@link #matches(AuthUser)}.</li>
  * </ul>
@@ -55,7 +59,7 @@ public class InterestService {
     static final String OWN_PROFILE_REQUIRED = "Crie seu perfil antes de demonstrar interesse ou salvar perfis";
     static final String TARGET_NOT_FOUND = "Perfil não encontrado";
 
-    private final UserInterestRepository interestRepository;
+    private final MatchInterestRepository interestRepository;
     private final UserSavedRepository savedRepository;
     private final ParticipantService participantService;
     private final StartupRepository startupRepository;
@@ -74,7 +78,8 @@ public class InterestService {
         User me = requireMeWithProfile(authUser);
         User other = requireCandidate(me, targetUserId);
 
-        interestRepository.insertIfAbsent(me.getId(), other.getId());
+        interestRepository.insertIfAbsent(startupIdOf(me, other), investorIdOf(me, other), me.getId());
+        interestRepository.syncPairStatus(me.getId(), other.getId());
 
         Optional<Instant> matchedAt = matchedAt(me.getId(), other.getId());
         return matchedAt
@@ -92,6 +97,7 @@ public class InterestService {
         boolean wasMatch = matchedAt(me.getId(), targetUserId).isPresent();
 
         interestRepository.deletePair(me.getId(), targetUserId);
+        interestRepository.syncPairStatus(me.getId(), targetUserId);
 
         int canceled = wasMatch
                 ? meetingService.cancelFutureBetween(me.getId(), targetUserId, UNMATCH_CANCEL_REASON)
@@ -162,11 +168,11 @@ public class InterestService {
     /** Estado do interesse do usuário com cada pessoa com quem há alguma linha. */
     @Transactional(readOnly = true)
     public Map<Long, InterestStatus> statusesOf(Long userId) {
-        Set<Long> sent = interestRepository.findByFromUserId(userId).stream()
-                .map(UserInterest::getToUserId)
+        Set<Long> sent = interestRepository.findActiveSentBy(userId).stream()
+                .map(interest -> otherSide(interest, userId))
                 .collect(Collectors.toSet());
-        Set<Long> received = interestRepository.findByToUserId(userId).stream()
-                .map(UserInterest::getFromUserId)
+        Set<Long> received = interestRepository.findActiveReceivedBy(userId).stream()
+                .map(MatchInterest::getLikedByUserId)
                 .collect(Collectors.toSet());
 
         Map<Long, InterestStatus> result = new HashMap<>();
@@ -186,12 +192,58 @@ public class InterestService {
     }
 
     // ============================================================
+    // Rotas /api/matches do main (D058): mesmas regras, formato de linha
+    // ============================================================
+
+    /**
+     * Linhas do usuário logado (as que ele mesmo curtiu) cujo par já tem match mútuo, da mais
+     * recente para a mais antiga. Só pares com outro lado ativo, como em {@link #matches}.
+     */
+    @Transactional(readOnly = true)
+    public List<MatchInterest> matchedRowsOf(AuthUser authUser) {
+        User me = participantService.requireCommunicatingUser(authUser);
+        Set<Long> matched = new HashSet<>(interestRepository.findMatchedUserIds(me.getId()));
+        return sentRowsWithActiveCounterpart(me).stream()
+                .filter(row -> matched.contains(otherSide(row, me.getId())))
+                .toList();
+    }
+
+    /** Linhas que o usuário curtiu e que ainda não viraram match (status SENT na descoberta). */
+    @Transactional(readOnly = true)
+    public List<MatchInterest> pendingSentRowsOf(AuthUser authUser) {
+        User me = participantService.requireCommunicatingUser(authUser);
+        Set<Long> matched = new HashSet<>(interestRepository.findMatchedUserIds(me.getId()));
+        return sentRowsWithActiveCounterpart(me).stream()
+                .filter(row -> !matched.contains(otherSide(row, me.getId())))
+                .toList();
+    }
+
+    private List<MatchInterest> sentRowsWithActiveCounterpart(User me) {
+        return interestRepository.findActiveSentBy(me.getId()).stream()
+                .filter(row -> activeCandidate(me, otherSide(row, me.getId())) != null)
+                .toList();
+    }
+
+    /** O outro lado do par de uma linha, visto por {@code userId}. */
+    public static Long otherSide(MatchInterest interest, Long userId) {
+        return userId.equals(interest.getStartupId()) ? interest.getInvestorId() : interest.getStartupId();
+    }
+
+    private static Long startupIdOf(User a, User b) {
+        return a.getRole() == Role.STARTUP ? a.getId() : b.getId();
+    }
+
+    private static Long investorIdOf(User a, User b) {
+        return a.getRole() == Role.INVESTOR ? a.getId() : b.getId();
+    }
+
+    // ============================================================
     // Internos
     // ============================================================
 
     private InterestStatus statusBetween(Long me, Long other) {
-        return status(interestRepository.existsByFromUserIdAndToUserId(me, other),
-                interestRepository.existsByFromUserIdAndToUserId(other, me));
+        return status(interestRepository.existsActive(me, other),
+                interestRepository.existsActive(other, me));
     }
 
     private static InterestStatus status(boolean sent, boolean received) {
@@ -206,8 +258,8 @@ public class InterestService {
 
     /** Quando o match aconteceu (o segundo interesse), ou vazio se não há match. */
     private Optional<Instant> matchedAt(Long a, Long b) {
-        Optional<UserInterest> ab = interestRepository.findByFromUserIdAndToUserId(a, b);
-        Optional<UserInterest> ba = interestRepository.findByFromUserIdAndToUserId(b, a);
+        Optional<MatchInterest> ab = interestRepository.findActive(a, b);
+        Optional<MatchInterest> ba = interestRepository.findActive(b, a);
         if (ab.isEmpty() || ba.isEmpty()) {
             return Optional.empty();
         }

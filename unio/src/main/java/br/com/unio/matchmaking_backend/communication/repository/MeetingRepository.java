@@ -22,6 +22,14 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
             """)
     List<Meeting> findAllByParticipant(@Param("userId") Long userId);
 
+    @Query("""
+            select count(m) from Meeting m
+            where (m.organizer.id = :userId or m.invitee.id = :userId)
+              and m.status in :statuses
+            """)
+    long countByParticipantAndStatusIn(@Param("userId") Long userId,
+                                       @Param("statuses") Collection<MeetingStatus> statuses);
+
     /**
      * Quantas reuniões de qualquer um dos usuários, nos {@code statuses} informados,
      * se sobrepõem ao intervalo [startsAt, endsAt). {@code excludeId} ignora a própria

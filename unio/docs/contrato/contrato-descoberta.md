@@ -1,9 +1,9 @@
 # Contrato: descoberta, interesse, match e salvos
 
 Autora: Carol
-Data: 2026-11-16
+Data: 2026-11-16 (atualizado em 2026-11-21 no merge com o `main`)
 Status: Aceita
-Decisões: D045 a D055 (`docs/decisoes.md`)
+Decisões: D045 a D055 e D058 a D062 (`docs/decisoes.md`)
 
 Todos os endpoints exigem `Authorization: Bearer <token>`. Erros seguem o formato
 único da API (`{ timestamp, status, error, message, path }`). Ids de usuário são o
@@ -119,6 +119,9 @@ objeto `scorecard` do item.
 
 ## Interesse e match (`/api/interests`)
 
+Armazenamento: `match_interests` (V23), a mesma tabela das rotas `/api/matches` do
+`main` (D058). As duas interfaces leem e gravam no mesmo lugar.
+
 | Método | Caminho | Resposta |
 | --- | --- | --- |
 | PUT | `/api/interests/{targetUserId}` | `{ "status": "ENVIADO" \| "MATCH", "matchedAt": "..." \| null }` |
@@ -173,6 +176,64 @@ objeto `scorecard` do item.
 | PUT | `/api/saved/{targetUserId}` | 204 (idempotente) |
 | DELETE | `/api/saved/{targetUserId}` | 204 (idempotente) |
 | GET | `/api/saved` | lista de `ConnectionResponse` com `savedAt` e sem `contact` |
+
+## Rotas do `main` com as mesmas regras (D058 a D062)
+
+As rotas abaixo vieram do `main` (T20 a T23) e continuam com o mesmo caminho e o mesmo
+formato de resposta. A regra de cada uma é a mesma das rotas acima.
+
+### Interesse pelo contrato do `main` (`/api/matches`, D058)
+
+| Método | Caminho | Corpo | Resposta |
+| --- | --- | --- | --- |
+| POST | `/api/matches/interest` | `{ "startupId": 12, "investorId": 34 }` | 201, a linha de `match_interests` de quem chamou |
+| GET | `/api/matches` | | linhas de quem chamou com match mútuo (`status: MATCHED`) |
+| GET | `/api/matches/saved` | | linhas de quem chamou ainda sem match (`status: LIKED`) |
+
+Linha: `{ id, startupId, investorId, likedByUserId, status, createdAt }`.
+
+- `POST /api/matches/interest` é o mesmo "Tenho interesse" de `PUT /api/interests/{id}`
+  (idempotente; vira `MATCHED` quando o outro lado já curtiu).
+- Erros próprios do contrato do `main`: 400 sem `startupId`/`investorId` ou com os dois
+  iguais; 403 quando o lado do papel de quem chama não é o próprio usuário ("em seu
+  próprio nome") e para ADMIN; 404 quando o outro lado não existe.
+- Erros da regra comum: 409 quem chama não tem perfil; 404 outro lado removido ou sem perfil.
+- `/api/matches/saved` não são os salvos de bookmark: estes são `GET /api/saved`.
+
+### Recomendações do scorecard (D061)
+
+| Método | Caminho | Quem | Query |
+| --- | --- | --- | --- |
+| GET | `/api/scorecard/recommendations` | INVESTOR, ADMIN | `investorId` (opcional), `limit` (padrão 20) |
+| GET | `/api/scorecard/recommendations/investors` | STARTUP, ADMIN | `startupId` (opcional), `limit` (padrão 20) |
+
+- Sem o id, vale o usuário logado. Com o id, ele precisa ser o do usuário logado, senão
+  403; ADMIN consulta qualquer um.
+- Só leem scores já gravados; a lista com cálculo sob demanda é `/api/discovery`.
+- `/recommendations/investors` devolve `[{ investorId, investorEmail, totalScore }]`;
+  `investorEmail` só vem quando há match mútuo (D052), senão `null`.
+
+### Perfis públicos e painel da startup (D060)
+
+| Método | Caminho | Quem | Resposta |
+| --- | --- | --- | --- |
+| GET | `/api/profile/startup/{id}` | autenticado | `PublicStartupProfileResponse` |
+| GET | `/api/profile/investor/{id}` | autenticado | `PublicInvestorProfileResponse` |
+| GET | `/api/profile/startup/dashboard` | STARTUP | `{ totalVisualizacoes, totalMatches, totalReunioesAgendadas, totalMensagensNaoLidas }` |
+
+- Perfis: os campos de perfil são os da descoberta (`PublicProfileMapper`), mais nome,
+  `createdAt`, disponibilidade e observação. `email` só para o titular, ADMIN ou quem tem
+  match mútuo; `pitchFileUrl` só para o titular e ADMIN; nos outros casos, `null`. Conta
+  inexistente, removida ou sem perfil: 404.
+- Painel: `totalVisualizacoes` são as visitas dos últimos 28 dias (igual a
+  `profileViews28d` da popularidade); `totalMatches` são os matches mútuos;
+  `totalReunioesAgendadas`, reuniões `PENDENTE` ou `CONFIRMADA`.
+
+### Login inválido (D062)
+
+`POST /api/auth/login` com senha errada, e-mail inexistente ou conta desativada: 401 com
+`message: "Credenciais inválidas"`. Rota protegida sem token: 401 "Não autenticado".
+Autenticado sem permissão: 403 "Acesso negado".
 
 ## Reuniões com a regra de match (D051)
 
