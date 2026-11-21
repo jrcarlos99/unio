@@ -132,7 +132,7 @@ export function isoParaBack(iso: string): string {
   return new Date(iso).toISOString();
 }
 
-// Código curto e estável a partir do id ("UNIO-9842"), igual ao do mock
+// Código curto e estável a partir do id ("UNIO-9842")
 export function gerarCodigo(id: string) {
   let hash = 0;
   for (const caractere of id) hash = (hash * 31 + caractere.charCodeAt(0)) >>> 0;
@@ -162,6 +162,8 @@ export function contraparteDoBack(item: CounterpartBack): ContraparteReuniao {
     iniciais: iniciais(item.name),
     tipo,
     selos: [],
+    // A contraparte é sempre do outro perfil: a rota existe para quem vê
+    perfilHref: `${tipo === "startup" ? "/startups" : "/investidores"}/${encodeURIComponent(String(item.userId))}`,
   };
   if (item.matchScore !== null && item.matchScore !== undefined) {
     contraparte.matchPercentual = Math.round(Number(item.matchScore));
@@ -250,8 +252,9 @@ export function reuniaoDoBack(
 // ---------------------------------------------------------------------------
 
 export const MENSAGEM_ESCOLHA_CADASTRADO = "Escolha um usuário cadastrado da lista.";
-// Popup do unio aberto a partir de um perfil de exemplo (id de mock)
-export const MENSAGEM_CONTATO_EXEMPLO = `Este contato é de exemplo. ${MENSAGEM_ESCOLHA_CADASTRADO}`;
+// Popup aberto a partir de um perfil que não está na lista de contrapartes
+// (sem match mútuo ou conta excluída)
+export const MENSAGEM_CONTATO_SEM_MATCH = `Esta pessoa não está entre os seus matches. ${MENSAGEM_ESCOLHA_CADASTRADO}`;
 
 // participantId do POST /api/meetings. Lança ErroReunioes (com o erro no campo
 // "unioId") quando o id não é um inteiro positivo: nunca sai NaN nem null.
@@ -268,7 +271,7 @@ export function contraparteValida(id: string | undefined, contrapartes: readonly
   return !!id && ehIdDoBack(id) && contrapartes.some((contraparte) => contraparte.id === id);
 }
 
-// Pré-seleção do modal no modo API: o unio do popup só vem marcado se for um
+// Pré-seleção do modal: o unio do popup só vem marcado se for um
 // usuário real da lista; senão o modal abre sem ninguém escolhido
 export function preSelecaoDeContraparte(
   unioInicial: string | undefined,

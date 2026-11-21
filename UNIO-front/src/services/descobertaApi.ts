@@ -13,9 +13,8 @@ import {
   type PaginaDescobertaBack,
 } from "./discovery.mapping";
 
-// Peças do modo API usadas por discoveryService.api.ts e
-// investidoresService.api.ts (ADR-008). O JSON do back só é lido em
-// discovery.mapping.ts.
+// Peças comuns de discoveryService.ts e investidoresService.ts (ADR-008). O
+// JSON do back só é lido em discovery.mapping.ts.
 
 // No máximo 3 páginas de 100: as telas filtram e paginam no cliente sobre a
 // lista já ordenada pelo score do back
@@ -36,7 +35,7 @@ export async function buscarDescoberta(
   return itens;
 }
 
-// Detalhe de um candidato: id que não é do back (slug de exemplo) ou 404 viram
+// Detalhe de um candidato: id que não é do back ou 404 viram
 // null, e a tela mostra "não encontrado"
 export async function buscarDetalhe(caminho: string): Promise<ItemDescobertaBack | null> {
   try {
@@ -86,7 +85,7 @@ function percentualPublico(id: string): Promise<number | null> {
 }
 
 // Preenche o selo de popularidade (GET /api/reviews/summary/{id}) e aplica a
-// mesma ordenação do mock: score primeiro, popularidade só desempata e dá um
+// ordenação da ADR-006: score primeiro, popularidade só desempata e dá um
 // bônus pequeno (utils/popularidade.ts, ADR-006)
 export async function comPopularidade<T extends { popularidade?: number | null; compatibilidade: { total: number } }>(
   itens: T[],

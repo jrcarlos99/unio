@@ -1,33 +1,10 @@
 import AdminPageHeader from "../components/AdminPageHeader";
 import DataTable from "../components/DataTable";
-import { useAudit } from "../context/AuditContext";
 import { useCarregamento } from "../../../hooks/useDescoberta";
-import { ADMIN_REAL, listarAuditoria } from "../../../services/adminService";
-import type { LogEntry } from "../types";
+import { listarAuditoria } from "../../../services/adminService";
 
-// Modo API: as 50 entradas mais recentes de GET /api/admin/audit (ADR-010).
-// Modo mock: o log da sessão, que o AuditContext guarda do mais recente para
-// o mais antigo.
+// As 50 entradas mais recentes de GET /api/admin/audit (ADR-010 e ADR-011)
 export default function LogAuditoria() {
-  return ADMIN_REAL ? <LogDoBack /> : <LogDaSessao />;
-}
-
-function Tabela({ logs, vazio }: { logs: LogEntry[]; vazio: string }) {
-  return (
-    <DataTable
-      rowKey={(row) => row.id}
-      rows={logs}
-      emptyMessage={vazio}
-      columns={[
-        { header: "Data/Hora", render: (row) => row.dataHora },
-        { header: "Usuário", render: (row) => row.usuario },
-        { header: "Ação realizada", render: (row) => row.acao },
-      ]}
-    />
-  );
-}
-
-function LogDoBack() {
   const { carregando, erro, dados, recarregar } = useCarregamento(
     listarAuditoria,
     "Não foi possível carregar o log de auditoria.",
@@ -48,23 +25,18 @@ function LogDoBack() {
           </button>
         </p>
       )}
-      {!carregando && !erro && <Tabela logs={dados ?? []} vazio="Nenhuma ação registrada ainda." />}
-    </div>
-  );
-}
-
-function LogDaSessao() {
-  const { logs } = useAudit();
-  return (
-    <div>
-      <AdminPageHeader
-        title="Log de Auditoria"
-        subtitle="Ações de moderação realizadas nesta sessão, mais recentes primeiro."
-      />
-      <Tabela
-        logs={logs}
-        vazio="Nenhuma ação registrada ainda. Aprove, rejeite ou remova algo nas telas de moderação."
-      />
+      {!carregando && !erro && (
+        <DataTable
+          rowKey={(row) => row.id}
+          rows={dados ?? []}
+          emptyMessage="Nenhuma ação registrada ainda."
+          columns={[
+            { header: "Data/Hora", render: (row) => row.dataHora },
+            { header: "Usuário", render: (row) => row.usuario },
+            { header: "Ação realizada", render: (row) => row.acao },
+          ]}
+        />
+      )}
     </div>
   );
 }

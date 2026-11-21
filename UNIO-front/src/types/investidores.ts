@@ -2,9 +2,9 @@ import type { Disponibilidade, Estagio, RegiaoInteresse, Segmento, TipoPerfil } 
 import type { Compatibilidade, Motivo, RefScorecard, StatusInteresse } from "./discovery";
 
 // Tipos dos investidores vistos pela startup (aba "Investidores", Salvos,
-// Meus unios e perfil do investidor). No modo mock vêm de
-// mocks/investidoresMock.ts; no modo API, de /api/discovery (ADR-008). Campos
-// que o back não tem ficam null ou vazios e as telas os escondem.
+// Meus unios e perfil do investidor). Vêm de /api/discovery (ADR-008 e
+// ADR-011). Campos que o back não tem ficam null ou vazios e as telas os
+// escondem.
 
 export interface InvestidorDescoberta {
   id: string;
@@ -22,7 +22,7 @@ export interface InvestidorDescoberta {
   ticketMin: number | null;
   ticketMax: number | null;
   regioesInteresse: RegiaoInteresse[];
-  // Texto livre da região no back (modo API), quando não cabe nas opções acima
+  // Texto livre da região no back, quando não cabe nas opções acima
   regiaoTexto?: string | null;
   disponibilidade: Disponibilidade | null;
   // Startups em que investiu (anjo) ou que mentorou (mentor); null = sem dado
@@ -36,18 +36,6 @@ export interface InvestidorDescoberta {
   desde: number | null;
   portfolioPortoDigital: number | null;
   tempoResposta: string | null;
-  // MOCK: o investidor já demonstrou interesse na startup, então o clique em
-  // "Tenho interesse" vira match na hora. No back isso viria do lado dele.
-  interesseReciproco: boolean;
-}
-
-// Investidor de exemplo (modo mock): sempre com todos os campos preenchidos
-export interface InvestidorDescobertaCompleto extends InvestidorDescoberta {
-  disponibilidade: Disponibilidade;
-  portfolio: number;
-  desde: number;
-  portfolioPortoDigital: number;
-  tempoResposta: string;
 }
 
 // Investidor como chega nas telas: dados + compatibilidade + estado da startup
@@ -58,7 +46,7 @@ export interface InvestidorRecomendado {
   salvo: boolean;
   // Popularidade visível em % (RF10). Nula abaixo do mínimo: sem selo.
   popularidade?: number | null;
-  // Modo API: par do scorecard para o feedback (VIEWED, INTERESTED)
+  // Par do scorecard para o feedback (VIEWED, INTERESTED)
   scorecard?: RefScorecard | null;
 }
 
@@ -80,6 +68,4 @@ export interface ResumoStartupInvestidores {
   estagio: Estagio | null;
   // Faixa do onboarding ("R$ 200 a 500 mil") ou valor do perfil formatado
   capitalProcurado: string | null;
-  // Só no mock (ex.: "60% de R$ 300 mil"); o back não tem a rodada: null
-  captacao: string | null;
 }

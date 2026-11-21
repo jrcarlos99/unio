@@ -1,5 +1,5 @@
 import type { UserProfile } from "../contexts/AuthContext";
-import type { DadosUnio, ResultadoDesfazerMatch, TipoEventoUnio } from "../types/contato";
+import type { DadosUnio, ResultadoDesfazerMatch } from "../types/contato";
 import type { StatusInteresse } from "../types/discovery";
 import type { AlteracaoRecomendacao, PerfilApp, Recomendacao } from "../types/recomendacoes";
 import * as descoberta from "./discoveryService";
@@ -9,9 +9,7 @@ import { chaveUsuario } from "./onboardingService";
 // Fachada para as telas e ações que os dois perfis compartilham (Salvos,
 // Meus unios, salvar, interesse): escolhe o serviço pelo perfil logado.
 // Investidor → discoveryService (startups); startup → investidoresService
-// (investidores). Não guarda nada e não chama o back: só repassa. Por isso não
-// tem .mock e .api próprios; quem escolhe o modo são os dois serviços
-// (ADR-008).
+// (investidores). Não guarda nada e não chama o back: só repassa (ADR-008).
 
 const chave = (user: UserProfile | null) => (user ? chaveUsuario(user) : "");
 
@@ -49,7 +47,7 @@ export async function removerSalvo(rec: Recomendacao, user: UserProfile | null):
   return rec.perfil === "investidor" ? descoberta.removerSalvo(chave(user), id) : investidores.removerSalvo(user, id);
 }
 
-// O par do scorecard vai junto para o feedback INTERESTED (só no modo API)
+// O par do scorecard vai junto para o feedback INTERESTED
 export async function registrarInteresse(rec: Recomendacao, user: UserProfile | null): Promise<StatusInteresse> {
   const id = idDaRecomendacao(rec);
   return rec.perfil === "investidor"
@@ -76,16 +74,10 @@ export async function obterContato(rec: Recomendacao, user: UserProfile | null):
   return rec.perfil === "investidor" ? descoberta.obterContato(chave(user), id) : investidores.obterContato(user, id);
 }
 
-// No modo API o back também cancela as reuniões futuras do par e diz quantas
-// (reunioesCanceladas); no mock vem null e a tela cancela pelo reunioesService
+// O back também cancela as reuniões futuras do par e diz quantas
+// (reunioesCanceladas)
 export async function desfazerMatch(rec: Recomendacao, user: UserProfile | null): Promise<ResultadoDesfazerMatch> {
   const id = idDaRecomendacao(rec);
   return rec.perfil === "investidor" ? descoberta.desfazerMatch(chave(user), id) : investidores.desfazerMatch(user, id);
 }
 
-export async function registrarEvento(rec: Recomendacao, user: UserProfile | null, tipo: TipoEventoUnio): Promise<void> {
-  const id = idDaRecomendacao(rec);
-  return rec.perfil === "investidor"
-    ? descoberta.registrarEvento(chave(user), id, tipo)
-    : investidores.registrarEvento(user, id, tipo);
-}

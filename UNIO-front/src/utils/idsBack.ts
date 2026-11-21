@@ -1,7 +1,7 @@
 // Regra de ouro da integração (ADR-007): o front só manda ao back ids
 // numéricos reais (inteiro positivo, como os userId e meetingId do back).
-// Ids de exemplo dos mocks (slugs como "biopay" ou "marcos-andrade") nunca
-// viram chamada HTTP: quem recebe um deles continua no mock.
+// Qualquer outra coisa (ex.: um endereço antigo como /startups/biopay) nunca
+// vira chamada HTTP: a tela mostra "não encontrado" (ADR-011).
 //
 // Funções puras, testadas em tests/idsBack.test.ts.
 

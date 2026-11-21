@@ -2,13 +2,15 @@
 
 - **Autora:** Carol
 - **Data:** 2026-11-16
-- **Status:** Aceita
+- **Status:** Aceita; modo mock substituído pela ADR-011.
 - **Atualiza:**
   - ADR-005 (a pendência "match mútuo no back" foi resolvida);
   - ADR-007 (interessados, matches, a etapa de interesse e os investidores recomendados
     deixam de ser exemplo).
 - **Back:** D051 (reunião só com match, substitui parcialmente a D028), D052 (e-mail só
   depois do match) e D053 (métricas)
+
+> **Nota (2026-11-20, Carol):** o modo mock (contatos locais, "Contatos iniciados" e números de exemplo do dashboard) deixou de existir. Substituída pela [ADR-011](ADR-011-producao-sem-mocks.md) nesse ponto; o resto desta ADR fica como histórico.
 
 ## Contexto
 

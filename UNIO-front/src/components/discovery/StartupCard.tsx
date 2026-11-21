@@ -32,7 +32,7 @@ export default function StartupCard({
       titulo={startup.nome}
       verificado={startup.verificada}
       rotuloVerificado="Verificada"
-      subtitulo={juntarPartes(localDaStartup(startup), startup.captacao?.rodada ?? startup.estagio)}
+      subtitulo={juntarPartes(localDaStartup(startup), startup.estagio)}
       avatar={<StartupLogo startup={startup} />}
       categoria={startup.categoria}
       match={compatibilidade.total}
@@ -45,7 +45,7 @@ export default function StartupCard({
         ...(startup.tags[0] ? [{ texto: startup.tags[0], estilo: "suave" as const }] : []),
       ]}
       descricao={startup.descricao}
-      principal={{ icone: Banknote, rotulo: startup.captacao ? "Captação" : "Capital procurado", valor: textoCapital(startup) }}
+      principal={{ icone: Banknote, rotulo: "Capital procurado", valor: textoCapital(startup) }}
       secundaria={startup.metrica ?? undefined}
       acoes={
         <>

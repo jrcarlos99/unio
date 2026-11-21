@@ -16,8 +16,9 @@ export interface DadosUnio {
   matchEm: string | null;
 }
 
-// Resultado de "Desfazer match". No modo API o back cancela as reuniões futuras
-// do par e diz quantas; no mock é null e a tela cancela pelo reunioesService.
+// Resultado de "Desfazer match". O back cancela as reuniões futuras do par e
+// diz quantas; null só se a resposta não trouxer o número (a tela então
+// cancela pelo reunioesService).
 export interface ResultadoDesfazerMatch {
   status: StatusInteresse;
   reunioesCanceladas: number | null;
@@ -26,4 +27,4 @@ export interface ResultadoDesfazerMatch {
 // Eventos locais para as métricas da home da startup. "reuniao" não é mais
 // registrado (as reuniões agora vêm do reunioesService), mas os eventos já
 // gravados continuam contando no funil.
-export type TipoEventoUnio = "contato" | "reuniao";
+

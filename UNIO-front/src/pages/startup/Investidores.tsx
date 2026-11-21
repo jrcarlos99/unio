@@ -14,7 +14,6 @@ import { SEGMENTOS_DETALHADOS, TIPOS_PERFIL } from "../../data/options";
 import { useCarregamento } from "../../hooks/useDescoberta";
 import { useAcoesRecomendacao } from "../../hooks/useRecomendacoes";
 import {
-  INVESTIDORES_REAIS,
   aplicarFiltrosInvestidores,
   listarInvestidoresRecomendados,
   obterResumoStartup,
@@ -128,8 +127,6 @@ export default function Investidores() {
         criterios={criterios.length > 0 ? juntarComE(criterios) : "complete o perfil da startup"}
         cartoes={[
           { rotulo: "Capital procurado", valor: resumo?.capitalProcurado ?? "Não informado" },
-          // A captação da rodada só existe nos dados de exemplo (modo mock)
-          resumo && resumo.captacao === null ? undefined : { rotulo: "Captação", valor: resumo?.captacao ?? "" },
         ]}
       />
 
@@ -185,12 +182,8 @@ export default function Investidores() {
         vazio={
           <AvisoEstado
             icone={SearchX}
-            titulo={INVESTIDORES_REAIS ? "Ainda não há investidores cadastrados" : "Ainda não há investidores recomendados"}
-            texto={
-              INVESTIDORES_REAIS
-                ? "Quando investidores criarem o perfil, eles aparecem aqui com o score de compatibilidade."
-                : "Complete o perfil da sua startup para encontrarmos investidores que combinam com você."
-            }
+            titulo="Ainda não há investidores cadastrados"
+            texto="Quando investidores criarem o perfil, eles aparecem aqui com o score de compatibilidade."
             acao={
               <Link to="/meu-perfil" className={BOTAO_CLARO}>
                 Completar perfil

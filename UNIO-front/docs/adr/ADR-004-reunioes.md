@@ -1,9 +1,11 @@
 # ADR-004: Reuniões entre unios com mock no front e mapeamento isolado para /api/meetings
 
 - **Autora:** Carol
-- **Status:** Superada em parte pela ADR-005
+- **Status:** Superada em parte pela ADR-005; modo mock substituído pela ADR-011.
 - **Data:** 2026-11-08
 - **Back:** branch `feat/p2-comunicacao-lgpd-qualidade` (`communication/MeetingController`, `V20__create_meetings.sql`), lida sem alterações
+
+> **Nota (2026-11-20, Carol):** o mock de reuniões no front (`reunioesService.mock.ts`, `reunioesMock.ts`) deixou de existir. Substituída pela [ADR-011](ADR-011-producao-sem-mocks.md) nesse ponto; o resto desta ADR fica como histórico.
 
 > **Atualização (2026-11-16, Carol):** a regra "reunião só com quem deu match" passou a valer
 > também no modo API, garantida pelo back (D051, [ADR-009](ADR-009-reuniao-so-com-match-contato-e-dashboard.md)).

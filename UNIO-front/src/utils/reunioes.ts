@@ -102,8 +102,8 @@ export function tooltipEvento(reuniao: Reuniao, inicio: string): string {
   )}, ${status}`;
 }
 
-// Arquivo .ics de uma reunião confirmada. Gerado sempre no front, nos dois
-// modos do serviço (mock e API).
+// Arquivo .ics de uma reunião confirmada. Gerado no front a partir da reunião
+// que veio do back.
 export function arquivoIcsDaReuniao(reuniao: Reuniao): ArquivoIcs {
   if (reuniao.status !== "confirmada" || !reuniao.horarioConfirmado) {
     throw new Error("Só reuniões confirmadas podem ir para o calendário.");

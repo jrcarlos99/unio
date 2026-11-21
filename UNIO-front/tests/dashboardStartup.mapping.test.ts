@@ -1,117 +1,85 @@
-// Resumo da Visão geral no modo API (src/services/dashboardStartup.mapping.ts,
-// ADR-007 e ADR-009). Rodar com: npm test
+// Resumo da Visão geral só com dados do back (src/services/dashboardStartup.mapping.ts,
+// ADR-011). Entradas no formato real do back, passando pelos mapeamentos.
+// Rodar com: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { RESUMO_MOCK } from "../src/mocks/dashboardStartupMock.ts";
-import { contarReunioesMarcadas, montarResumoApi } from "../src/services/dashboardStartup.mapping.ts";
-import type { Popularidade } from "../src/types/avaliacoes.ts";
-import type { Reuniao, StatusReuniao } from "../src/types/reunioes.ts";
+import { fromBackPopularity } from "../src/services/avaliacoes.mapping.ts";
+import { ROTULOS_FUNIL, contarReunioesMarcadas, montarResumo } from "../src/services/dashboardStartup.mapping.ts";
+import { reuniaoDoBack } from "../src/services/reunioes.mapping.ts";
+import { POPULARIDADE_BACK, POPULARIDADE_ZERADA_BACK, reuniaoBack } from "./fixtures/respostasBack.ts";
 
 const AGORA = "2026-11-16T12:00:00.000Z";
 
-function reuniao(id: string, status: StatusReuniao): Reuniao {
-  return {
-    id,
-    unioId: "12",
-    solicitante: "eu",
-    organizador: "eu",
-    contraparte: { id: "12", nome: "Rafael", subtitulo: "Investidor", iniciais: "RA", tipo: "investidor", selos: [] },
-    assunto: "Mentoria",
-    duracaoMin: 30,
-    formato: "online",
-    horariosSugeridos: [AGORA],
-    status,
-    criadaEm: AGORA,
-    atualizadaEm: AGORA,
-    codigo: "UNIO-1234",
-  };
-}
-
-function popularidade(total28d: number, semanal: number[], variacao = 0, interesses = 0): Popularidade {
-  return {
-    percentual: null,
-    totalAvaliacoes: 0,
-    visivel: false,
-    reunioesRealizadas: 0,
-    visitas: {
-      total28d,
-      variacaoPercentual: variacao,
-      semanal: semanal.map((atual, indice) => ({ semana: `Sem ${indice + 1}`, atual, anterior: 0 })),
-    },
-    interessesRecebidos: interesses,
-  };
-}
+const reunioes = (["PENDENTE", "CONFIRMADA", "REALIZADA", "CANCELADA", "RECUSADA", "CONFIRMADA"] as const).map(
+  (status, i) => reuniaoDoBack(reuniaoBack(i + 1, status)),
+);
 
 test("contarReunioesMarcadas: só confirmadas e realizadas", () => {
-  const lista = ["pendente", "confirmada", "realizada", "cancelada", "recusada", "confirmada"].map((status, i) =>
-    reuniao(String(i + 1), status as StatusReuniao),
-  );
-  assert.equal(contarReunioesMarcadas(lista), 3);
+  assert.equal(contarReunioesMarcadas(reunioes), 3);
 });
 
-test("montarResumoApi: zeros reais nunca viram número do mock", () => {
-  const resumo = montarResumoApi(
-    { popularidade: popularidade(0, [0, 0, 0, 0]), reunioes: [], matches: 0, contatosIniciados: 0 },
+test("montarResumo: números do back, funil visualização → interesse → match → reunião", () => {
+  const resumo = montarResumo(
+    { popularidade: fromBackPopularity(POPULARIDADE_BACK), reunioes, matches: 2 },
     AGORA,
   );
-  assert.equal(resumo.metricas.visualizacoes, 0);
-  assert.equal(resumo.metricas.contatosIniciados, 0);
-  assert.equal(resumo.metricas.interessados, 0);
-  assert.equal(resumo.metricas.matches, 0);
-  assert.equal(resumo.funil[0].valor, 0);
-  assert.equal(resumo.funil[1].valor, 0);
-  assert.equal(resumo.funil[2].valor, 0);
-  assert.equal(resumo.funil[3].valor, 0);
+  assert.equal(resumo.metricas.visualizacoes, 59);
+  assert.equal(resumo.metricas.interessados, 4);
+  assert.equal(resumo.metricas.matches, 2);
+  assert.equal(typeof resumo.metricas.variacaoVisualizacoes, "number");
   assert.deepEqual(
-    resumo.visualizacoesSemanais.map((semana) => semana.atual),
-    [0, 0, 0, 0],
+    resumo.funil.map((etapa) => etapa.rotulo),
+    [...ROTULOS_FUNIL],
+  );
+  assert.deepEqual(
+    resumo.funil.map((etapa) => etapa.valor),
+    [59, 4, 2, 3],
+  );
+  assert.deepEqual(
+    resumo.visualizacoesSemanais?.map((semana) => semana.atual),
+    [10, 14, 16, 19],
   );
   assert.equal(resumo.atualizadoEm, AGORA);
 });
 
-test("montarResumoApi: tudo do back, sem selo de exemplo (ADR-009)", () => {
-  const resumo = montarResumoApi(
-    {
-      popularidade: popularidade(59, [10, 14, 16, 19], -5, 4),
-      reunioes: [reuniao("1", "confirmada"), reuniao("2", "realizada"), reuniao("3", "pendente")],
-      matches: 3,
-      contatosIniciados: 2,
-    },
+test("montarResumo: zeros reais continuam zero (conta nova)", () => {
+  const resumo = montarResumo(
+    { popularidade: fromBackPopularity(POPULARIDADE_ZERADA_BACK), reunioes: [], matches: 0 },
     AGORA,
   );
-  assert.equal(resumo.metricas.visualizacoes, 59);
-  assert.equal(resumo.metricas.variacaoVisualizacoes, -5);
-  assert.equal(resumo.metricas.interessados, 4);
-  assert.equal(resumo.metricas.matches, 3);
-  assert.equal(resumo.funil[1].valor, 4);
-  assert.equal(resumo.funil[3].valor, 2);
-  assert.equal(resumo.funil[2].valor, 2);
-  assert.deepEqual(resumo.exemplo, {
-    visualizacoes: false,
-    interessados: false,
-    matches: false,
-    grafico: false,
-    funil: false,
-  });
+  assert.equal(resumo.metricas.visualizacoes, 0);
+  assert.equal(resumo.metricas.interessados, 0);
+  assert.equal(resumo.metricas.matches, 0);
   assert.deepEqual(
-    resumo.funil.map((etapa) => Boolean(etapa.exemplo)),
-    [false, false, false, false],
+    resumo.funil.map((etapa) => etapa.valor),
+    [0, 0, 0, 0],
   );
 });
 
-test("montarResumoApi: chamada que falhou volta ao mock com selo", () => {
-  const resumo = montarResumoApi({ popularidade: null, reunioes: null, matches: null, contatosIniciados: 1 }, AGORA);
-  assert.equal(resumo.metricas.visualizacoes, RESUMO_MOCK.metricas.visualizacoes);
-  assert.equal(resumo.metricas.interessados, RESUMO_MOCK.metricas.interessados);
-  assert.equal(resumo.metricas.matches, RESUMO_MOCK.metricas.matches);
-  assert.equal(resumo.exemplo?.visualizacoes, true);
-  assert.equal(resumo.exemplo?.interessados, true);
-  assert.equal(resumo.exemplo?.matches, true);
-  assert.equal(resumo.funil[1].exemplo, true);
-  assert.equal(resumo.exemplo?.grafico, true);
-  assert.equal(resumo.funil[0].exemplo, true);
-  assert.equal(resumo.funil[3].exemplo, true);
-  assert.equal(resumo.funil[3].valor, RESUMO_MOCK.funil[3].valor);
-  // Contatos são contagem local, não mock: continuam reais
-  assert.equal(resumo.metricas.contatosIniciados, 1);
+test("montarResumo: chamada que falhou vira null (indisponível), nunca número inventado", () => {
+  const resumo = montarResumo({ popularidade: null, reunioes: null, matches: null }, AGORA);
+  assert.equal(resumo.metricas.visualizacoes, null);
+  assert.equal(resumo.metricas.variacaoVisualizacoes, null);
+  assert.equal(resumo.metricas.interessados, null);
+  assert.equal(resumo.metricas.matches, null);
+  assert.equal(resumo.visualizacoesSemanais, null);
+  assert.deepEqual(
+    resumo.funil.map((etapa) => etapa.valor),
+    [null, null, null, null],
+  );
+  // Não há mais selo, benchmark, "novos esta semana" nem contatos iniciados
+  assert.deepEqual(Object.keys(resumo).sort(), ["atualizadoEm", "funil", "metricas", "visualizacoesSemanais"]);
+  assert.deepEqual(Object.keys(resumo.metricas).sort(), [
+    "interessados",
+    "matches",
+    "variacaoVisualizacoes",
+    "visualizacoes",
+  ]);
+});
+
+test("montarResumo: uma falha não derruba as outras", () => {
+  const resumo = montarResumo({ popularidade: null, reunioes, matches: 1 }, AGORA);
+  assert.equal(resumo.metricas.visualizacoes, null);
+  assert.equal(resumo.metricas.matches, 1);
+  assert.equal(resumo.funil[3].valor, 3);
 });

@@ -69,7 +69,7 @@ export default function AbaPopularidade({ sessao }: { sessao: SessaoReunioes }) 
           rotulo="Interesses recebidos"
           valor={carregando || !dados ? "..." : dados.interessesRecebidos}
           icone={UserCheck}
-          // Modo API: contagem real de user_interests recebidos (D053 do back)
+          // Contagem real de user_interests recebidos (D053 do back)
           rodape="startups que demonstraram interesse"
         />
       </div>

@@ -18,7 +18,6 @@ import AvisoEstado from "../../components/discovery/AvisoEstado";
 import EsqueletoPerfil from "../../components/discovery/EsqueletoPerfil";
 import FaixaStatusInteresse from "../../components/discovery/FaixaStatusInteresse";
 import LinkVoltar from "../../components/discovery/LinkVoltar";
-import CapitalCard from "../../components/discovery/CapitalCard";
 import CompatibilidadeCard from "../../components/discovery/CompatibilidadeCard";
 import InteresseButton from "../../components/discovery/InteresseButton";
 import PitchCanvasCard from "../../components/discovery/PitchCanvasCard";
@@ -204,7 +203,7 @@ export default function PerfilStartup() {
             </dl>
           </SecaoPerfil>
 
-          {/* Canvas e rodada só existem nos dados de exemplo: no modo API não aparecem (ADR-008) */}
+          {/* Canvas: só aparece quando o back enviar (hoje não envia; ADR-008) */}
           {startup.canvas && (
             <SecaoPerfil
               titulo="Canvas do pitch"
@@ -220,13 +219,9 @@ export default function PerfilStartup() {
             </SecaoPerfil>
           )}
 
-          {startup.captacao ? (
-            <CapitalCard captacao={startup.captacao} />
-          ) : (
-            <SecaoPerfil titulo="Capital procurado" icone={Banknote}>
-              <p className="text-3xl font-bold tracking-tight text-deepgreen">{textoCapital(startup)}</p>
-            </SecaoPerfil>
-          )}
+          <SecaoPerfil titulo="Capital procurado" icone={Banknote}>
+            <p className="text-3xl font-bold tracking-tight text-deepgreen">{textoCapital(startup)}</p>
+          </SecaoPerfil>
         </div>
 
         <div className="min-w-0 space-y-6">

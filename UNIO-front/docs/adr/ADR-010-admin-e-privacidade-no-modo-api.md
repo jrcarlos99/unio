@@ -2,9 +2,11 @@
 
 - **Autora:** Carol
 - **Data:** 2026-11-16
-- **Status:** Aceita
+- **Status:** Aceita; modo mock substituído pela ADR-011.
 - **Back:** D053 (métricas novas), D054 (primeiro administrador e bootstrap no corpo), D055
   e T13 (exportar e excluir conta)
+
+> **Nota (2026-11-20, Carol):** o modo mock do admin (`mockAdmin.ts`, log da sessão) e os botões de moderação que não salvavam deixaram de existir. Substituída pela [ADR-011](ADR-011-producao-sem-mocks.md) nesse ponto; o resto desta ADR fica como histórico.
 
 ## Contexto
 

@@ -20,11 +20,11 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Documentos do projeto
 
-- `docs/decisoes.md`: decisões de design (D001 a D055)
+- `docs/decisoes.md`: decisões de design (D001 a D057)
 - `docs/dominio.md` — especificação de domínio
 - `docs/contrato/contrato-v2.md` — contrato ativo da API
 - `docs/contrato/contrato-onboarding.md`: onboarding e criação de perfil a partir dele
-- `docs/contrato/contrato-descoberta.md`: descoberta com score, interesse, match, salvos e administrador (D045 a D055)
+- `docs/contrato/contrato-descoberta.md`: descoberta com score, interesse, match, salvos, administrador e configuração do App Service (D045 a D057)
 - `docs/implementacao/plano-tarefas.md` — plano de tarefas
 - `docs/planejamento/` — resumos e planejamento de tickets
 
@@ -78,6 +78,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
   - métricas novas (D053);
   - primeiro administrador por variável de ambiente (D054);
   - LGPD de interesses e salvos (D055);
+  - CORS por variável de ambiente (D056) e políticas padrão do scorecard em qualquer perfil (D057);
   - `updated_at` nos perfis (`V27`).
 
 ### Bloco E — Testes (pendente)
@@ -150,7 +151,9 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Branch atual
 
+- `feat/producao-sem-mocks` (a partir de `feat/integracao-matching`): CORS por variável de ambiente (D056), políticas padrão do scorecard fora do perfil dev (D057) e front sem mocks (ADR-011 do front). Auditoria front x back em `UNIO-front/docs/integracao/auditoria-front-back.md`.
 - `feat/integracao-matching` (a partir de `feat/avaliacao-popularidade`): descoberta, interesse, match, salvos, reunião só com match e administrador (D045 a D055; ADR-008 a ADR-010 do front)
+- **Atenção:** o App Service roda o `main`, que divergiu desta linha (lá a `V23` é `create_match_interest`; aqui é `capital_procurado_opcional`). Antes de publicar estas branches é preciso reconciliar as migrations com o banco da nuvem.
 
 ## Próximo passo
 
@@ -161,6 +164,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - Notificações de reunião (hoje o front deriva por polling, ADR-005 do front)
 - Aplicar os alertas no Azure e rodar o teste de carga; preencher `docs/testes/teste-de-carga.md`
 - Definir `JWT_SECRET` no App Service
+- Definir `UNIO_CORS_ALLOWED_ORIGINS` (D056) e reiniciar o App Service
 - RNF07: rodada com beta testers
 - Escala da descoberta: recálculo assíncrono ao salvar o perfil e paginação no banco (D045)
 - Pitch e canvas na descoberta, com regra de visibilidade e moderação (D046)

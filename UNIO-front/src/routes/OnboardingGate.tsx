@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { MOCK_BACKEND } from "../services/api";
 import { readStatus } from "../services/onboardingAnswersStore";
 import {
   chaveUsuario,
@@ -15,14 +14,15 @@ import type { PerfilOnboarding, StatusOnboarding } from "../types/onboarding";
 // Status deste navegador; sem ele, e com perfil criado, pergunta ao back
 // (ADR-007). Assim, quem concluiu ou pulou o wizard em outro navegador não
 // volta para ele. Concluído ou pulado no back também fica gravado aqui, para
-// a próxima visita não consultar de novo. Modo mock: só o localStorage.
+// a próxima visita não consultar de novo. O status no localStorage é estado
+// local, não é mock: só evita perguntar ao back a cada navegação (ADR-011).
 async function descobrirStatus(
   userKey: string,
   perfil: PerfilOnboarding,
   temPerfil: boolean,
 ): Promise<StatusOnboarding> {
   const local = await lerStatusLocal(userKey);
-  if (local !== null || MOCK_BACKEND || !temPerfil) return local ?? "pendente";
+  if (local !== null || !temPerfil) return local ?? "pendente";
   try {
     const doBack = statusOnboardingDoBack(await readStatus());
     if (doBack !== "pendente") await gravarStatusLocal(userKey, perfil, doBack);

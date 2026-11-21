@@ -1,6 +1,14 @@
-// Único lugar do front que conhece o JSON de GET /api/admin/metrics e
-// GET /api/admin/audit (ADR-010). Funções puras, testadas com node.
-import type { FatiaSegmento, LogEntry, Metrica, RegiaoCadastro } from "../pages/admin/types";
+// Único lugar do front que conhece o JSON de GET /api/admin/metrics,
+// GET /api/admin/audit e GET /api/admin/users (ADR-010 e ADR-011). Funções
+// puras, testadas com node.
+import type {
+  FatiaSegmento,
+  LogEntry,
+  Metrica,
+  RegiaoCadastro,
+  TipoConta,
+  UsuarioCadastrado,
+} from "../pages/admin/types";
 import { rotuloClassificacao } from "./discovery.mapping.ts";
 
 export interface MetricasAdminBack {
@@ -80,6 +88,32 @@ export function visaoGeralAdminDoBack(dados: MetricasAdminBack): VisaoGeralAdmin
       })),
     totalStartups: numero(dados.totalStartups),
     totalInvestidores: numero(dados.totalInvestors),
+  };
+}
+
+// Uma conta de GET /api/admin/users (AdminService.toSummary no back)
+export interface UsuarioAdminBack {
+  id: number | string;
+  email: string | null;
+  role: string;
+  createdAt: string | null;
+  deletedAt?: string | null;
+}
+
+function tipoDaConta(role: string): TipoConta {
+  const papel = role.toUpperCase();
+  if (papel === "STARTUP") return "Startup";
+  if (papel === "INVESTOR") return "Investidor";
+  return "Admin";
+}
+
+export function usuarioDoBack(usuario: UsuarioAdminBack): UsuarioCadastrado {
+  return {
+    id: String(usuario.id),
+    email: usuario.email ?? "",
+    tipo: tipoDaConta(String(usuario.role ?? "")),
+    dataCadastro: usuario.createdAt ?? null,
+    excluida: Boolean(usuario.deletedAt),
   };
 }
 

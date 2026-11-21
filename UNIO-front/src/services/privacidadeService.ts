@@ -1,11 +1,8 @@
-import api, { MOCK_BACKEND } from "./api";
+import api from "./api";
 
 // Direitos do titular (LGPD), seção "Privacidade e dados" do Meu perfil
 // (ADR-010). Usa os endpoints que o back já tinha (T13): GET /api/privacy/export
-// e POST /api/privacy/delete-account. Só no modo API: o mock não tem esses
-// endpoints e a seção não aparece.
-
-export const PRIVACIDADE_DISPONIVEL = !MOCK_BACKEND;
+// e POST /api/privacy/delete-account.
 
 // Baixa o JSON com os dados do titular. O nome do arquivo leva só a data.
 export async function exportarMeusDados(): Promise<void> {

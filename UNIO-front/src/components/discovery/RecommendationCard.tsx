@@ -34,7 +34,7 @@ interface RecommendationCardProps {
   chips: ChipCard[];
   descricao: string;
   principal: MetricaCard & { icone: LucideIcon };
-  // Sem o dado (modo API), a métrica da direita não aparece
+  // Sem o dado no back, a métrica da direita não aparece
   secundaria?: MetricaCard;
   // Botões do rodapé (ficam por cima do link do card)
   acoes: ReactNode;

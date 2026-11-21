@@ -2,11 +2,13 @@
 
 - **Autora:** Carol
 - **Data:** 2026-11-16
-- **Status:** Aceita (parte do que era exemplo passou a vir do back: ADR-008 e ADR-009)
+- **Status:** Aceita (parte do que era exemplo passou a vir do back: ADR-008 e ADR-009); modo mock substituído pela ADR-011.
 - **Atualiza:** ADR-006 (avaliação e popularidade agora chamam o back no modo API) e ADR-001
   (gate de onboarding)
 - **Back:** sem mudança no back. Usa D040 a D044 (avaliação, popularidade e visitas), D032 a
   D039 (reuniões) e o `PUT /api/profile/onboarding` já existente
+
+> **Nota (2026-11-20, Carol):** o selo "Dados de exemplo" e todo número de exemplo deixaram de existir. Substituída pela [ADR-011](ADR-011-producao-sem-mocks.md) nesse ponto; o resto desta ADR fica como histórico.
 
 ## Contexto
 

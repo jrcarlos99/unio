@@ -12,7 +12,6 @@ import {
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import type { PontoSemana } from "../../types/dashboard";
 import PainelCard from "./PainelCard";
-import SeloExemplo from "./SeloExemplo";
 
 // Cores do tailwind.config (o SVG precisa do valor, não da classe)
 const VERDE = "#00412E";
@@ -26,8 +25,6 @@ interface ViewsChartProps {
   titulo?: string;
   // Palavra usada na média e na dica ("visualizações" ou "visitas")
   unidade?: string;
-  // Modo API sem dado do back: selo "Dados de exemplo" (ADR-007)
-  exemplo?: boolean;
 }
 
 function Legenda() {
@@ -64,7 +61,6 @@ export default function ViewsChart({
   mediaDiaria,
   titulo = "Evolução das visualizações",
   unidade = "visualizações",
-  exemplo = false,
 }: ViewsChartProps) {
   const idGradiente = useId().replace(/:/g, "");
   const ultimo = semanas.length - 1;
@@ -74,16 +70,7 @@ export default function ViewsChart({
     <PainelCard
       titulo={titulo}
       subtitulo={`Média de ${media} ${unidade}/dia nas últimas semanas`}
-      extra={
-        exemplo ? (
-          <div className="flex flex-col items-end gap-2">
-            <SeloExemplo />
-            <Legenda />
-          </div>
-        ) : (
-          <Legenda />
-        )
-      }
+      extra={<Legenda />}
     >
       <div className="h-64 w-full" aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%">

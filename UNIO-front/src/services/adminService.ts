@@ -1,16 +1,22 @@
-import { MOCK_BACKEND } from "./api";
-import api from "./api";
-import { logDoBack, visaoGeralAdminDoBack, type AuditLogBack, type MetricasAdminBack, type VisaoGeralAdmin } from "./admin.mapping";
-import type { LogEntry } from "../pages/admin/types";
+import type { LogEntry, UsuarioCadastrado } from "../pages/admin/types.ts";
+import api from "./api.ts";
+import {
+  logDoBack,
+  usuarioDoBack,
+  visaoGeralAdminDoBack,
+  type AuditLogBack,
+  type MetricasAdminBack,
+  type UsuarioAdminBack,
+  type VisaoGeralAdmin,
+} from "./admin.mapping.ts";
 
-// Dados das telas do admin (ADR-010).
-// - Modo mock (VITE_MOCK_BACKEND=true): as telas continuam com
-//   pages/admin/data/mockAdmin.ts e o log da sessão (AuditContext).
-// - Modo API: Visão geral de GET /api/admin/metrics e Log de auditoria de
-//   GET /api/admin/audit. Moderação de cadastros e de conteúdo continuam com
-//   dados de exemplo e aviso na tela: aprovar e rejeitar não têm endpoint.
-
-export const ADMIN_REAL = !MOCK_BACKEND;
+// Dados das telas do admin, só do back (ADR-010 e ADR-011). Todas as rotas
+// exigem ADMIN (SecurityConfig: /api/admin/** hasRole ADMIN).
+// - Visão geral: GET /api/admin/metrics.
+// - Log de auditoria: GET /api/admin/audit (as 50 mais recentes).
+// - Cadastros: GET /api/admin/users. Aprovar e rejeitar não têm endpoint no
+//   back, então a tela só lista (sem botões que não salvam).
+// - Moderação de conteúdo: sem endpoint; a tela mostra "ainda não disponível".
 
 export async function obterVisaoGeralAdmin(): Promise<VisaoGeralAdmin> {
   const { data } = await api.get<MetricasAdminBack>("/api/admin/metrics");
@@ -20,4 +26,10 @@ export async function obterVisaoGeralAdmin(): Promise<VisaoGeralAdmin> {
 export async function listarAuditoria(): Promise<LogEntry[]> {
   const { data } = await api.get<AuditLogBack[]>("/api/admin/audit");
   return data.map(logDoBack);
+}
+
+// Contas de startup e investidor (o admin não aparece na lista)
+export async function listarUsuarios(): Promise<UsuarioCadastrado[]> {
+  const { data } = await api.get<UsuarioAdminBack[]>("/api/admin/users");
+  return data.map(usuarioDoBack).filter((usuario) => usuario.tipo !== "Admin");
 }

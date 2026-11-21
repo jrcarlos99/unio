@@ -7,8 +7,6 @@ import { useDialogo } from "../../hooks/useDialogo";
 import { useToast } from "../../hooks/useToast";
 import {
   ORIENTACAO_SEM_MATCH,
-  REUNIOES_EXIGEM_MATCH,
-  REUNIOES_SO_COM_IDS_REAIS,
   linkParaDarMatch,
   detectarConflito,
   listarContrapartes,
@@ -17,7 +15,7 @@ import {
 } from "../../services/reunioesService";
 import {
   ErroReunioes,
-  MENSAGEM_CONTATO_EXEMPLO,
+  MENSAGEM_CONTATO_SEM_MATCH,
   MENSAGEM_ESCOLHA_CADASTRADO,
   contraparteValida,
   preSelecaoDeContraparte,
@@ -71,20 +69,16 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
   const carregar = useCallback(() => listarContrapartes(sessao), [sessao]);
   const { carregando, dados: contrapartes } = useCarregamento(
     carregar,
-    REUNIOES_EXIGEM_MATCH ? "Não foi possível carregar seus unios." : "Não foi possível carregar a lista de pessoas.",
+    "Não foi possível carregar seus unios.",
   );
 
   // Escolha feita na lista; null = ainda não escolheu (vale a pré-seleção)
   const [escolhido, setEscolhido] = useState<string | null>(null);
-  // Modo API: o unio do popup só vem marcado se for um usuário real da lista
-  // (ADR-007). Mock: igual a antes, o unio do popup já vem escolhido.
-  const preSelecionado = REUNIOES_SO_COM_IDS_REAIS
-    ? preSelecaoDeContraparte(unioInicial, contrapartes ?? [])
-    : (unioInicial ?? "");
+  // O unio do popup só vem marcado se for um usuário real da lista (ADR-007)
+  const preSelecionado = preSelecaoDeContraparte(unioInicial, contrapartes ?? []);
   const unioId = escolhido ?? preSelecionado;
-  // Popup aberto a partir de um perfil de exemplo: avisa e não marca ninguém
-  const contatoDeExemplo =
-    REUNIOES_SO_COM_IDS_REAIS && !!unioInicial && !!contrapartes && !preSelecionado && escolhido === null;
+  // Popup aberto a partir de um perfil fora da lista: avisa e não marca ninguém
+  const contatoForaDaLista = !!unioInicial && !!contrapartes && !preSelecionado && escolhido === null;
   const [assunto, setAssunto] = useState<AssuntoReuniao | "">("");
   const [duracao, setDuracao] = useState<DuracaoReuniao>(30);
   const [formato, setFormato] = useState<FormatoReuniao>("online");
@@ -107,8 +101,8 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
   function validar() {
     const novos: Partial<Record<CampoErro, string>> = {};
     if (!unioId) {
-      novos.unio = REUNIOES_SO_COM_IDS_REAIS ? MENSAGEM_ESCOLHA_CADASTRADO : "Escolha com quem será a reunião.";
-    } else if (REUNIOES_SO_COM_IDS_REAIS && !contraparteValida(unioId, contrapartes ?? [])) {
+      novos.unio = MENSAGEM_ESCOLHA_CADASTRADO;
+    } else if (!contraparteValida(unioId, contrapartes ?? [])) {
       novos.unio = MENSAGEM_ESCOLHA_CADASTRADO;
     }
     if (!assunto) novos.assunto = "Escolha o assunto.";
@@ -218,10 +212,10 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
             {/* Com quem */}
             <fieldset>
               <legend className={ROTULO}>Com quem</legend>
-              {contatoDeExemplo && !semUnios && (
+              {contatoForaDaLista && !semUnios && (
                 <p className="mt-2 flex items-start gap-2 rounded-2xl bg-lightgray/60 px-4 py-3 text-sm" role="status">
                   <Info size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-                  {MENSAGEM_CONTATO_EXEMPLO}
+                  {MENSAGEM_CONTATO_SEM_MATCH}
                 </p>
               )}
               {carregando ? (
@@ -445,9 +439,7 @@ export default function SolicitarReuniaoModal({ sessao, unioInicial, horarioInic
           <div className="flex flex-col gap-3 border-t border-lightgray px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <p className="flex items-start gap-2 text-xs text-deepgreen/75">
               <Info size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
-              {REUNIOES_EXIGEM_MATCH
-                ? "Só é possível solicitar reunião com quem deu match."
-                : "Quem recebe escolhe um dos horários, propõe outros ou recusa."}
+              Só é possível solicitar reunião com quem deu match.
             </p>
             <div className="flex shrink-0 gap-2">
               <button type="button" onClick={onFechar} className={`${BOTAO_SECUNDARIO} flex-1 sm:flex-none`}>

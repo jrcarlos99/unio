@@ -114,7 +114,7 @@ test("startupDoBack: campos que o back não tem ficam null ou vazios (nada inven
   assert.equal(startup.fundacao, null);
   assert.equal(startup.tamanhoEquipe, null);
   assert.equal(startup.canvas, null);
-  assert.equal(startup.captacao, null);
+  
   assert.equal(startup.metrica, null);
   assert.equal(startup.verificada, false);
   assert.deepEqual(startup.tags, []);
@@ -228,7 +228,7 @@ test("separarLocalizacao e textos de perfil sem dado inventado", () => {
   assert.equal(localDaStartup({ cidade: "Recife", uf: "" }), "Recife");
   assert.equal(localDaStartup({ cidade: "", uf: "" }), "");
   assert.equal(localDoInvestidor({ cidade: "", uf: "", regiaoTexto: "Nordeste" }), "Nordeste");
-  assert.equal(capitalDaStartup({ captacao: null, capitalProcurado: 300000 }), 300000);
-  assert.equal(textoCapital({ captacao: null, capitalProcurado: null }), "Não informado");
-  assert.match(textoCapital({ captacao: null, capitalProcurado: 300000 }), /^Busca R\$/);
+  assert.equal(capitalDaStartup({ capitalProcurado: 300000 }), 300000);
+  assert.equal(textoCapital({ capitalProcurado: null }), "Não informado");
+  assert.match(textoCapital({ capitalProcurado: 300000 }), /^Busca R\$/);
 });

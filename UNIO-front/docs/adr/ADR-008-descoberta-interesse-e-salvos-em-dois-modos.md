@@ -2,10 +2,12 @@
 
 - **Autora:** Carol
 - **Data:** 2026-11-16
-- **Status:** Aceita
+- **Status:** Aceita; modo mock substituído pela ADR-011.
 - **Atualiza:** ADR-007 (o que era exemplo no modo API passa a vir do back)
 - **Back:** D045 a D053 e D055 em `unio/docs/decisoes.md`, migrations `V26` e `V27`,
   contrato em `unio/docs/contrato/contrato-descoberta.md`
+
+> **Nota (2026-11-20, Carol):** o modo mock (`discoveryService.mock.ts`, `investidoresService.mock.ts`, startups e investidores fictícios) deixou de existir. Substituída pela [ADR-011](ADR-011-producao-sem-mocks.md) nesse ponto; o resto desta ADR fica como histórico.
 
 ## Contexto
 

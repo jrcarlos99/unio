@@ -8,9 +8,8 @@ import type {
 } from "./index";
 
 // Tipos da descoberta de startups pelo investidor (telas "Descobrir" e
-// "Perfil da startup"). No modo mock vêm de mocks/startupsMock.ts; no modo API,
-// de /api/discovery (ADR-008). Campos que o back não tem ficam null e as telas
-// os escondem (nunca inventam).
+// "Perfil da startup"). Vêm de /api/discovery (ADR-008 e ADR-011). Campos que
+// o back não tem ficam null e as telas os escondem (nunca inventam).
 
 // Relacionamento investidor ↔ startup (match mútuo):
 // - nenhum: o investidor ainda não se manifestou
@@ -43,19 +42,6 @@ export interface CanvasPitch {
   tracao: string;
 }
 
-export interface Captacao {
-  // valores em reais
-  meta: number;
-  captado: number;
-  valuation: number;
-  // percentual (9.3 = 9,3%)
-  equity: number;
-  instrumento: string;
-  // ex.: "Pré-Seed", "Seed", "Série A", "Anjo"
-  rodada: string;
-  investidoresConfirmados: number;
-}
-
 // Métrica de destaque no rodapé do card (Valuation, ARR atual, Hectares...)
 export interface MetricaDestaque {
   rotulo: string;
@@ -80,29 +66,16 @@ export interface StartupDescoberta {
   descricao: string;
   tags: string[];
   necessidades: Necessidade[];
-  // null = o back não tem o dado (modo API): a tela esconde o campo
+  // null = o back não tem o dado: a tela esconde o campo
   tamanhoEquipe: number | null;
   modeloNegocio: string;
   mercadoAlvo: string;
   canvas: CanvasPitch | null;
-  captacao: Captacao | null;
   metrica: MetricaDestaque | null;
-  // Capital procurado do perfil do back, em reais (modo API; null se não informado)
+  // Capital procurado do perfil do back, em reais (null se não informado)
   capitalProcurado?: number | null;
   icone?: IconeStartup;
   corLogo: CorLogo;
-  // MOCK: a startup já demonstrou interesse no investidor, então o clique em
-  // "Tenho interesse" vira match na hora. No back isso viria do lado da startup.
-  interesseReciproco: boolean;
-}
-
-// Startup de exemplo (modo mock): sempre com todos os campos preenchidos
-export interface StartupDescobertaCompleta extends StartupDescoberta {
-  fundacao: number;
-  tamanhoEquipe: number;
-  canvas: CanvasPitch;
-  captacao: Captacao;
-  metrica: MetricaDestaque;
 }
 
 // Notas de 0 a 100 de cada critério da tese
@@ -118,21 +91,16 @@ export type CriterioCompatibilidade = keyof NotasCompatibilidade;
 
 export interface Compatibilidade {
   total: number;
-  // Só os critérios que existem na fonte: no modo API não há "disponibilidade"
-  // no scorecard, então ela não aparece (ADR-008)
+  // Só os critérios que existem no scorecard do back: não há
+  // "disponibilidade", então ela não aparece (ADR-008)
   notas: Partial<NotasCompatibilidade>;
-  // Modo API: classificação do scorecard (EXCELENTE, FORTE...) e próximo passo
+  // Classificação do scorecard (EXCELENTE, FORTE...) e próximo passo
   classificacao?: string | null;
   proximoPasso?: string | null;
-  fonte?: "local" | "scorecard";
+  fonte?: "scorecard";
 }
 
-// Compatibilidade calculada no front (modo mock): sempre com as cinco notas
-export interface CompatibilidadeLocal extends Compatibilidade {
-  notas: NotasCompatibilidade;
-}
-
-// Par do scorecard no back, usado no feedback do algoritmo (modo API)
+// Par do scorecard no back, usado no feedback do algoritmo
 export interface RefScorecard {
   startupId: string;
   investorId: string;
@@ -156,7 +124,7 @@ export interface StartupRecomendada {
   // Popularidade visível em % (RF10). Nula abaixo do mínimo de avaliações:
   // sem selo. Nunca é somada à compatibilidade exibida.
   popularidade?: number | null;
-  // Modo API: par do scorecard para o feedback (VIEWED, INTERESTED)
+  // Par do scorecard para o feedback (VIEWED, INTERESTED)
   scorecard?: RefScorecard | null;
 }
 

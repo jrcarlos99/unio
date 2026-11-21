@@ -10,8 +10,8 @@ import { assinarReunioes, type SessaoReunioes } from "../services/reunioesServic
 import type { Popularidade } from "../types/avaliacoes";
 import type { Reuniao } from "../types/reunioes";
 
-// Muda a cada aviso das reuniões (ex.: "Compareci", nota de exemplo da outra
-// parte) ou das avaliações (avaliação enviada)
+// Muda a cada aviso das reuniões (ex.: "Compareci") ou das avaliações
+// (avaliação enviada)
 function useVersaoAvaliacoes() {
   const [versao, setVersao] = useState(0);
   useEffect(() => {
@@ -83,7 +83,7 @@ export function usePopularidade(sessao: SessaoReunioes): EstadoPopularidade {
 
   useEffect(() => {
     let ativo = true;
-    obterPopularidade(sessao)
+    obterPopularidade()
       .then((dados) => {
         if (ativo) setEstado({ chave, erro: false, dados });
       })

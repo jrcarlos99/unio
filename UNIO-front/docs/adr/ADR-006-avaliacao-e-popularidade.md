@@ -3,10 +3,12 @@
 - **Autora:** Carol
 - **Data:** 2026-11-16
 - **Status:** Aceita, atualizada pela ADR-007 (modo API ligado ao back em 2026-11-16) e pela
-  ADR-008 (interesses recebidos reais e selos de popularidade nas listas reais)
+  ADR-008 (interesses recebidos reais e selos de popularidade nas listas reais); modo mock substituído pela ADR-011.
 - **Atualiza:** ADR-004 e ADR-005 (`REALIZADA` agora é o status `realizada` do front)
 - **Back:** D040 a D044 em `unio/docs/decisoes.md`, migration `V25__create_profile_views.sql`,
   contrato em `unio/docs/contrato/contrato-comunicacao.md` (seções T12 e RF10)
+
+> **Nota (2026-11-20, Carol):** o modo mock de avaliação e popularidade (`avaliacoesStore.ts`, `popularidadeMock.ts`) deixou de existir. Substituída pela [ADR-011](ADR-011-producao-sem-mocks.md) nesse ponto; o resto desta ADR fica como histórico.
 
 ## Contexto
 

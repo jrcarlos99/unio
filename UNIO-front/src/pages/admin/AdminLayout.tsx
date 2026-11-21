@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Menu } from "lucide-react";
 import AdminSidebar from "./AdminSidebar";
-import { AuditProvider } from "./context/AuditContext";
 import Logo from "../../components/brand/Logo";
 
 // Layout compartilhado de toda a área /admin: sidebar + conteúdo da
@@ -10,14 +9,10 @@ import Logo from "../../components/brand/Logo";
 // fundo da página é white e tanto a sidebar quanto o card de conteúdo
 // têm seus próprios cantos arredondados e sombra, como se estivessem
 // "boiando" sobre esse fundo.
-//
-// O AuditProvider fica aqui em cima pra todas as sub-rotas (cadastros,
-// conteúdo, auditoria) compartilharem o mesmo log de ações.
 export default function AdminLayout() {
   const [menuAberto, setMenuAberto] = useState(false);
 
   return (
-    <AuditProvider>
       <div className="min-h-screen bg-white p-4 md:flex md:items-start md:gap-4 lg:gap-6">
         <AdminSidebar isOpen={menuAberto} onClose={() => setMenuAberto(false)} />
 
@@ -36,6 +31,5 @@ export default function AdminLayout() {
           </main>
         </div>
       </div>
-    </AuditProvider>
   );
 }

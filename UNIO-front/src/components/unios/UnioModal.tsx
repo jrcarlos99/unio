@@ -9,7 +9,6 @@ import {
   idDaRecomendacao,
   nomeDaRecomendacao,
   obterContato,
-  registrarEvento,
 } from "../../services/recomendacoesService";
 import {
   assinarReunioes,
@@ -132,12 +131,10 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
   }
 
   function aoAbrirContato(canal: CanalContato) {
-    void registrarEvento(rec, user, "contato");
     mostrar(TOAST_CANAL[canal], "info");
   }
 
   function aoAbrirWhatsApp() {
-    void registrarEvento(rec, user, "contato");
     mostrar(TOAST_CANAL.whatsapp, "info");
   }
 
@@ -165,8 +162,8 @@ export default function UnioModal({ rec, onFechar, onDesfeito }: UnioModalProps)
   async function confirmarDesfazer() {
     setDesfazendo(true);
     try {
-      // Modo API: o back já cancelou as reuniões futuras e diz quantas. Mock:
-      // quem cancela é o reunioesService.
+      // O back já cancelou as reuniões futuras e diz quantas (DELETE
+      // /api/interests/{id}); se a resposta não trouxer o número, cancela aqui.
       const resultado = await desfazerMatch(rec, user);
       const canceladas = resultado.reunioesCanceladas ?? (await cancelarReunioesDoUnio(sessao, unioId));
       mostrar(

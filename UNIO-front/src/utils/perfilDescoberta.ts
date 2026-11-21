@@ -10,18 +10,18 @@ export function localDaStartup(startup: Pick<StartupDescoberta, "cidade" | "uf">
   return [startup.cidade, startup.uf].filter(Boolean).join(", ");
 }
 
-// Cidade do mock ou, no modo API, a região de interesse do cadastro
+// Cidade ou, sem ela, a região de interesse do cadastro
 export function localDoInvestidor(investidor: Pick<InvestidorDescoberta, "cidade" | "uf" | "regiaoTexto">): string {
   const local = [investidor.cidade, investidor.uf].filter(Boolean).join(", ");
   return local || (investidor.regiaoTexto ?? "");
 }
 
-// Meta da rodada (mock) ou capital procurado do perfil (API)
-export function capitalDaStartup(startup: Pick<StartupDescoberta, "captacao" | "capitalProcurado">): number | null {
-  return startup.captacao?.meta ?? startup.capitalProcurado ?? null;
+// Capital procurado do perfil do back
+export function capitalDaStartup(startup: Pick<StartupDescoberta, "capitalProcurado">): number | null {
+  return startup.capitalProcurado ?? null;
 }
 
-export function textoCapital(startup: Pick<StartupDescoberta, "captacao" | "capitalProcurado">): string {
+export function textoCapital(startup: Pick<StartupDescoberta, "capitalProcurado">): string {
   const capital = capitalDaStartup(startup);
   return capital === null ? "Não informado" : `Busca ${formatarMoeda(capital)}`;
 }

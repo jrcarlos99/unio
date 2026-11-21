@@ -21,9 +21,16 @@ export default function Login() {
   // "Comece Agora" da landing e o endereço antigo /cadastro)
   const [params] = useSearchParams();
   const modoInicial = params.get("modo") === "cadastro" ? "signup" : "login";
+  // Vindo do interceptor do api.ts: o token venceu ou o back recusou (401)
+  const sessaoExpirada = params.get("sessao") === "expirada";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-deepgreen to-sage px-4 py-10">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-deepgreen to-sage px-4 py-10">
+      {sessaoExpirada && (
+        <p role="status" className="w-full max-w-md rounded-2xl bg-white/95 px-4 py-3 text-center text-sm font-semibold text-deepgreen">
+          Sua sessão expirou. Entre novamente para continuar.
+        </p>
+      )}
       <AuthCard
         modoInicial={modoInicial}
         onLoginSuccess={(role) => navigate(rotaPosLogin(role))}

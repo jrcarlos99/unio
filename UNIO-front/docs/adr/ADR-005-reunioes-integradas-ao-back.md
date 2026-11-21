@@ -2,10 +2,12 @@
 
 - **Autora:** Carol
 - **Data:** 2026-11-08
-- **Status:** Aceita (regra de match e popup do unio atualizados pela ADR-009)
+- **Status:** Aceita (regra de match e popup do unio atualizados pela ADR-009); modo mock substituído pela ADR-011.
 - **Substitui em parte:** ADR-004 (a lacuna com o back e o "serviço único com mock")
 - **Back:** D032 a D039 em `unio/docs/decisoes.md`, migration `V24__meetings_proposals.sql`,
   contrato em `unio/docs/contrato/contrato-comunicacao.md` (seção T09b)
+
+> **Nota (2026-11-20, Carol):** o modo mock alternativo das reuniões deixou de existir. Substituída pela [ADR-011](ADR-011-producao-sem-mocks.md) nesse ponto; o resto desta ADR fica como histórico.
 
 ## Contexto
 

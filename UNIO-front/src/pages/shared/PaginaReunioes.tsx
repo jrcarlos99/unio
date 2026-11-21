@@ -18,7 +18,6 @@ import { useReunioes, useSessaoReunioes } from "../../hooks/useReunioes";
 import { useToast } from "../../hooks/useToast";
 import {
   ORIENTACAO_SEM_MATCH,
-  REUNIOES_EXIGEM_MATCH,
   linkParaDarMatch,
   cancelarReuniao,
   listarContrapartes,
@@ -94,7 +93,7 @@ export default function PaginaReunioes({ perfil }: { perfil: PerfilApp }) {
   const carregarUnios = useCallback(() => listarContrapartes(sessao), [sessao]);
   const { dados: contrapartes } = useCarregamento(
     carregarUnios,
-    REUNIOES_EXIGEM_MATCH ? "Não foi possível carregar seus unios." : "Não foi possível carregar a lista de pessoas.",
+    "Não foi possível carregar seus unios.",
   );
 
   const agora = useAgora();

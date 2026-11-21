@@ -49,7 +49,7 @@ export default function TicketCard({ investidor }: { investidor: InvestidorDesco
         </div>
       </dl>
 
-      {/* Só nos dados de exemplo: o back não tem portfólio (ADR-008) */}
+      {/* Só quando o back enviar o portfólio (hoje não envia; ADR-008) */}
       {startups !== null && (
         <p className="mt-5 flex items-center gap-2 text-sm text-deepgreen/80">
           <Users size={16} aria-hidden="true" />

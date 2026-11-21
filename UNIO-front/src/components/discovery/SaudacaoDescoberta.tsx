@@ -10,8 +10,8 @@ interface SaudacaoDescobertaProps {
   resumo: string;
   // Texto depois de "Critérios:"
   criterios: string;
-  // Até dois números à direita (o primeiro com fundo destacado). O segundo
-  // some quando o dado não existe (ex.: tesouraria no modo API, ADR-008)
+  // Até dois números à direita (o primeiro com fundo destacado). O segundo é
+  // opcional e some quando o dado não existe no back (ADR-008)
   cartoes: [CartaoResumo, CartaoResumo?];
 }
 

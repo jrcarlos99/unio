@@ -4,7 +4,7 @@ import { Download, ShieldCheck, Trash2 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../hooks/useToast";
 import { getApiErrorMessage } from "../../services/api";
-import { PRIVACIDADE_DISPONIVEL, excluirMinhaConta, exportarMeusDados } from "../../services/privacidadeService";
+import { excluirMinhaConta, exportarMeusDados } from "../../services/privacidadeService";
 import { FOCO_VISIVEL } from "../onboarding/selecao";
 
 const BOTAO = `inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition ${FOCO_VISIVEL}`;
@@ -15,7 +15,6 @@ type Etapa = "fechado" | "aviso" | "senha";
 // JSON e excluir a conta com confirmação em duas etapas (aviso de que é
 // irreversível e depois a senha). Depois de excluir, sai da conta.
 export default function PrivacidadeDados() {
-  if (!PRIVACIDADE_DISPONIVEL) return null;
   return <SecaoPrivacidade />;
 }
 

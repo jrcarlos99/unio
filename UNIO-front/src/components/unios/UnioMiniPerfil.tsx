@@ -43,7 +43,7 @@ export default function UnioMiniPerfil({ rec, idTitulo, refTitulo }: UnioMiniPer
     cidade = localDaStartup(startup);
     descricao = startup.descricao;
     fatos = [
-      { rotulo: startup.captacao ? "Captação" : "Capital procurado", valor: textoCapital(startup) },
+      { rotulo: "Capital procurado", valor: textoCapital(startup) },
       { rotulo: "Estágio", valor: startup.estagio },
       { rotulo: "Mercado-alvo", valor: startup.mercadoAlvo },
       ...(startup.metrica ? [{ rotulo: startup.metrica.rotulo, valor: startup.metrica.valor }] : []),

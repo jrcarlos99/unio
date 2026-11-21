@@ -304,11 +304,9 @@ export function startupDoBack(userId: number, nome: string, perfil: PerfilPublic
     modeloNegocio: textoOuVazio(dados.modeloNegocio),
     mercadoAlvo: textoOuVazio(dados.mercadoAlvo),
     canvas: null,
-    captacao: null,
     metrica: null,
     capitalProcurado: typeof dados.capitalProcurado === "number" ? dados.capitalProcurado : null,
     corLogo: "neutro",
-    interesseReciproco: false,
   };
 }
 
@@ -350,7 +348,6 @@ export function investidorDoBack(userId: number, nome: string, perfil: PerfilPub
     desde: null,
     portfolioPortoDigital: null,
     tempoResposta: null,
-    interesseReciproco: false,
   };
 }
 

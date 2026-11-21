@@ -33,16 +33,16 @@ export type LadoReuniao = "eu" | "outro";
 export const MAX_HORARIOS_SUGERIDOS = 3;
 export const MAX_CARACTERES_MENSAGEM = 280;
 
-// Quem chama o serviço de reuniões. No mock identifica o localStorage e os
-// unios; com a API o token já identifica o usuário e o e-mail só separa o que
-// fica guardado no navegador (última lista vista e notificações).
+// Quem chama o serviço de reuniões. O token já identifica o usuário no back;
+// o e-mail só separa o que fica guardado no navegador (última lista vista e
+// notificações, estado local).
 export interface SessaoReunioes {
   user: UserProfile | null;
   perfil: PerfilApp;
 }
 
 export interface ContraparteReuniao {
-  // Mock: mesmo id do unio (startup.id ou investidor.id). API: userId do back
+  // userId do back (o mesmo id do unio)
   id: string;
   nome: string;
   subtitulo: string;
@@ -58,8 +58,7 @@ export interface ContraparteReuniao {
   // "Captação atual" (startup vista pelo investidor) ou "Ticket"/"Mentoria"
   // (investidor visto pela startup)
   destaque?: { rotulo: string; valor: string };
-  // Perfil completo dentro do app (só no mock: as páginas de perfil ainda
-  // usam os dados de exemplo)
+  // Perfil completo dentro do app (/startups/:id ou /investidores/:id)
   perfilHref?: string;
 }
 

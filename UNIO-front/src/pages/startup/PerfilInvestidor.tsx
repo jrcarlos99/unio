@@ -230,7 +230,7 @@ export default function PerfilInvestidor() {
                 icone={Sprout}
                 texto={investidor.estagiosInteresse.join(", ")}
               />
-              {/* Só nos dados de exemplo: o back não tem esses campos (ADR-008) */}
+              {/* Só quando o back enviar esses campos (hoje não envia; ADR-008) */}
               {investidor.buscaEmStartups.length > 0 && (
                 <PitchCanvasCard
                   titulo="O que busca em startups"

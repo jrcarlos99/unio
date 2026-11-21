@@ -1,4 +1,4 @@
-// Notificações de reunião no modo API (ADR-005). O back não tem endpoint de
+// Notificações de reunião (ADR-005 e ADR-011). O back não tem endpoint de
 // notificações: o front compara a lista atual de GET /api/meetings com a
 // última lista vista (guardada no navegador) e cria os avisos. Funções puras,
 // testadas em tests/reunioesNotificacoes.test.ts.

@@ -158,7 +158,8 @@ test("counterparts: sem score o selo some e nada é inventado", () => {
   assert.equal(investidor.matchPercentual, undefined);
   assert.equal(investidor.cargoEmpresa, "Investidor Anjo");
   assert.deepEqual(investidor.destaque, { rotulo: "Ticket", valor: "R$ 50k a 200k" });
-  assert.equal(investidor.perfilHref, undefined);
+  // Link do perfil derivado do userId real (ADR-011)
+  assert.equal(investidor.perfilHref, "/investidores/7");
 
   const semTicket = contraparteDoBack({ ...TIDALOG, role: "INVESTOR", tipoInvestidor: null, matchScore: null });
   assert.equal(semTicket.destaque, undefined);

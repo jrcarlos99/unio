@@ -198,3 +198,19 @@ A regra vale com `unio.communication.require-match=true`, que é o padrão.
   `UNIO_ADMIN_EMAIL` e `UNIO_ADMIN_PASSWORD`, só se não existir nenhum.
 - **`POST /api/admin/bootstrap-admin`:** só ADMIN. Recebe `{ "email", "password" }` no
   corpo; a query string não é mais aceita.
+
+## Configuração do App Service (D054, D056 e D057)
+
+Variáveis em App Service → Configuration → Application settings. Depois de salvar,
+**reinicie o App Service**: todas são lidas só na subida.
+
+| Variável | Para quê | Valor |
+| --- | --- | --- |
+| `UNIO_CORS_ALLOWED_ORIGINS` | Origens do front aceitas pelo CORS (D056) | Lista separada por vírgulas, sem barra final e sem `*`. Substitui a lista padrão inteira. |
+| `UNIO_ADMIN_EMAIL` e `UNIO_ADMIN_PASSWORD` | Primeiro administrador (D054) | Só se ainda não houver ADMIN; senha com 8+ caracteres. Podem ser removidas depois do primeiro login. |
+| `UNIO_SCORECARD_SEED_DEFAULT_POLICIES` | Desliga o seed das políticas padrão (D057) | Opcional; padrão `true`. |
+
+Sem `UNIO_CORS_ALLOWED_ORIGINS`, valem: `http://localhost:3000`, `http://localhost:5173`,
+`http://127.0.0.1:3000`, `http://127.0.0.1:5173`, `https://unio-frontend-drab.vercel.app` e
+`https://unio-pi.vercel.app`. Origem fora da lista: o preflight volta 403 sem
+`Access-Control-Allow-Origin` e o navegador bloqueia a chamada.

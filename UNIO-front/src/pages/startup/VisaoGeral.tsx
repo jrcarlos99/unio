@@ -9,7 +9,7 @@ import {
   Eye,
   FilePlus2,
   Handshake,
-  MessageSquare,
+  LineChart,
   Search,
   SearchX,
   SlidersHorizontal,
@@ -41,11 +41,14 @@ const BOTAO_ICONE = `relative inline-flex h-12 w-12 shrink-0 items-center justif
 const BOTAO_CLARO = `inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-lightgray bg-white px-5 text-sm font-semibold text-deepgreen hover:border-sage ${FOCO_VISIVEL}`;
 const SELO = "inline-flex items-center gap-1 rounded-full bg-sage/30 px-2 py-0.5 font-semibold text-deepgreen";
 
-// Grid dos 5 cards de métrica sem buraco: 2 colunas (o 5º ocupa a linha
-// toda), 3 + 2 no xl e os 5 lado a lado no 2xl
-const GRID_METRICAS = "grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-6 2xl:grid-cols-5";
-const COL_TERCO = "xl:col-span-2 2xl:col-span-1";
-const COL_METADE = "xl:col-span-3 2xl:col-span-1";
+// Grid dos 4 cards de métrica: 2 colunas e os 4 lado a lado no xl
+const GRID_METRICAS = "grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4";
+const INDISPONIVEL = "—";
+
+// Número do back ou "—" quando a chamada daquele bloco falhou
+function valorOuTraco(valor: number | null) {
+  return valor === null ? INDISPONIVEL : valor;
+}
 
 function Esqueleto() {
   const bloco = "animate-pulse rounded-3xl bg-lightgray";
@@ -53,11 +56,8 @@ function Esqueleto() {
     <div aria-busy="true">
       <span className="sr-only">Carregando visão geral</span>
       <div className={GRID_METRICAS}>
-        {Array.from({ length: 5 }, (_, i) => (
-          <div
-            key={i}
-            className={`h-44 ${bloco} ${i < 3 ? COL_TERCO : COL_METADE} ${i === 4 ? "sm:col-span-2" : ""}`}
-          />
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className={`h-44 ${bloco}`} />
         ))}
       </div>
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -69,11 +69,11 @@ function Esqueleto() {
   );
 }
 
-// Home da startup ("Visão geral"). Todos os dados vêm do
-// dashboardStartupService e do investidoresService: no modo API,
-// visualizações, gráfico, interessados, matches, reuniões, popularidade e os
-// investidores recomendados (top 3 por score do back) são reais; o que falhar
-// ao carregar leva o selo "Dados de exemplo" (ADR-007 e ADR-009).
+// Home da startup ("Visão geral"). Todos os dados vêm do back, pelo
+// dashboardStartupService e pelo investidoresService: visualizações, gráfico,
+// interessados, matches, reuniões, popularidade e os investidores
+// recomendados (top 3 por score). O bloco cuja chamada falhar mostra
+// "indisponível"; não existe número de exemplo (ADR-011).
 export default function VisaoGeral() {
   const { user } = useAuth();
   const { mostrar } = useToast();
@@ -117,62 +117,50 @@ export default function VisaoGeral() {
   } else {
     const { resumo, contexto, investidores } = dados;
     const { metricas } = resumo;
-    // Modo API: blocos ainda sem endpoint no back levam o selo (ADR-007)
-    const exemplo = resumo.exemplo;
-    const IconeVariacao = metricas.variacaoVisualizacoes < 0 ? TrendingDown : TrendingUp;
-    const sinalVariacao = metricas.variacaoVisualizacoes > 0 ? "+" : "";
-    const totalSemanas = resumo.visualizacoesSemanais.reduce((soma, p) => soma + p.atual, 0);
-    const mediaDiaria = totalSemanas / (resumo.visualizacoesSemanais.length * 7);
+    const variacao = metricas.variacaoVisualizacoes;
+    const IconeVariacao = variacao !== null && variacao < 0 ? TrendingDown : TrendingUp;
+    const sinalVariacao = variacao !== null && variacao > 0 ? "+" : "";
+    const semanas = resumo.visualizacoesSemanais;
+    const totalSemanas = semanas ? semanas.reduce((soma, p) => soma + p.atual, 0) : 0;
+    const mediaDiaria = semanas && semanas.length > 0 ? totalSemanas / (semanas.length * 7) : 0;
     const segmento = contexto.dados.segmento ?? "o seu segmento";
 
     conteudo = (
       <>
         <div className={GRID_METRICAS}>
           <MetricCard
-            className={COL_TERCO}
             rotulo="Visualizações do perfil"
-            valor={metricas.visualizacoes}
+            valor={valorOuTraco(metricas.visualizacoes)}
             icone={Eye}
-            exemplo={exemplo?.visualizacoes}
             rodape={
-              <>
-                <span className={SELO}>
-                  <IconeVariacao size={12} aria-hidden="true" />
-                  {sinalVariacao}
-                  {metricas.variacaoVisualizacoes}%
-                </span>
-                {exemplo ? "últimos 28 dias, vs 28 dias anteriores" : "vs mês anterior"}
-              </>
-            }
-          />
-          <MetricCard
-            className={COL_TERCO}
-            rotulo="Investidores interessados"
-            valor={metricas.interessados}
-            icone={Bookmark}
-            exemplo={exemplo?.interessados}
-            para="/investidores?filtro=interessados"
-            rodape={
-              exemplo && !exemplo.interessados ? (
-                "demonstraram interesse em você"
+              variacao === null ? (
+                "Indisponível no momento"
               ) : (
                 <>
                   <span className={SELO}>
-                    <TrendingUp size={12} aria-hidden="true" />+{metricas.interessadosNovosSemana} novos
+                    <IconeVariacao size={12} aria-hidden="true" />
+                    {sinalVariacao}
+                    {variacao}%
                   </span>
-                  esta semana
+                  últimos 28 dias, vs 28 dias anteriores
                 </>
               )
             }
           />
           <MetricCard
-            className={COL_TERCO}
+            rotulo="Investidores interessados"
+            valor={valorOuTraco(metricas.interessados)}
+            icone={Bookmark}
+            rodape={metricas.interessados === null ? "Indisponível no momento" : "demonstraram interesse em você"}
+          />
+          <MetricCard
             rotulo="Matches"
-            valor={metricas.matches}
+            valor={valorOuTraco(metricas.matches)}
             icone={Handshake}
-            exemplo={exemplo?.matches}
             rodape={
-              exemplo && !exemplo.matches ? (
+              metricas.matches === null ? (
+                "Indisponível no momento"
+              ) : (
                 <>
                   <span className={SELO}>
                     <CircleCheck size={12} aria-hidden="true" />
@@ -180,42 +168,40 @@ export default function VisaoGeral() {
                   </span>
                   com investidores
                 </>
-              ) : (
-                <>
-                  <span className={SELO}>
-                    <CircleCheck size={12} aria-hidden="true" />
-                    Teses alinhadas
-                  </span>
-                  ({metricas.scoreMinimoMatches}%+ score)
-                </>
               )
             }
           />
-          <MetricCard
-            className={COL_METADE}
-            rotulo="Contatos iniciados"
-            valor={metricas.contatosIniciados}
-            icone={MessageSquare}
-            rodape={exemplo ? "via WhatsApp, e-mail ou telefone, registrados neste navegador" : "via WhatsApp, e-mail ou telefone"}
-          />
           <CardPopularidade
             {...popularidade}
-            className={`sm:col-span-2 ${COL_METADE}`}
             apoio="Quanto maior a popularidade, mais perfis você aparece para recomendados."
           />
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <ViewsChart semanas={resumo.visualizacoesSemanais} mediaDiaria={mediaDiaria} exemplo={exemplo?.grafico} />
+          {semanas && semanas.length > 0 ? (
+            <ViewsChart semanas={semanas} mediaDiaria={mediaDiaria} />
+          ) : (
+            <PainelCard titulo="Evolução das visualizações">
+              <AvisoEstado
+                icone={LineChart}
+                titulo={semanas === null ? "Gráfico indisponível no momento" : "Ainda sem visualizações"}
+                texto={
+                  semanas === null
+                    ? "Não foi possível carregar as visualizações. Tente atualizar a página."
+                    : "Quando investidores abrirem o seu perfil, a evolução aparece aqui."
+                }
+              />
+            </PainelCard>
+          )}
           <ProfileCompleteness completude={contexto.completude} para="/meu-perfil" />
-          <InterestFunnel etapas={resumo.funil} benchmark={resumo.benchmark} />
+          <InterestFunnel etapas={resumo.funil} />
 
           <PainelCard
             titulo="Investidores recomendados"
             subtitulo={`Anjos com alta afinidade com ${segmento} e sua faixa de captação`}
             extra={
               <div className="flex flex-wrap items-center justify-end gap-2">
-                {/* Modo API: os três com maior score do back (/api/discovery/investors) */}
+                {/* Os três com maior score do back (/api/discovery/investors) */}
                 <Link
                   to="/investidores"
                   className={`inline-flex items-center gap-1 rounded-lg text-sm font-semibold text-deepgreen hover:underline ${FOCO_VISIVEL}`}

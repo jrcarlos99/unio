@@ -22,7 +22,7 @@ interface EstadoReunioes {
 }
 
 // Todas as reuniões do usuário, recarregadas sempre que o serviço avisa uma
-// mudança (resposta do mock, ação em outro componente). `onAviso` recebe os
+// mudança (resposta da outra parte vista no polling, ação em outro componente). `onAviso` recebe os
 // avisos da outra parte (ex.: "Verde Pay aceitou sua solicitação...").
 export function useReunioes(sessao: SessaoReunioes, onAviso?: (aviso: string) => void) {
   const [estado, setEstado] = useState<EstadoReunioes | null>(null);

@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import { FOCO_VISIVEL } from "../onboarding/selecao";
-import SeloExemplo from "./SeloExemplo";
 
 interface MetricCardProps {
   rotulo: string;
@@ -17,8 +16,6 @@ interface MetricCardProps {
   para?: string;
   // Classes do grid (col-span) de quem usa o card
   className?: string;
-  // Modo API sem endpoint no back: selo "Dados de exemplo" (ADR-007)
-  exemplo?: boolean;
 }
 
 const BASE = "flex h-full flex-col rounded-3xl border border-lightgray bg-white p-5 shadow-soft";
@@ -32,14 +29,12 @@ export default function MetricCard({
   apoio,
   para,
   className = "",
-  exemplo = false,
 }: MetricCardProps) {
   const conteudo = (
     <>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-deepgreen/80">{rotulo}</p>
-          {exemplo && <SeloExemplo className="mt-1.5" />}
         </div>
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sage/25 text-deepgreen" aria-hidden="true">
           <Icone size={20} />

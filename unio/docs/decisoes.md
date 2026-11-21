@@ -1581,6 +1581,79 @@ D044.
 repositórios. Teste: `DataPrivacyServiceTest`.
 
 
+## D056: Origens do CORS por propriedade e variável de ambiente
+
+Autora: Carol
+Data: 2026-11-20
+Status: Aceita
+
+**Contexto:** `config/CorsConfig.java` tinha a lista de origens fixa no código (localhost
+3000 e 5173, 127.0.0.1 e dois domínios da Vercel). Com o back no Azure App Service, um
+front publicado em qualquer outro endereço tem as chamadas bloqueadas pelo navegador
+(sem `Access-Control-Allow-Origin`) e o app parece "não conectar". Mudar a lista exigia
+novo build e deploy.
+
+**Alternativas:**
+
+- (a) Continuar com a lista fixa e editar o código a cada novo endereço
+- (b) Aceitar qualquer origem ("*")
+- (c) Lista por propriedade, lida de variável de ambiente, com as origens atuais como padrão
+
+**Decisão:** (c). `unio.cors.allowed-origins` (lista separada por vírgulas) vem de
+`UNIO_CORS_ALLOWED_ORIGINS`; sem a variável, valem as seis origens de antes. Espaços e
+barra final são removidos. A subida falha com mensagem clara se a lista estiver vazia,
+tiver "*" ou curinga (as chamadas usam `allowCredentials`, que não combina com "*") ou
+uma origem sem `http://`/`https://`.
+
+**Justificativa:** (b) é proibido pela especificação de CORS com credenciais e abriria a
+API para qualquer site. (c) troca a origem sem build, só com configuração.
+
+**Como usar no Azure:** App Service → Configuration → Application settings → New
+application setting: nome `UNIO_CORS_ALLOWED_ORIGINS`, valor com as origens exatas do
+front separadas por vírgula (ex.: `https://unio-pi.vercel.app,https://meu-front.vercel.app`),
+sem barra no final. Salvar e **reiniciar o App Service**: a lista é lida só na subida.
+Quem define a variável substitui a lista padrão inteira, então inclua todas as origens
+que devem continuar funcionando.
+
+**Impacto:** `config/CorsConfig.java`, `application.properties`. Testes:
+`CorsConfigTest` (lista, "*", vazio) e `CorsIntegrationTest` (preflight de origem
+permitida passa com credenciais; de origem desconhecida volta 403 sem
+`Access-Control-Allow-Origin`).
+
+
+## D057: Políticas padrão do scorecard fora do perfil dev
+
+Autora: Carol
+Data: 2026-11-20
+Status: Aceita
+
+**Contexto:** Na revisão de dados de demonstração do back (pedido da auditoria de
+integração, ADR-011 do front) não há dados falsos que subam em produção: não existe
+DataLoader, endpoint de demo nem migration com perfis de teste; o `AdminSeedRunner` só
+age com `UNIO_ADMIN_EMAIL` e `UNIO_ADMIN_PASSWORD` (D054). O único `CommandLineRunner`
+de dados é o `ScorecardSeedRunner`, que cria as três políticas padrão do scorecard
+(pesos dos critérios). Isso é configuração do algoritmo, não dado de exemplo, mas ele
+só rodava com `@Profile("dev")`. Num banco novo de produção não havia política ativa e a
+descoberta respondia 500 (`POLICY_NOT_FOUND` em `ScorePersistenceService.resolvePolicy`).
+
+**Alternativas:**
+
+- (a) Migration com as políticas
+- (b) Exigir que o admin crie as políticas pela API antes do primeiro uso
+- (c) Rodar o mesmo seed em qualquer perfil, idempotente, com chave para desligar
+
+**Decisão:** (c). Saiu o `@Profile("dev")`; entrou
+`@ConditionalOnProperty(unio.scorecard.seed-default-policies, padrão true)`. O seed só
+cria políticas se a tabela estiver vazia; nunca altera nem apaga políticas existentes.
+
+**Justificativa:** (a) gravaria pesos numa migration versionada, difícil de ajustar depois
+pelo admin; (b) deixa a descoberta quebrada até alguém lembrar do passo manual. (c) usa o
+código que já era testado em dev e não mexe em bancos que já têm política.
+
+**Impacto:** `scorecard/common/config/ScorecardSeedRunner.java`, `application.properties`.
+Sem migration (nada a criar nem apagar no banco). Teste: `ScorecardSeedRunnerTest`.
+
+
 ## Fora de escopo desta entrega (registrado, não implementado)
 
 - Chat (`/api/conversations`): o produto decidiu que não há chat; o contato é externo,

@@ -1,5 +1,5 @@
 import axios from "axios";
-import api, { MOCK_BACKEND, getApiErrorMessage } from "./api";
+import api, { getApiErrorMessage } from "./api";
 import { updateAnswer, writeStatus } from "./onboardingAnswersStore";
 import { statusOnboardingParaBack } from "./onboardingService";
 import {
@@ -89,9 +89,8 @@ export async function salvarRespostasOnboardingNoBack<P extends PerfilOnboarding
 
 // Concluir e pular também gravam o status no back (PUT só com { status }, sem
 // mexer nas respostas), para o OnboardingGate de outro navegador saber que o
-// wizard já passou (ADR-007). Nunca lança. Modo mock: nada muda.
+// wizard já passou (ADR-007). Nunca lança.
 export async function salvarStatusOnboardingNoBack(status: Exclude<StatusOnboarding, "pendente">): Promise<void> {
-  if (MOCK_BACKEND) return;
   try {
     await writeStatus(statusOnboardingParaBack(status));
   } catch (error) {
