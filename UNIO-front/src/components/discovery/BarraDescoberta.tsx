@@ -1,5 +1,5 @@
-import { Bell, Search, SlidersHorizontal } from "lucide-react";
-import { useToast } from "../../hooks/useToast";
+import { Search, SlidersHorizontal } from "lucide-react";
+import SinoNotificacoes from "../layout/SinoNotificacoes";
 import { FOCO_VISIVEL } from "../onboarding/selecao";
 
 interface BarraDescobertaProps {
@@ -28,7 +28,6 @@ export default function BarraDescoberta({
   idFiltros,
   filtrosAtivos,
 }: BarraDescobertaProps) {
-  const { mostrar } = useToast();
   return (
     <div className="flex items-center gap-2 sm:gap-3">
       <label className="relative min-w-0 flex-1">
@@ -57,15 +56,9 @@ export default function BarraDescoberta({
         <span className="max-sm:sr-only">Filtros</span>
         {filtrosAtivos > 0 && <span className="rounded-full bg-deepgreen px-1.5 text-xs text-white">{filtrosAtivos}</span>}
       </button>
-      <button
-        type="button"
-        onClick={() => mostrar("A central de notificações chega em breve.", "info")}
-        aria-label="Notificações (há novidades)"
+      <SinoNotificacoes
         className={`relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-lightgray bg-white text-deepgreen transition hover:border-sage ${FOCO_VISIVEL}`}
-      >
-        <Bell size={18} aria-hidden="true" />
-        <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white" aria-hidden="true" />
-      </button>
+      />
     </div>
   );
 }

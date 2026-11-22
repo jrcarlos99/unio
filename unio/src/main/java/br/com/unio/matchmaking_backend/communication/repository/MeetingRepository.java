@@ -31,8 +31,10 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                                        @Param("statuses") Collection<MeetingStatus> statuses);
 
     /**
-     * Quantas reuniões ativas de qualquer um dos usuários se sobrepõem ao intervalo
-     * [startsAt, endsAt). {@code excludeId} ignora a própria reunião ao confirmar.
+     * Quantas reuniões de qualquer um dos usuários, nos {@code statuses} informados,
+     * se sobrepõem ao intervalo [startsAt, endsAt). {@code excludeId} ignora a própria
+     * reunião. Desde a D034 o MeetingService passa só CONFIRMADA: pendentes não
+     * ocupam a agenda.
      */
     @Query("""
             select count(m) from Meeting m
@@ -49,4 +51,23 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                           @Param("excludeId") Long excludeId);
 
     long countByStatus(MeetingStatus status);
+
+    /** Reuniões entre os dois usuários (em qualquer papel) nos status informados (D051). */
+    @Query("""
+            select m from Meeting m
+            where m.status in :statuses
+              and ((m.organizer.id = :userA and m.invitee.id = :userB)
+                or (m.organizer.id = :userB and m.invitee.id = :userA))
+            """)
+    List<Meeting> findActiveBetween(@Param("userA") Long userA,
+                                    @Param("userB") Long userB,
+                                    @Param("statuses") Collection<MeetingStatus> statuses);
+
+    /** Reuniões de um participante num status (ex.: REALIZADA na popularidade, D042). */
+    @Query("""
+            select count(m) from Meeting m
+            where m.status = :status
+              and (m.organizer.id = :userId or m.invitee.id = :userId)
+            """)
+    long countByParticipantAndStatus(@Param("userId") Long userId, @Param("status") MeetingStatus status);
 }

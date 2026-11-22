@@ -11,7 +11,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import java.math.BigDecimal;
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -60,4 +63,14 @@ public class Investor {
 
     @Column(name = "disponibilidade_observacao", length = 255)
     private String disponibilidadeObservacao;
+
+    /** D045: última alteração do perfil; a descoberta recalcula scores mais antigos que ela. */
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @PrePersist
+    @PreUpdate
+    protected void touch() {
+        this.updatedAt = Instant.now();
+    }
 }

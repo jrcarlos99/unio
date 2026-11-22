@@ -10,7 +10,12 @@ import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import br.com.unio.matchmaking_backend.auth.service.AuthUser;
+import br.com.unio.matchmaking_backend.scorecard.common.ScorecardAccess;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
+@Tag(name = "Scorecard", description = "Score de compatibilidade startup x investidor")
 @RequestMapping("/api/scorecard")
 @RequiredArgsConstructor
 public class FeedbackController {
@@ -30,9 +36,15 @@ public class FeedbackController {
 
     @PostMapping("/feedback")
     @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Registra uma ação sobre uma recomendação (VIEWED, INTERESTED, NOT_INTERESTED...)",
+            description = "D048: o investidor só grava pares em que é o investorId; a startup, pares em que é o "
+                    + "startupId; ADMIN, qualquer par. Use o objeto scorecard do item de GET /api/discovery. "
+                    + "A mesma ação no mesmo par em menos de 5 minutos responde 409 FEEDBACK_DUPLICATE.")
     public ResponseEntity<FeedbackEvent> create(
+            @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody FeedbackCreateRequest request
     ) {
+        ScorecardAccess.requireOwnPair(authUser, request.getStartupId(), request.getInvestorId());
         ScorePolicy policy = scorePolicyRepository.findById(request.getScorePolicyId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Policy não encontrada"));

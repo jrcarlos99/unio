@@ -1,9 +1,10 @@
 import type { Disponibilidade, Estagio, RegiaoInteresse, Segmento, TipoPerfil } from "./index";
-import type { Compatibilidade, Motivo, StatusInteresse } from "./discovery";
+import type { Compatibilidade, Motivo, RefScorecard, StatusInteresse } from "./discovery";
 
 // Tipos dos investidores vistos pela startup (aba "Investidores", Salvos,
-// Meus unios e perfil do investidor). Nada disso existe no back ainda — ver
-// o comentário no topo de services/investidoresService.ts.
+// Meus unios e perfil do investidor). Vêm de /api/discovery (ADR-008 e
+// ADR-011). Campos que o back não tem ficam null ou vazios e as telas os
+// escondem.
 
 export interface InvestidorDescoberta {
   id: string;
@@ -21,21 +22,20 @@ export interface InvestidorDescoberta {
   ticketMin: number | null;
   ticketMax: number | null;
   regioesInteresse: RegiaoInteresse[];
-  disponibilidade: Disponibilidade;
-  // Startups em que investiu (anjo) ou que mentorou (mentor)
-  portfolio: number;
+  // Texto livre da região no back, quando não cabe nas opções acima
+  regiaoTexto?: string | null;
+  disponibilidade: Disponibilidade | null;
+  // Startups em que investiu (anjo) ou que mentorou (mentor); null = sem dado
+  portfolio: number | null;
   // Perfil completo (tela /investidores/:id)
   bio: string;
   tesePrincipal: string;
   buscaEmStartups: string[];
   comoApoia: string[];
   // Ano em que começou a investir/mentorar
-  desde: number;
-  portfolioPortoDigital: number;
-  tempoResposta: string;
-  // MOCK: o investidor já demonstrou interesse na startup, então o clique em
-  // "Tenho interesse" vira match na hora. No back isso viria do lado dele.
-  interesseReciproco: boolean;
+  desde: number | null;
+  portfolioPortoDigital: number | null;
+  tempoResposta: string | null;
 }
 
 // Investidor como chega nas telas: dados + compatibilidade + estado da startup
@@ -44,6 +44,10 @@ export interface InvestidorRecomendado {
   compatibilidade: Compatibilidade;
   statusInteresse: StatusInteresse;
   salvo: boolean;
+  // Popularidade visível em % (RF10). Nula abaixo do mínimo: sem selo.
+  popularidade?: number | null;
+  // Par do scorecard para o feedback (VIEWED, INTERESTED)
+  scorecard?: RefScorecard | null;
 }
 
 // Perfil completo: inclui os motivos de "Por que você viu este investidor"
@@ -64,6 +68,4 @@ export interface ResumoStartupInvestidores {
   estagio: Estagio | null;
   // Faixa do onboarding ("R$ 200 a 500 mil") ou valor do perfil formatado
   capitalProcurado: string | null;
-  // Fictício até o back ter a rodada da startup (ex.: "60% de R$ 300 mil")
-  captacao: string;
 }

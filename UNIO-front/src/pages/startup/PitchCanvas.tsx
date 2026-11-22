@@ -99,9 +99,13 @@ export default function PitchCanvas() {
           )}
         </div>
 
-        <TabPanel idPrefix={TABS_ID} tab="pitch" activeTab={editor.activeTab} className="mt-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-            <div className="min-w-0 space-y-6 lg:col-span-3">
+        <TabPanel idPrefix={TABS_ID} tab="pitch" activeTab={editor.activeTab} className="mt-6 @container">
+          {/* Columns by the width of the content (the sidebar already taken
+              out): stacked below 896px, form 3/5 + preview 2/5, and from
+              1440px form 2/3 + preview 1/3, so the preview keeps the size of
+              a feed card */}
+          <div className="grid grid-cols-1 gap-6 @[56rem]:grid-cols-5 @[90rem]:grid-cols-3">
+            <div className="min-w-0 space-y-6 @[56rem]:col-span-3 @[90rem]:col-span-2">
               <PitchFormCard
                 shortPitch={values.shortPitch}
                 videoUrl={values.videoUrl}
@@ -111,7 +115,7 @@ export default function PitchCanvas() {
               />
               <PitchTipsCard />
             </div>
-            <div className="min-w-0 lg:sticky lg:top-8 lg:col-span-2 lg:self-start">
+            <div className="min-w-0 @[56rem]:sticky @[56rem]:top-8 @[56rem]:col-span-2 @[56rem]:self-start @[90rem]:col-span-1">
               <InvestorPreviewCard
                 startupName={startupName}
                 sector={sector}
@@ -168,7 +172,7 @@ export default function PitchCanvas() {
         </div>
 
         {pitch && values && (
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
             <button
               ref={previewButtonRef}
               type="button"

@@ -22,7 +22,7 @@ O produto conecta **startups nascentes do Porto Digital** (Bairro do Recife) a *
 - [x] Cadastro de startup com perfil (segmento, estágio, necessidades) — RF01
 - [x] Cadastro de investidor/mentor com perfil (área de interesse, ticket médio, disponibilidade) — RF02
 - [x] Tela de login/cadastro com painel deslizante
-- [x] Painel administrativo: visão geral com métricas, moderação de cadastros, moderação de conteúdo, log de auditoria
+- [x] Painel administrativo: visão geral com métricas do back, lista de cadastros e log de auditoria (aprovar, rejeitar e moderar conteúdo aguardam endpoint no back)
 
 ### Planejadas
 - [ ] Matchmaking entre startups e investidores/mentores por critérios de afinidade — RF03
@@ -69,6 +69,20 @@ npm run dev
 # Gerar build de produção
 npm run build
 ```
+
+### Endereço do back-end
+
+O front fala só com o back, sem dados de exemplo (ADR-011). A URL vem de uma única
+variável, `VITE_API_URL`, lida no build:
+
+- **Produção:** defina `VITE_API_URL` na hospedagem do front (ex.: Vercel → Settings →
+  Environment Variables) com a URL do App Service, sem barra no final. Sem a variável, o
+  build usa o back do Azure como padrão.
+- **Desenvolvimento com o back local:** no `.env` (não versionado), use
+  `VITE_API_URL=http://localhost:8080`. O modelo está em `.env.example`.
+
+O endereço publicado do front precisa estar em `UNIO_CORS_ALLOWED_ORIGINS` no back
+(D056), senão o navegador bloqueia as chamadas por CORS.
 
 ## Estrutura de pastas
 

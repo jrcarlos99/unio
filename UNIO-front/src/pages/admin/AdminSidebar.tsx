@@ -1,7 +1,7 @@
-import { Link, NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { LayoutGrid, UserCheck, FileWarning, History, LogOut, X } from "lucide-react";
-import { PERFIL_ADMIN } from "./data/mockAdmin";
 import Logo from "../../components/brand/Logo";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -12,12 +12,17 @@ interface AdminSidebarProps {
 // fique marcado como ativo quando na verdade estamos em "/admin/cadastros".
 const ITENS = [
   { to: "/admin", label: "Visão Geral", icon: LayoutGrid, end: true },
-  { to: "/admin/cadastros", label: "Moderação de Cadastros", icon: UserCheck, end: false },
+  { to: "/admin/cadastros", label: "Cadastros", icon: UserCheck, end: false },
   { to: "/admin/conteudo", label: "Moderação de Conteúdo", icon: FileWarning, end: false },
   { to: "/admin/auditoria", label: "Log de Auditoria", icon: History, end: false },
 ];
 
 export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
+  // Conta logada de verdade (token do back), não um perfil fictício
+  const { user, logout } = useAuth();
+  const email = user?.email ?? "";
+  const inicial = email.charAt(0).toUpperCase() || "A";
+
   return (
     <>
       {/* No mobile, um fundo escurecido atrás do menu aberto — clicar nele fecha o menu */}
@@ -73,26 +78,29 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
           ))}
         </nav>
 
-        {/* Rodapé: cartão com o "perfil" do admin fictício + link de sair */}
+        {/* Rodapé: conta logada + sair (apaga o token e volta ao login) */}
         <div className="px-3 pb-4">
           <div className="flex items-center gap-3 rounded-xl bg-sage px-3 py-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-deepgreen">
-              {PERFIL_ADMIN.iniciais}
+              {inicial}
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-deepgreen">{PERFIL_ADMIN.nome}</p>
-              <p className="truncate text-xs text-deepgreen/70">{PERFIL_ADMIN.cargo}</p>
+              <p className="truncate text-sm font-semibold text-deepgreen">{email}</p>
+              <p className="truncate text-xs text-deepgreen/70">Administrador da plataforma</p>
             </div>
           </div>
 
-          <Link
-            to="/login"
-            onClick={onClose}
-            className="mt-2 flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-white/80 transition-colors hover:bg-sage/30"
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              logout();
+            }}
+            className="mt-2 flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-white/80 transition-colors hover:bg-sage/30"
           >
             <LogOut size={18} />
             Sair
-          </Link>
+          </button>
         </div>
       </aside>
     </>

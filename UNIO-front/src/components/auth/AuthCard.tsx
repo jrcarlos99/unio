@@ -9,13 +9,15 @@ type Mode = "login" | "signup";
 interface AuthCardProps {
   onLoginSuccess: (role: string) => void;
   onSignupSuccess: (role: string) => void;
+  modoInicial?: Mode;
 }
 
 export default function AuthCard({
   onLoginSuccess,
   onSignupSuccess,
+  modoInicial = "login",
 }: AuthCardProps) {
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] = useState<Mode>(modoInicial);
   const isSignup = mode === "signup";
 
   function toggleMode() {

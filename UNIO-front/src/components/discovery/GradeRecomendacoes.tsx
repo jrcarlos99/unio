@@ -6,6 +6,12 @@ import StartupCardSkeleton from "./StartupCardSkeleton";
 
 export const POR_PAGINA = 6;
 
+// Grade de cards de recomendação (Descobrir, Investidores e Salvos). A 4ª
+// coluna evita cards largos demais no AppLayout fluido; entra só a partir de
+// 1700px de janela porque, com a sidebar, cada card fica com ~325px (no 2xl,
+// 1536px, ficaria com ~285px e os valores de captação quebram linha).
+export const GRADE_CARDS = "grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4";
+
 const BOTAO_CLARO = `inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-lightgray bg-white px-4 text-sm font-semibold text-deepgreen transition hover:border-sage ${FOCO_VISIVEL}`;
 
 interface GradeRecomendacoesProps {
@@ -46,7 +52,7 @@ export default function GradeRecomendacoes({
   let conteudo: ReactNode;
   if (carregando) {
     conteudo = (
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+      <div className={GRADE_CARDS} aria-busy="true">
         <span className="sr-only">Carregando recomendações</span>
         {Array.from({ length: POR_PAGINA }, (_, i) => (
           <StartupCardSkeleton key={i} />
@@ -74,7 +80,7 @@ export default function GradeRecomendacoes({
   } else {
     conteudo = (
       <>
-        <ul className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <ul className={GRADE_CARDS}>
           {cards.map(({ chave, card }) => (
             <li key={chave}>{card}</li>
           ))}

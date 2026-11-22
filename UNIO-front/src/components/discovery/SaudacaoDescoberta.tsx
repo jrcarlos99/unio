@@ -10,8 +10,9 @@ interface SaudacaoDescobertaProps {
   resumo: string;
   // Texto depois de "Critérios:"
   criterios: string;
-  // Dois números à direita (o primeiro com fundo destacado)
-  cartoes: [CartaoResumo, CartaoResumo];
+  // Até dois números à direita (o primeiro com fundo destacado). O segundo é
+  // opcional e some quando o dado não existe no back (ADR-008)
+  cartoes: [CartaoResumo, CartaoResumo?];
 }
 
 // "Olá, {nome}" + resumo da lista + critérios, e o card com dois números à
@@ -37,15 +38,21 @@ export default function SaudacaoDescoberta({ nome, carregando, resumo, criterios
         </div>
       </div>
 
-      <dl className="grid shrink-0 grid-cols-2 gap-3 rounded-3xl border border-lightgray bg-white p-3 shadow-soft">
+      <dl
+        className={`grid shrink-0 gap-3 rounded-3xl border border-lightgray bg-white p-3 shadow-soft ${
+          segundo ? "grid-cols-2" : "grid-cols-1"
+        }`}
+      >
         <div className="rounded-2xl bg-lightgray/60 px-4 py-3">
           <dt className="text-[11px] font-semibold uppercase tracking-wide text-deepgreen/75">{destaque.rotulo}</dt>
           <dd className="mt-1 text-lg font-bold text-deepgreen">{carregando ? "…" : destaque.valor}</dd>
         </div>
-        <div className="px-4 py-3">
-          <dt className="text-[11px] font-semibold uppercase tracking-wide text-deepgreen/75">{segundo.rotulo}</dt>
-          <dd className="mt-1 text-lg font-bold text-deepgreen">{carregando ? "…" : segundo.valor}</dd>
-        </div>
+        {segundo && (
+          <div className="px-4 py-3">
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-deepgreen/75">{segundo.rotulo}</dt>
+            <dd className="mt-1 text-lg font-bold text-deepgreen">{carregando ? "…" : segundo.valor}</dd>
+          </div>
+        )}
       </dl>
     </div>
   );

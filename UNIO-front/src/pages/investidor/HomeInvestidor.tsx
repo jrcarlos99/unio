@@ -14,12 +14,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { ESTAGIOS, SEGMENTOS } from "../../data/options";
 import { alterarItem, useCarregamento, useUserKey } from "../../hooks/useDescoberta";
 import { useAcoesRecomendacao } from "../../hooks/useRecomendacoes";
-import {
-  aplicarFiltros,
-  listarStartupsRecomendadas,
-  obterTeseInvestidor,
-  obterTesouraria,
-} from "../../services/discoveryService";
+import { aplicarFiltros, listarStartupsRecomendadas, obterTeseInvestidor } from "../../services/discoveryService";
 import type { Estagio, Segmento } from "../../types";
 import type { TeseInvestidor } from "../../types/discovery";
 import { juntarComE } from "../../utils/formatoDescoberta";
@@ -41,12 +36,8 @@ export default function HomeInvestidor() {
   const idChips = useId();
 
   const carregar = useCallback(async () => {
-    const [startups, tese, tesouraria] = await Promise.all([
-      listarStartupsRecomendadas(userKey),
-      obterTeseInvestidor(userKey),
-      obterTesouraria(),
-    ]);
-    return { startups, tese, tesouraria };
+    const [startups, tese] = await Promise.all([listarStartupsRecomendadas(userKey), obterTeseInvestidor()]);
+    return { startups, tese };
   }, [userKey]);
   const { carregando, erro, dados, recarregar, alterarDados } = useCarregamento(
     carregar,
@@ -120,10 +111,7 @@ export default function HomeInvestidor() {
             ? juntarComE(dados.tese.segmentosInteresse)
             : "tese ainda não configurada"
         }
-        cartoes={[
-          { rotulo: "Seu ticket médio", valor: dados ? textoTicket(dados.tese) : "" },
-          { rotulo: "Tesouraria alocada", valor: dados?.tesouraria ?? "" },
-        ]}
+        cartoes={[{ rotulo: "Seu ticket médio", valor: dados ? textoTicket(dados.tese) : "" }]}
       />
 
       {filtrosVisiveis && dados && (
@@ -178,8 +166,8 @@ export default function HomeInvestidor() {
         vazio={
           <AvisoEstado
             icone={SearchX}
-            titulo="Ainda não há startups recomendadas"
-            texto="Complete sua tese para recebermos startups que combinam com você."
+            titulo="Ainda não há startups cadastradas"
+            texto="Quando startups criarem o perfil, elas aparecem aqui com o score de compatibilidade."
             acao={
               <Link to="/onboarding/investidor?passo=1" className={BOTAO_CLARO}>
                 Configurar Tese

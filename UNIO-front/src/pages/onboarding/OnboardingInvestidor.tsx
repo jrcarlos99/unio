@@ -59,6 +59,8 @@ export default function OnboardingInvestidor() {
   if (!passos) return null;
 
   const ultimoPasso = passo === onboarding.totalPassos;
+  // Sem perfil, o último passo cria o perfil (ADR-001)
+  const rotuloFinal = onboarding.temPerfil ? "Concluir e ver recomendações" : "Concluir e criar meu perfil";
 
   return (
     <OnboardingLayout
@@ -70,12 +72,17 @@ export default function OnboardingInvestidor() {
       aviso={passos.aviso}
       statusFinal="Etapa final de validação"
       onSkip={onboarding.skip}
+      podePular={onboarding.temPerfil}
+      erro={onboarding.erroEnvio?.mensagem}
+      onTentarNovamente={
+        onboarding.erroEnvio && onboarding.erroEnvio.tipo !== "validacao" ? onboarding.finish : undefined
+      }
       onGoTo={onboarding.goTo}
       resumo={passos.resumo}
       resumoAtivo={ultimoPasso ? respostas.regioesInteresse.length > 0 : passoValido}
       onBack={onboarding.back}
       onPrimary={ultimoPasso ? onboarding.finish : onboarding.next}
-      primaryLabel={ultimoPasso ? "Concluir e ver recomendações" : "Continuar"}
+      primaryLabel={ultimoPasso ? rotuloFinal : "Continuar"}
       primaryIcon={ultimoPasso ? Check : undefined}
       primaryDisabled={!passoValido}
       ocupado={onboarding.ocupado}

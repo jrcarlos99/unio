@@ -1,5 +1,6 @@
 package br.com.unio.matchmaking_backend.auth.repository;
 
+import br.com.unio.matchmaking_backend.auth.entity.Role;
 import br.com.unio.matchmaking_backend.auth.entity.User;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,4 +14,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByDocumento(String documento);
+
+    /** D054: o seed do administrador só roda se ainda não houver nenhum ADMIN. */
+    boolean existsByRole(Role role);
 }

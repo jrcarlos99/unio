@@ -1,10 +1,10 @@
 import type { PerfilOnboarding, StatusOnboarding } from "../types/onboarding";
 
-// Único ponto de persistência do onboarding. Por enquanto tudo fica no
-// localStorage do navegador (o onboarding ainda NÃO chama a API). Quando o
-// back tiver os campos/endpoints, basta trocar a implementação destas funções
-// por chamadas HTTP — por isso todas já retornam Promise, e as telas não
-// precisam mudar.
+// Persistência do estado do wizard (status e respostas por e-mail) no
+// localStorage do navegador. A criação do perfil no back e a cópia das
+// respostas em /api/profile/onboarding ficam em perfilOnboardingService.ts.
+// Todas as funções já retornam Promise, pra poderem virar chamadas HTTP sem
+// mudar as telas.
 
 const PREFIXO = "unio_onboarding_";
 
@@ -46,7 +46,47 @@ function gravar(chave: string, valor: unknown) {
 }
 
 export async function getStatus(userKey: string): Promise<StatusOnboarding> {
-  return ler<RegistroStatus>(chaveStatus(userKey))?.status ?? "pendente";
+  return (await lerStatusLocal(userKey)) ?? "pendente";
+}
+
+// null = este navegador nunca gravou o status (ex.: login em outro navegador).
+// O OnboardingGate usa isso para consultar o back antes de mandar ao wizard.
+export async function lerStatusLocal(userKey: string): Promise<StatusOnboarding | null> {
+  return ler<RegistroStatus>(chaveStatus(userKey))?.status ?? null;
+}
+
+// Grava o status vindo do back (concluído ou pulado em outro navegador)
+export async function gravarStatusLocal(
+  userKey: string,
+  perfil: PerfilOnboarding,
+  status: Exclude<StatusOnboarding, "pendente">,
+): Promise<void> {
+  const registro: RegistroStatus = { status, perfil, atualizadoEm: new Date().toISOString() };
+  gravar(chaveStatus(userKey), registro);
+}
+
+// Status do /api/profile/onboarding (PENDENTE, CONCLUIDO, PULADO) ↔ front.
+// Qualquer outro valor (ou ausente) conta como pendente.
+export type StatusOnboardingBack = "PENDENTE" | "CONCLUIDO" | "PULADO";
+
+export function statusOnboardingDoBack(status: unknown): StatusOnboarding {
+  if (status === "CONCLUIDO") return "concluido";
+  if (status === "PULADO") return "pulado";
+  return "pendente";
+}
+
+export function statusOnboardingParaBack(status: StatusOnboarding): StatusOnboardingBack {
+  if (status === "concluido") return "CONCLUIDO";
+  if (status === "pulado") return "PULADO";
+  return "PENDENTE";
+}
+
+// Conta sem perfil precisa passar pelo onboarding para criá-lo (ADR-001),
+// então "concluido"/"pulado" antigos no localStorage (ex.: contas de teste de
+// antes da mudança) valem como "pendente". Nada é apagado: as respostas salvas
+// continuam lá e o wizard retoma de onde parou.
+export function statusEfetivo(status: StatusOnboarding, temPerfil: boolean): StatusOnboarding {
+  return temPerfil ? status : "pendente";
 }
 
 export async function loadAnswers<T>(

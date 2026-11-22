@@ -38,7 +38,7 @@ export default function Hero() {
 
           <div className="mt-8 flex items-center gap-4">
             <Link
-              to="/cadastro"
+              to="/login?modo=cadastro"
               className="rounded-full bg-sage px-8 py-3 font-semibold text-deepgreen transition-colors hover:bg-white"
             >
               Comece Agora

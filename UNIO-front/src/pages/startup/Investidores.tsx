@@ -127,7 +127,6 @@ export default function Investidores() {
         criterios={criterios.length > 0 ? juntarComE(criterios) : "complete o perfil da startup"}
         cartoes={[
           { rotulo: "Capital procurado", valor: resumo?.capitalProcurado ?? "Não informado" },
-          { rotulo: "Captação", valor: resumo?.captacao ?? "" },
         ]}
       />
 
@@ -183,8 +182,8 @@ export default function Investidores() {
         vazio={
           <AvisoEstado
             icone={SearchX}
-            titulo="Ainda não há investidores recomendados"
-            texto="Complete o perfil da sua startup para encontrarmos investidores que combinam com você."
+            titulo="Ainda não há investidores cadastrados"
+            texto="Quando investidores criarem o perfil, eles aparecem aqui com o score de compatibilidade."
             acao={
               <Link to="/meu-perfil" className={BOTAO_CLARO}>
                 Completar perfil

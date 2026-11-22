@@ -1,7 +1,6 @@
 package br.com.unio.matchmaking_backend.profile.dto;
 
 import br.com.unio.matchmaking_backend.profile.entity.DisponibilidadeMentoria;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -23,11 +22,11 @@ public class InvestorCreateRequest {
 
     private List<String> estagiosInteresse;
 
-    @NotNull(message = "Ticket mínimo é obrigatório")
+    // Tickets opcionais (D029): quem atua só como mentor não informa. @Positive só
+    // valida quando o valor vem preenchido.
     @Positive(message = "Ticket mínimo deve ser positivo")
     private BigDecimal ticketMinimo;
 
-    @NotNull(message = "Ticket máximo é obrigatório")
     @Positive(message = "Ticket máximo deve ser positivo")
     private BigDecimal ticketMaximo;
 

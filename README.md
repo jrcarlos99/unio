@@ -83,15 +83,18 @@ npm install
 npm run dev
 ```
 
-A aplicação sobe em `http://localhost:5173` por padrão.
+A aplicação sobe em `http://localhost:5173` por padrão. O endereço do back vem só de
+`VITE_API_URL` (modelo em `UNIO-front/.env.example`); sem ela, o front usa o back do
+Azure. Não há modo mock nem dados de exemplo (ADR-011). A auditoria de cada chamada do
+front contra os endpoints do back está em `UNIO-front/docs/integracao/auditoria-front-back.md`.
 
 ### Funcionalidades implementadas
 
 - Landing page institucional
 - Login / cadastro com painel deslizante
 - Cadastro de startup (RF01) e de investidor (RF02)
-- Painel administrativo: visão geral com métricas, moderação de cadastros, moderação de conteúdo, log de auditoria
-- Integração com a API do back-end (autenticação JWT, perfis)
+- Painel administrativo: visão geral com métricas do back, lista de cadastros e log de auditoria (aprovar, rejeitar e moderar conteúdo ainda não têm endpoint)
+- Integração com a API do back-end em todas as telas (autenticação JWT, perfis, descoberta, interesse e match, salvos, reuniões, avaliação, popularidade, privacidade)
 
 ## Identidade visual
 

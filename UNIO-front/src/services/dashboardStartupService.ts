@@ -1,51 +1,38 @@
 import type { UserProfile } from "../contexts/AuthContext";
 import { ESTAGIOS, SEGMENTOS_DETALHADOS } from "../data/options";
-import { RESUMO_MOCK } from "../mocks/dashboardStartupMock";
 import type { Estagio, FaixaCapital, Segmento } from "../types";
 import type { CompletudePerfil, DadosStartup, ResumoStartup } from "../types/dashboard";
+import type { Reuniao } from "../types/reunioes";
 import type { RespostasStartup } from "../types/onboarding";
+import { obterPopularidade } from "./avaliacoesService";
+import { montarResumo } from "./dashboardStartup.mapping";
+import { contarMatches } from "./descobertaApi";
 import { chaveUsuario, loadAnswers } from "./onboardingService";
-import { unioLocalStartup } from "./unioLocal";
+import { listarReunioes } from "./reunioesService";
 
 // Único ponto de dados da home da startup ("Visão geral"). A tela usa SÓ
-// estas funções; quando o back tiver os endpoints, troca-se a implementação
-// aqui por chamadas HTTP (por isso já retornam Promise) e a tela não muda.
+// estas funções. Tudo vem do back (ADR-011):
+// - GET /api/profile/me/popularity: visualizações dos últimos 28 dias,
+//   variação, série semanal e interesses recebidos;
+// - GET /api/interests/matches: matches mútuos;
+// - GET /api/meetings: reuniões marcadas (CONFIRMADA e REALIZADA).
+// Cada chamada falha sozinha: o bloco dela mostra "indisponível" e o resto
+// da tela continua. Não existe número de exemplo.
 //
-// MOCK — o que AINDA NÃO EXISTE no back (levar ao squad):
-// - Métricas do perfil: visualizações (total, variação, série semanal).
-// - Funil de interesse e benchmark de conversão.
-// - Investidores interessados (clicaram "Tenho interesse" na startup) e
-//   matches (a startup também aceitou). Regra de produto: só depois do match
-//   mútuo há conversa/reunião — por isso a home não tem "enviar mensagem".
-// - Contatos iniciados e reuniões marcadas: não há chat nem agenda na
-//   plataforma; contam os eventos locais registrados no popup do unio
-//   (services/unioLocal.ts). Sem eventos, ficam os números do mock.
+// Sem endpoint no back e, por isso, fora da tela (ADR-011): "Contatos
+// iniciados" (não há chat nem registro de contato), "+N novos esta semana"
+// dos interessados (o back não tem a data do interesse na popularidade),
+// benchmark de mercado do funil e logo da startup (não há upload).
 // A recomendação de investidores fica em services/investidoresService.ts.
-// - Logo da startup (não há upload), usada na completude do perfil.
-
-const LATENCIA_MS = 350;
-
-function esperar() {
-  return new Promise((resolve) => setTimeout(resolve, LATENCIA_MS));
-}
 
 export async function obterResumo(user: UserProfile | null): Promise<ResumoStartup> {
-  await esperar();
-  const userKey = user ? chaveUsuario(user) : "";
-  const contatos = userKey ? unioLocalStartup.contarUniosComEvento(userKey, "contato") : 0;
-  const reunioes = userKey ? unioLocalStartup.contarUniosComEvento(userKey, "reuniao") : 0;
-  const [visualizaram, interesse, contatoMock, reuniaoMock] = RESUMO_MOCK.funil;
-  return {
-    ...RESUMO_MOCK,
-    metricas: { ...RESUMO_MOCK.metricas, contatosIniciados: contatos || RESUMO_MOCK.metricas.contatosIniciados },
-    funil: [
-      visualizaram,
-      interesse,
-      { ...contatoMock, valor: contatos || contatoMock.valor },
-      { ...reuniaoMock, valor: reunioes || reuniaoMock.valor },
-    ],
-    atualizadoEm: new Date().toISOString(),
-  };
+  const sessao = { user, perfil: "startup" as const };
+  const [popularidade, reunioes, matches] = await Promise.all([
+    user ? obterPopularidade().catch(() => null) : Promise.resolve(null),
+    user ? listarReunioes(sessao).catch(() => null) : Promise.resolve([] as Reuniao[]),
+    user ? contarMatches().catch(() => null) : Promise.resolve(0),
+  ]);
+  return montarResumo({ popularidade, reunioes, matches }, new Date().toISOString());
 }
 
 // ---------------------------------------------------------------------------
@@ -80,8 +67,8 @@ function dadosDaStartup(
   };
 }
 
-// Critérios da completude e seus pesos (somam 100). Os três últimos são os
-// itens do checklist da tela.
+// Critérios da completude e seus pesos (somam 100 com os itens do checklist
+// da tela).
 const CRITERIOS: { pontos: number; ok: (d: DadosStartup) => boolean }[] = [
   { pontos: 10, ok: (d) => d.segmento !== null },
   { pontos: 10, ok: (d) => d.estagio !== null },
@@ -94,7 +81,8 @@ const CRITERIOS: { pontos: number; ok: (d: DadosStartup) => boolean }[] = [
 ];
 
 // Canvas: pitch com conteúdo de verdade; mercado-alvo detalhado: mais que
-// uma palavra-chave ("PMEs"); logo: ainda não existe upload no back.
+// uma palavra-chave ("PMEs"). O item "logo" saiu (ADR-011): o back não tem
+// upload de logo, então ele nunca podia ser concluído.
 const MIN_CARACTERES_PITCH = 30;
 const MIN_CARACTERES_MERCADO = 40;
 
@@ -107,14 +95,13 @@ export function calcularCompletudePerfil(
     {
       id: "canvas",
       rotulo: "Adicionar o canvas do pitch",
-      pontos: 15,
+      pontos: 20,
       concluido: dados.pitch.length >= MIN_CARACTERES_PITCH,
     },
-    { id: "logo", rotulo: "Incluir logo oficial", pontos: 10, concluido: false },
     {
       id: "mercadoDetalhado",
       rotulo: "Preencher mercado-alvo detalhado",
-      pontos: 5,
+      pontos: 10,
       concluido: dados.mercadoAlvo.length >= MIN_CARACTERES_MERCADO,
     },
   ];

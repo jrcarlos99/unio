@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
 import AuthInput from "./AuthInput";
 import SocialButtons from "./SocialButtons";
 import Button from "../ui/Button";
@@ -81,10 +80,10 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           <p className="-mt-2 mb-2 text-xs text-red-600">{erros.senha}</p>
         )}
 
-        <p className="mb-4 text-right">
-          <Link to="#" className="text-xs text-deepgreen hover:underline">
-            Esqueceu a senha?
-          </Link>
+        {/* Sem link morto: o fluxo de recuperação (forgot e reset-password do
+            back) ainda não tem tela (ADR-007) */}
+        <p className="mb-4 text-right text-xs text-deepgreen/75" aria-disabled="true">
+          Recuperação de senha em breve
         </p>
 
         <Button type="submit" disabled={isLoading}>

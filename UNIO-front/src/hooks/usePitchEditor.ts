@@ -5,6 +5,7 @@ import { getMyPitch, publishMyPitch, updateMyPitch } from "../services/pitchServ
 import type { PitchFieldKey, PitchFormErrors, PitchFormValues, PitchTab } from "../types/pitch";
 import {
   PITCH_FIELDS,
+  PitchStorageError,
   fieldId,
   fieldMax,
   fieldTab,
@@ -24,6 +25,10 @@ export type SubmitPhase = "idle" | "saving" | "publishing";
 const LOAD_ERROR = "Não foi possível carregar seu pitch.";
 const SAVE_ERROR = "Não foi possível salvar as alterações. Tente novamente.";
 const PUBLISH_ERROR = "Não foi possível enviar para moderação.";
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof PitchStorageError ? error.message : getApiErrorMessage(error, fallback);
+}
 
 // State and actions of the "Pitch & Lean Canvas" page.
 //
@@ -92,7 +97,7 @@ export function usePitchEditor() {
       mostrar("Alterações enviadas para moderação.", "sucesso");
     } catch (error) {
       setPublishPending(true);
-      setPublishError(getApiErrorMessage(error, PUBLISH_ERROR));
+      setPublishError(errorMessage(error, PUBLISH_ERROR));
     } finally {
       setPhase("idle");
     }
@@ -120,7 +125,7 @@ export function usePitchEditor() {
         alterarDados(() => updated);
       } catch (error) {
         setPhase("idle");
-        mostrar(getApiErrorMessage(error, SAVE_ERROR), "erro");
+        mostrar(errorMessage(error, SAVE_ERROR), "erro");
         return;
       }
     }

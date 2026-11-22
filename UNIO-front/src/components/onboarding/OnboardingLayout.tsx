@@ -2,7 +2,9 @@ import { useEffect, useRef, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  CircleAlert,
   CircleCheck,
+  RotateCcw,
   type LucideIcon,
 } from "lucide-react";
 import type { PerfilOnboarding } from "../../types/onboarding";
@@ -30,6 +32,14 @@ interface OnboardingLayoutProps {
   // Texto que substitui o "Pular por enquanto" no último passo
   statusFinal: string;
   onSkip: () => void;
+  // false = conta sem perfil: o onboarding é obrigatório, então o "Pular por
+  // enquanto" some de todos os passos e o cabeçalho mostra avisoObrigatorio
+  podePular?: boolean;
+  avisoObrigatorio?: string;
+  // Faixa de erro acima do botão principal (ex.: falha ao criar o perfil)
+  erro?: string | null;
+  // Mostra "Tentar novamente" na faixa de erro
+  onTentarNovamente?: () => void;
   onGoTo: (passo: number) => void;
   // Rodapé
   resumo: string;
@@ -52,6 +62,10 @@ export default function OnboardingLayout({
   aviso,
   statusFinal,
   onSkip,
+  podePular = true,
+  avisoObrigatorio = "Falta pouco para criar o seu perfil",
+  erro = null,
+  onTentarNovamente,
   onGoTo,
   resumo,
   resumoAtivo,
@@ -106,7 +120,12 @@ export default function OnboardingLayout({
               {BADGE_PERFIL[perfil]}
             </span>
           </div>
-          {ultimoPasso ? (
+          {!podePular ? (
+            <span className="flex items-center gap-2 text-right text-xs font-medium sm:text-sm">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-deepgreen" aria-hidden="true" />
+              {avisoObrigatorio}
+            </span>
+          ) : ultimoPasso ? (
             <span className="flex items-center gap-2 whitespace-nowrap text-xs font-medium sm:text-sm">
               <span className="h-2 w-2 rounded-full bg-deepgreen" aria-hidden="true" />
               {statusFinal}
@@ -153,6 +172,28 @@ export default function OnboardingLayout({
       </main>
 
       <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-lightgray bg-white/95 shadow-[0_-8px_24px_-16px_rgba(0,65,46,0.18)] backdrop-blur">
+        {erro && (
+          <div className={`${CONTAINER_LARGO} pt-3`}>
+            <div
+              role="alert"
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
+              <CircleAlert size={18} className="shrink-0" aria-hidden="true" />
+              <p className="min-w-0 flex-1">{erro}</p>
+              {onTentarNovamente && (
+                <button
+                  type="button"
+                  onClick={onTentarNovamente}
+                  disabled={ocupado}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 font-semibold underline-offset-2 hover:underline disabled:opacity-50 ${FOCO_VISIVEL}`}
+                >
+                  <RotateCcw size={15} aria-hidden="true" />
+                  Tentar novamente
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <div className={`${CONTAINER_LARGO} grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-3 py-3 sm:flex sm:gap-3 sm:py-4`}>
           <button
             type="button"

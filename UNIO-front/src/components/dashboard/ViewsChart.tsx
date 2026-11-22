@@ -21,6 +21,10 @@ const GRADE = "#E8EAE5";
 interface ViewsChartProps {
   semanas: PontoSemana[];
   mediaDiaria: number;
+  // Padrão: "Evolução das visualizações" (Visão geral)
+  titulo?: string;
+  // Palavra usada na média e na dica ("visualizações" ou "visitas")
+  unidade?: string;
 }
 
 function Legenda() {
@@ -38,13 +42,13 @@ function Legenda() {
   );
 }
 
-function Dica({ active, payload }: TooltipContentProps<ValueType, NameType>) {
+function Dica({ active, payload, unidade }: TooltipContentProps<ValueType, NameType> & { unidade: string }) {
   const ponto = payload?.[0]?.payload as PontoSemana | undefined;
   if (!active || !ponto) return null;
   return (
     <div className="flex items-center gap-2 rounded-xl bg-deepgreen px-3 py-1.5 text-xs text-white shadow-soft">
       <span className="h-1.5 w-1.5 rounded-full bg-sage" aria-hidden="true" />
-      {ponto.semana.replace("Sem", "Semana")}: <strong className="font-bold">{ponto.atual} visualizações</strong>
+      {ponto.semana.replace("Sem", "Semana")}: <strong className="font-bold">{ponto.atual} {unidade}</strong>
     </div>
   );
 }
@@ -52,15 +56,20 @@ function Dica({ active, payload }: TooltipContentProps<ValueType, NameType>) {
 // "Evolução das visualizações": área do período atual x linha tracejada do
 // anterior. O gráfico é decorativo para leitores de tela; os números vão numa
 // tabela escondida visualmente.
-export default function ViewsChart({ semanas, mediaDiaria }: ViewsChartProps) {
+export default function ViewsChart({
+  semanas,
+  mediaDiaria,
+  titulo = "Evolução das visualizações",
+  unidade = "visualizações",
+}: ViewsChartProps) {
   const idGradiente = useId().replace(/:/g, "");
   const ultimo = semanas.length - 1;
   const media = mediaDiaria.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 
   return (
     <PainelCard
-      titulo="Evolução das visualizações"
-      subtitulo={`Média de ${media} visualizações/dia nas últimas semanas`}
+      titulo={titulo}
+      subtitulo={`Média de ${media} ${unidade}/dia nas últimas semanas`}
       extra={<Legenda />}
     >
       <div className="h-64 w-full" aria-hidden="true">
@@ -82,7 +91,12 @@ export default function ViewsChart({ semanas, mediaDiaria }: ViewsChartProps) {
             />
             <YAxis hide domain={[0, "dataMax + 10"]} />
             {/* Dica fixa no alto do gráfico, acima dos pontos */}
-            <Tooltip content={Dica} defaultIndex={ultimo} cursor={false} position={{ y: 0 }} />
+            <Tooltip
+              content={(props) => <Dica {...props} unidade={unidade} />}
+              defaultIndex={ultimo}
+              cursor={false}
+              position={{ y: 0 }}
+            />
             <Area
               type="monotone"
               dataKey="anterior"
@@ -119,7 +133,7 @@ export default function ViewsChart({ semanas, mediaDiaria }: ViewsChartProps) {
       </div>
 
       <table className="sr-only">
-        <caption>Visualizações do perfil por semana</caption>
+        <caption>{titulo} por semana</caption>
         <thead>
           <tr>
             <th scope="col">Semana</th>

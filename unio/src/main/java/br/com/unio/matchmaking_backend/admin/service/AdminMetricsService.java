@@ -5,6 +5,7 @@ import br.com.unio.matchmaking_backend.communication.entity.MeetingStatus;
 import br.com.unio.matchmaking_backend.communication.repository.ConversationRepository;
 import br.com.unio.matchmaking_backend.communication.repository.MeetingRepository;
 import br.com.unio.matchmaking_backend.communication.repository.MessageRepository;
+import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
 import br.com.unio.matchmaking_backend.review.repository.InteractionReviewRepository;
@@ -29,6 +30,7 @@ public class AdminMetricsService {
     private final MessageRepository messageRepository;
     private final MeetingRepository meetingRepository;
     private final InteractionReviewRepository reviewRepository;
+    private final MatchInterestRepository interestRepository;
 
     @Transactional(readOnly = true)
     public AdminMetricsResponse getMetrics() {
@@ -44,6 +46,8 @@ public class AdminMetricsService {
             .meetingsByStatus(meetingsByStatus())
             .totalReviews(reviewRepository.count())
             .averageRating(ReviewService.roundOneDecimal(reviewRepository.averageRating()))
+            .interestsSent(interestRepository.countActive())
+            .mutualMatches(interestRepository.countMutualMatches())
             .build();
     }
 

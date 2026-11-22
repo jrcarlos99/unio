@@ -1,131 +1,44 @@
 import type { UserProfile } from "../contexts/AuthContext";
-import { CONTATOS_INVESTIDORES } from "../mocks/contatosMock";
-import { CAPTACAO_MOCK } from "../mocks/investidoresMock";
-import api from "./api";
-import type { DadosUnio, TipoEventoUnio } from "../types/contato";
-import type { StatusInteresse } from "../types/discovery";
+import type { DadosUnio, ResultadoDesfazerMatch } from "../types/contato";
+import type { RefScorecard, StatusInteresse } from "../types/discovery";
 import type {
   FiltrosInvestidores,
-  InvestidorDescoberta,
   InvestidorDetalhe,
   InvestidorRecomendado,
   ResumoStartupInvestidores,
 } from "../types/investidores";
-import { contatoValido } from "../utils/contato";
-import { formatarMoeda } from "../utils/formatoDescoberta";
+import { formatarMoeda, normalizarBusca } from "../utils/formatoDescoberta";
+import { paraIdDoBack } from "../utils/idsBack";
+import api from "./api";
 import { obterContextoStartup } from "./dashboardStartupService";
-import { chaveUsuario } from "./onboardingService";
-import { unioLocalStartup as unioLocal } from "./unioLocal";
+import { buscarDescoberta, buscarDetalhe, comPopularidade, enviarFeedback } from "./descobertaApi";
+import {
+  contatoDeConexao,
+  investidorDeConexao,
+  investidorRecomendadoDoBack,
+  motivosDoBack,
+  statusDoInteresseEnviado,
+  statusInteresseDoBack,
+  type ConexaoBack,
+  type InteresseBack,
+  type RetiradaInteresseBack,
+} from "./discovery.mapping";
 
 // Único ponto de dados dos investidores vistos pela startup: aba
-// "Investidores", Salvos, Meus unios, perfil do investidor e bloco
-// "Investidores recomendados" da Visão geral. As telas usam SÓ estas funções
-// (ou o recomendacoesService, que escolhe o serviço pelo perfil); quando o
-// back tiver os endpoints, troca-se a implementação aqui por chamadas HTTP e
-// as telas não mudam. O parâmetro `user` só existe por causa do localStorage
-// e do perfil local: com a API, o token já identifica a startup.
+// Investidores, Salvos, Meus unios, perfil do investidor e "Investidores
+// recomendados" da Visão geral (ADR-008 e ADR-011). Só o back:
 //
-// MOCK — o que AINDA NÃO EXISTE no back (levar ao squad):
-// - Listagem de investidores/mentores recomendados para a startup, com busca
-//   e filtros, e o perfil completo de um investidor por id.
-// - Salvos da startup.
-// - Interesse da startup no investidor e MATCH MÚTUO do lado da startup
-//   (status por par; só depois do match há conversa/reunião). No mock,
-//   "interesseReciproco" faz o match acontecer na hora.
-// - Captação atual da startup (rodada).
-// - Contato do investidor (só para quem deu match), desfazer match e eventos
-//   de contato/reunião (ver mocks/contatosMock.ts e services/unioLocal.ts).
-// O score usa a mesma função pura do Descobrir (services/compatibilidade.ts).
-//
-// Salvos e interesses ficam no localStorage, por e-mail do usuário.
+// - Lista e perfil: /api/discovery/investors (score do scorecard do back).
+// - Interesse e match: /api/interests; salvos: /api/saved.
+// - Contato depois do match: só o e-mail de /api/interests/matches.
+// - Feedback do algoritmo: silencioso, nunca bloqueia a tela.
 
-const INVESTOR_ID = "00000000-0000-0000-0000-000000000002";
+const CAMINHO_LISTA = "/api/discovery/investors";
 
-const chaveInteresses = (userKey: string) => `unio_interesses_startup_${userKey}`;
-const chaveSalvos = (userKey: string) => `unio_salvos_startup_${userKey}`;
-
-type InteressesSalvos = Record<string, Exclude<StatusInteresse, "nenhum">>;
-
-// localStorage pode lançar erro (modo privado, cota cheia); nesse caso a tela
-// continua funcionando, só não lembra dos salvos/interesses ao recarregar.
-function ler<T>(user: UserProfile | null, chave: (userKey: string) => string, padrao: T): T {
-  if (!user) return padrao;
-  try {
-    const bruto = localStorage.getItem(chave(chaveUsuario(user)));
-    return bruto ? (JSON.parse(bruto) as T) : padrao;
-  } catch {
-    return padrao;
-  }
-}
-
-function gravar(user: UserProfile | null, chave: (userKey: string) => string, valor: unknown) {
-  if (!user) return;
-  try {
-    localStorage.setItem(chave(chaveUsuario(user)), JSON.stringify(valor));
-  } catch {
-    // ver comentário em ler()
-  }
-}
-
-const lerInteresses = (user: UserProfile | null) => ler<InteressesSalvos>(user, chaveInteresses, {});
-const lerSalvos = (user: UserProfile | null) => ler<string[]>(user, chaveSalvos, []);
-
-interface RecommendationResponse {
-  startupId?: unknown;
-  scoreFinal?: unknown;
-  classification?: unknown;
-}
-
-function mapearRecomendacao(data: RecommendationResponse): InvestidorRecomendado | null {
-  if (typeof data.startupId !== "string" || !data.startupId) return null;
-  const score = typeof data.scoreFinal === "number" ? data.scoreFinal : 0;
-  const classification = typeof data.classification === "string" ? data.classification : "Recomendado";
-  const investidor: InvestidorDescoberta = {
-    id: data.startupId,
-    nome: `Startup ${data.startupId.slice(0, 8)}`,
-    tipo: "Ambos",
-    cidade: "",
-    uf: "",
-    verificado: false,
-    tese: classification,
-    segmentosInteresse: [],
-    estagiosInteresse: [],
-    ticketMin: null,
-    ticketMax: null,
-    regioesInteresse: [],
-    disponibilidade: "Média",
-    portfolio: 0,
-    bio: "",
-    tesePrincipal: classification,
-    buscaEmStartups: [],
-    comoApoia: [],
-    desde: new Date().getFullYear(),
-    portfolioPortoDigital: 0,
-    tempoResposta: "",
-    interesseReciproco: false,
-  };
-  return {
-    investidor,
-    compatibilidade: {
-      total: score,
-      notas: { segmento: score, estagio: score, ticket: score, regiao: score, disponibilidade: score },
-    },
-    statusInteresse: "nenhum",
-    salvo: false,
-  };
-}
-
-// "Recife, PE" / "Recife - PE" / "Recife/PE" → cidade e UF
-function normalizar(texto: string) {
-  return texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-}
-
-// Filtro puro, usado também pelas telas para filtrar no cliente a cada tecla
+// Filtro puro sobre a lista já carregada: as telas filtram no cliente a cada
+// tecla, sem buscar de novo
 export function aplicarFiltrosInvestidores(lista: InvestidorRecomendado[], filtros: FiltrosInvestidores) {
-  const termo = normalizar(filtros.busca?.trim() ?? "");
+  const termo = normalizarBusca(filtros.busca?.trim() ?? "");
   return lista.filter(({ investidor }) => {
     if (filtros.segmento && !investidor.segmentosInteresse.includes(filtros.segmento)) return false;
     if (filtros.tipo && investidor.tipo !== filtros.tipo && investidor.tipo !== "Ambos") return false;
@@ -138,107 +51,106 @@ export function aplicarFiltrosInvestidores(lista: InvestidorRecomendado[], filtr
       ...investidor.segmentosInteresse,
       ...investidor.estagiosInteresse,
     ].join(" ");
-    return normalizar(alvo).includes(termo);
+    return normalizarBusca(alvo).includes(termo);
   });
 }
 
+// Topo da aba: dados do perfil da startup logada (perfil do back e respostas
+// do onboarding)
 export async function obterResumoStartup(user: UserProfile | null): Promise<ResumoStartupInvestidores> {
   const { dados } = await obterContextoStartup(user);
   const capital = dados.capitalProcurado;
-  const percentual = Math.round((CAPTACAO_MOCK.captado / CAPTACAO_MOCK.meta) * 100);
   return {
     segmento: dados.segmento,
     estagio: dados.estagio,
     capitalProcurado: capital === null ? null : typeof capital === "number" ? formatarMoeda(capital) : capital,
-    captacao: `${percentual}% de ${formatarMoeda(CAPTACAO_MOCK.meta)}`,
   };
 }
 
 export async function listarInvestidoresRecomendados(
-  user: UserProfile | null,
+  _user: UserProfile | null,
   filtros: FiltrosInvestidores = {},
 ): Promise<InvestidorRecomendado[]> {
-  void user;
-  const response = await api.get<RecommendationResponse[]>(
-    `/api/scorecard/recommendations?investorId=${INVESTOR_ID}&limit=10`,
+  const itens = await buscarDescoberta(CAMINHO_LISTA, {
+    busca: filtros.busca,
+    segmento: filtros.segmento,
+    tipo: filtros.tipo,
+  });
+  return comPopularidade(itens.map(investidorRecomendadoDoBack), (item) => item.investidor.id);
+}
+
+export async function obterInvestidor(_user: UserProfile | null, id: string): Promise<InvestidorDetalhe | null> {
+  const userId = paraIdDoBack(id);
+  if (userId === null) return null;
+  const item = await buscarDetalhe(`${CAMINHO_LISTA}/${userId}`);
+  if (!item) return null;
+  // Abriu o perfil: feedback VIEWED, sem esperar e sem erro na tela
+  void enviarFeedback(item.scorecard, "VIEWED");
+  const [comSelo] = await comPopularidade([investidorRecomendadoDoBack(item)], (rec) => rec.investidor.id);
+  return { ...comSelo, motivos: motivosDoBack(item, "startup") };
+}
+
+function idObrigatorio(id: string): number {
+  const userId = paraIdDoBack(id);
+  if (userId === null) throw new Error("Perfil não encontrado.");
+  return userId;
+}
+
+export async function salvarInvestidor(_user: UserProfile | null, id: string): Promise<void> {
+  await api.put(`/api/saved/${idObrigatorio(id)}`);
+}
+
+export async function removerSalvo(_user: UserProfile | null, id: string): Promise<void> {
+  await api.delete(`/api/saved/${idObrigatorio(id)}`);
+}
+
+export async function listarSalvos(_user: UserProfile | null): Promise<InvestidorRecomendado[]> {
+  const { data } = await api.get<ConexaoBack[]>("/api/saved");
+  return comPopularidade(
+    data.filter((conexao) => conexao.role === "INVESTOR").map(investidorDeConexao),
+    (item) => item.investidor.id,
   );
-  const recomendacoes = response.data
-    .map(mapearRecomendacao)
-    .filter((item): item is InvestidorRecomendado => item !== null);
-  return aplicarFiltrosInvestidores(recomendacoes, filtros);
 }
 
-export async function obterInvestidor(user: UserProfile | null, id: string): Promise<InvestidorDetalhe | null> {
-  void user;
-  void id;
-  return null;
+async function listarMatches(): Promise<ConexaoBack[]> {
+  const { data } = await api.get<ConexaoBack[]>("/api/interests/matches");
+  return data.filter((conexao) => conexao.role === "INVESTOR");
 }
 
-export async function salvarInvestidor(user: UserProfile | null, id: string): Promise<void> {
-  const salvos = lerSalvos(user);
-  if (!salvos.includes(id)) gravar(user, chaveSalvos, [...salvos, id]);
-}
-
-export async function removerSalvo(user: UserProfile | null, id: string): Promise<void> {
-  gravar(
-    user,
-    chaveSalvos,
-    lerSalvos(user).filter((salvo) => salvo !== id),
-  );
-}
-
-export async function listarSalvos(user: UserProfile | null): Promise<InvestidorRecomendado[]> {
-  const recomendacoes = await listarInvestidoresRecomendados(user);
-  const salvos = lerSalvos(user);
-  return recomendacoes.filter((item) => salvos.includes(item.investidor.id));
-}
-
-// Investidores com match ("Meus unios")
-export async function listarUnios(user: UserProfile | null): Promise<InvestidorRecomendado[]> {
-  const recomendacoes = await listarInvestidoresRecomendados(user);
-  const interesses = lerInteresses(user);
-  return recomendacoes.filter((item) => interesses[item.investidor.id] === "match");
+export async function listarUnios(_user: UserProfile | null): Promise<InvestidorRecomendado[]> {
+  const matches = await listarMatches();
+  return comPopularidade(matches.map(investidorDeConexao), (item) => item.investidor.id);
 }
 
 export async function obterStatusInteresse(user: UserProfile | null, id: string): Promise<StatusInteresse> {
-  return lerInteresses(user)[id] ?? "nenhum";
+  const investidor = await obterInvestidor(user, id);
+  return investidor?.statusInteresse ?? "nenhum";
 }
 
-// A startup demonstra interesse. Se o investidor já tinha demonstrado
-// interesse nela, vira match na hora; senão, fica "enviado".
-export async function registrarInteresse(user: UserProfile | null, id: string): Promise<StatusInteresse> {
-  void user;
-  throw new Error(`Investidor não encontrado: ${id}`);
+export async function registrarInteresse(
+  _user: UserProfile | null,
+  id: string,
+  scorecard?: RefScorecard | null,
+): Promise<StatusInteresse> {
+  const { data } = await api.put<InteresseBack>(`/api/interests/${idObrigatorio(id)}`);
+  void enviarFeedback(scorecard, "INTERESTED");
+  return statusDoInteresseEnviado(data);
 }
 
-// Só dá para desfazer enquanto o investidor não respondeu
-export async function desfazerInteresse(user: UserProfile | null, id: string): Promise<StatusInteresse> {
-  const interesses = lerInteresses(user);
-  if (interesses[id] !== "enviado") return interesses[id] ?? "nenhum";
-  const restantes = { ...interesses };
-  delete restantes[id];
-  gravar(user, chaveInteresses, restantes);
-  return "nenhum";
+export async function desfazerInteresse(_user: UserProfile | null, id: string): Promise<StatusInteresse> {
+  const { data } = await api.delete<RetiradaInteresseBack>(`/api/interests/${idObrigatorio(id)}`);
+  return statusInteresseDoBack(data.status);
 }
 
-// Contato do investidor: só existe para quem deu match (garantido aqui, não
-// só na tela). Devolve apenas canais válidos.
-export async function obterContato(user: UserProfile | null, id: string): Promise<DadosUnio | null> {
-  if (!user || lerInteresses(user)[id] !== "match") return null;
-  return { contato: contatoValido(CONTATOS_INVESTIDORES[id]), matchEm: unioLocal.dataDoMatch(chaveUsuario(user), id) };
+export async function obterContato(_user: UserProfile | null, id: string): Promise<DadosUnio | null> {
+  const userId = paraIdDoBack(id);
+  if (userId === null) return null;
+  const conexao = (await listarMatches()).find((item) => item.userId === userId);
+  return conexao ? contatoDeConexao(conexao) : null;
 }
 
-// Desfaz o match: o status volta para "nenhum" e o unio sai da lista
-export async function desfazerMatch(user: UserProfile | null, id: string): Promise<StatusInteresse> {
-  const interesses = lerInteresses(user);
-  if (!user || interesses[id] !== "match") return interesses[id] ?? "nenhum";
-  const restantes = { ...interesses };
-  delete restantes[id];
-  gravar(user, chaveInteresses, restantes);
-  unioLocal.desfazer(chaveUsuario(user), id);
-  return "nenhum";
+export async function desfazerMatch(_user: UserProfile | null, id: string): Promise<ResultadoDesfazerMatch> {
+  const { data } = await api.delete<RetiradaInteresseBack>(`/api/interests/${idObrigatorio(id)}`);
+  return { status: statusInteresseDoBack(data.status), reunioesCanceladas: data.canceledMeetings };
 }
 
-export async function registrarEvento(user: UserProfile | null, id: string, tipo: TipoEventoUnio): Promise<void> {
-  if (user) unioLocal.registrarEvento(chaveUsuario(user), id, tipo);
-}

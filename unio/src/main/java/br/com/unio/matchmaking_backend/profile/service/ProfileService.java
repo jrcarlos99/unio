@@ -5,8 +5,6 @@ import br.com.unio.matchmaking_backend.auth.entity.User;
 import br.com.unio.matchmaking_backend.auth.repository.UserRepository;
 import br.com.unio.matchmaking_backend.auth.service.AuthUser;
 import br.com.unio.matchmaking_backend.profile.dto.InvestorCreateRequest;
-import br.com.unio.matchmaking_backend.profile.dto.PublicInvestorProfileResponse;
-import br.com.unio.matchmaking_backend.profile.dto.PublicStartupProfileResponse;
 import br.com.unio.matchmaking_backend.profile.dto.StartupCreateRequest;
 import br.com.unio.matchmaking_backend.profile.entity.DisponibilidadeMentoria;
 import br.com.unio.matchmaking_backend.profile.entity.Investor;
@@ -36,6 +34,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class ProfileService {
 
+    static final String PERFIL_RISCO_PADRAO = "Investidor Anjo";
+
     private final UserRepository userRepository;
     private final StartupRepository startupRepository;
     private final InvestorRepository investorRepository;
@@ -56,55 +56,6 @@ public class ProfileService {
             case INVESTOR -> buildInvestorProfile(user);
             case ADMIN -> buildUserSummary(user);
         };
-    }
-
-    @Transactional(readOnly = true)
-    public PublicStartupProfileResponse getPublicStartup(Long id) {
-        Startup startup = startupRepository.findById(id)
-                .filter(profile -> !profile.getUser().isDeleted())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Perfil Startup não encontrado"));
-
-        User user = startup.getUser();
-        return PublicStartupProfileResponse.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .createdAt(user.getCreatedAt())
-                .nome(startup.getNome())
-                .segmento(startup.getSegmento())
-                .estagio(startup.getEstagio())
-                .localizacao(startup.getLocalizacao())
-                .modeloNegocio(startup.getModeloNegocio())
-                .mercadoAlvo(startup.getMercadoAlvo())
-                .capitalProcurado(startup.getCapitalProcurado())
-                .pitchCanvas(startup.getPitchCanvas())
-                .pitchFileUrl(startup.getPitchFileUrl())
-                .disponibilidade(startup.getDisponibilidade())
-                .disponibilidadeObservacao(startup.getDisponibilidadeObservacao())
-                .build();
-    }
-
-    @Transactional(readOnly = true)
-    public PublicInvestorProfileResponse getPublicInvestor(Long id) {
-        Investor investor = investorRepository.findById(id)
-                .filter(profile -> !profile.getUser().isDeleted())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Perfil Investor não encontrado"));
-
-        User user = investor.getUser();
-        return PublicInvestorProfileResponse.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .createdAt(user.getCreatedAt())
-                .segmentosInteresse(parseStringList(investor.getSegmentosInteresse()))
-                .estagiosInteresse(parseStringList(investor.getEstagiosInteresse()))
-                .ticketMinimo(investor.getTicketMinimo())
-                .ticketMaximo(investor.getTicketMaximo())
-                .regiaoInteresse(investor.getRegiaoInteresse())
-                .perfilRisco(investor.getPerfilRisco())
-                .disponibilidade(investor.getDisponibilidade())
-                .disponibilidadeObservacao(investor.getDisponibilidadeObservacao())
-                .build();
     }
 
     @Transactional
@@ -214,7 +165,10 @@ public class ProfileService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Perfil Investor já existe");
         }
 
-        if (request.getTicketMinimo().compareTo(request.getTicketMaximo()) > 0) {
+        // Tickets são opcionais (D029): só dá para comparar quando os dois vêm preenchidos
+        BigDecimal ticketMinimo = request.getTicketMinimo();
+        BigDecimal ticketMaximo = request.getTicketMaximo();
+        if (ticketMinimo != null && ticketMaximo != null && ticketMinimo.compareTo(ticketMaximo) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Ticket mínimo não pode ser maior que ticket máximo");
         }
@@ -223,10 +177,10 @@ public class ProfileService {
                 .user(user)
                 .segmentosInteresse(asCsv(request.getSegmentosInteresse()))
                 .estagiosInteresse(asCsv(request.getEstagiosInteresse()))
-                .ticketMinimo(request.getTicketMinimo())
-                .ticketMaximo(request.getTicketMaximo())
+                .ticketMinimo(ticketMinimo)
+                .ticketMaximo(ticketMaximo)
                 .regiaoInteresse(request.getRegiaoInteresse())
-                .perfilRisco(request.getPerfilRisco())
+                .perfilRisco(perfilRiscoOuPadrao(request.getPerfilRisco()))
                 .disponibilidade(request.getDisponibilidade())
                 .disponibilidadeObservacao(request.getDisponibilidadeObservacao())
                 .build();
@@ -367,6 +321,14 @@ public class ProfileService {
             users.add(buildUserSummary(user));
         }
         return users;
+    }
+
+    // D030: perfilRisco vazio vira "Investidor Anjo" no cadastro. Desde a D047 o
+    // ScorePersistenceService escolhe a política pelo perfilRisco ("Mentor",
+    // "Capital de risco"/"Venture capital", o resto é ANGEL_INVESTOR) e também
+    // trata nulo ou em branco como ANGEL_INVESTOR.
+    private String perfilRiscoOuPadrao(String perfilRisco) {
+        return perfilRisco == null || perfilRisco.isBlank() ? PERFIL_RISCO_PADRAO : perfilRisco.trim();
     }
 
     private BigDecimal parseBigDecimal(Object rawValue) {
