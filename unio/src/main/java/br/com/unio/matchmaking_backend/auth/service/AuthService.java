@@ -7,9 +7,11 @@ import br.com.unio.matchmaking_backend.auth.entity.User;
 import br.com.unio.matchmaking_backend.auth.repository.UserRepository;
 import br.com.unio.matchmaking_backend.consent.entity.ConsentRecord;
 import br.com.unio.matchmaking_backend.consent.repository.ConsentRecordRepository;
+import br.com.unio.matchmaking_backend.moderation.service.AccountModerationGate;
 import java.time.Instant;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,6 +32,14 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+
+    // D063: moderação de cadastros. Opcional (setter) para não mudar o construtor.
+    private AccountModerationGate moderationGate;
+
+    @Autowired(required = false)
+    public void setModerationGate(AccountModerationGate moderationGate) {
+        this.moderationGate = moderationGate;
+    }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -67,6 +77,10 @@ public class AuthService {
                 .acceptedTerms(Boolean.TRUE.equals(request.getAcceptedTerms()))
                 .acceptedAt(Instant.now())
                 .build());
+        // D063: com cadastro-requer-aprovacao=true a conta nova fica PENDENTE; com false, nada muda
+        if (moderationGate != null) {
+            moderationGate.onAccountCreated(savedUser);
+        }
 
         String token = jwtService.generateToken(savedUser);
         return AuthResponse.builder()
@@ -94,6 +108,10 @@ public class AuthService {
 
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_CREDENTIALS));
+        // D063: conta recusada ou suspensa responde 403 depois da senha conferida; as demais seguem iguais
+        if (moderationGate != null) {
+            moderationGate.checkLogin(user);
+        }
 
         String token = jwtService.generateToken(user);
         return AuthResponse.builder()

@@ -14,9 +14,8 @@ import {
 // exigem ADMIN (SecurityConfig: /api/admin/** hasRole ADMIN).
 // - Visão geral: GET /api/admin/metrics.
 // - Log de auditoria: GET /api/admin/audit (as 50 mais recentes).
-// - Cadastros: GET /api/admin/users. Aprovar e rejeitar não têm endpoint no
-//   back, então a tela só lista (sem botões que não salvam).
-// - Moderação de conteúdo: sem endpoint; a tela mostra "ainda não disponível".
+// - Usuários: GET /api/admin/users (lista simples, sem a moderação).
+// - Moderação de cadastros e de conteúdo: moderacaoService.ts (D063, ADR-013).
 
 export async function obterVisaoGeralAdmin(): Promise<VisaoGeralAdmin> {
   const { data } = await api.get<MetricasAdminBack>("/api/admin/metrics");

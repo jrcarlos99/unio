@@ -53,7 +53,11 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
       <SocialButtons />
       <p className="mb-4 text-xs text-deepgreen">ou entre com e-mail e senha</p>
-      {erroApi && <p className="mb-3 text-xs text-red-600">{erroApi}</p>}
+      {erroApi && (
+        <p role="alert" className="mb-3 text-xs text-red-700">
+          {erroApi}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} noValidate className="text-left">
         <AuthInput

@@ -19,6 +19,7 @@ import br.com.unio.matchmaking_backend.consent.repository.ConsentRecordRepositor
 import br.com.unio.matchmaking_backend.interest.repository.UserSavedRepository;
 import br.com.unio.matchmaking_backend.interest.service.InterestService;
 import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
+import br.com.unio.matchmaking_backend.moderation.repository.StartupPitchPublicationRepository;
 import br.com.unio.matchmaking_backend.onboarding.repository.UserOnboardingRepository;
 import br.com.unio.matchmaking_backend.onboarding.service.OnboardingService;
 import br.com.unio.matchmaking_backend.popularity.repository.ProfileViewRepository;
@@ -42,6 +43,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -88,6 +90,14 @@ public class DataPrivacyService {
 
     @Value("${app.upload.dir:./uploads/pitch/}")
     private String uploadDirectory;
+
+    // D063: pitch publicado. Opcional (setter) para o construtor não mudar.
+    private StartupPitchPublicationRepository pitchPublicationRepository;
+
+    @Autowired(required = false)
+    public void setPitchPublicationRepository(StartupPitchPublicationRepository pitchPublicationRepository) {
+        this.pitchPublicationRepository = pitchPublicationRepository;
+    }
 
     // ============================================================
     // Exportação (portabilidade / acesso)
@@ -149,6 +159,10 @@ public class DataPrivacyService {
         startupRepository.findById(userId).ifPresent(startupRepository::delete);
         investorRepository.findById(userId).ifPresent(investorRepository::delete);
         onboardingRepository.findById(userId).ifPresent(onboardingRepository::delete);
+        // D063: as cópias publicadas do pitch e do Lean Canvas saem junto com o onboarding
+        if (pitchPublicationRepository != null) {
+            pitchPublicationRepository.deleteByUserId(userId);
+        }
         passwordResetTokenRepository.deleteByUser(user);
 
         consentRecordRepository.findByUserId(userId).ifPresent(consent -> {

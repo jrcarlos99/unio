@@ -117,13 +117,34 @@ export function usuarioDoBack(usuario: UsuarioAdminBack): UsuarioCadastrado {
   };
 }
 
-// "BOOTSTRAP_ADMIN em User 12 (detalhes)"
-export function logDoBack(entrada: AuditLogBack): LogEntry {
-  const data = new Date(entrada.createdAt);
+// Ações de moderação (D063 do back, ADR-013) em português; o número é o id
+// da conta ou do envio de pitch
+const ACOES_MODERACAO: Record<string, string> = {
+  MODERACAO_CONTA_APROVADA: "Aprovou o cadastro da conta",
+  MODERACAO_CONTA_RECUSADA: "Recusou o cadastro da conta",
+  MODERACAO_CONTA_SUSPENSA: "Suspendeu a conta",
+  MODERACAO_CONTA_REATIVADA: "Reativou a conta",
+  MODERACAO_PITCH_APROVADO: "Aprovou o envio de pitch",
+  MODERACAO_PITCH_REMOVIDO: "Removeu o envio de pitch",
+};
+
+function textoDaAcao(entrada: AuditLogBack): string {
+  const moderacao = ACOES_MODERACAO[entrada.action];
+  if (moderacao) {
+    // "Suspendeu a conta 12. Situação anterior: APROVADO. Nova situação: SUSPENSO. Motivo: spam."
+    const titulo = [moderacao, entrada.entityId].filter(Boolean).join(" ");
+    return entrada.details ? `${titulo}. ${entrada.details}` : titulo;
+  }
+  // "BOOTSTRAP_ADMIN em User 12 (detalhes)"
   const alvo = [entrada.entityType, entrada.entityId].filter(Boolean).join(" ");
-  const acao = [entrada.action, alvo ? `em ${alvo}` : "", entrada.details ? `(${entrada.details})` : ""]
+  return [entrada.action, alvo ? `em ${alvo}` : "", entrada.details ? `(${entrada.details})` : ""]
     .filter(Boolean)
     .join(" ");
+}
+
+export function logDoBack(entrada: AuditLogBack): LogEntry {
+  const data = new Date(entrada.createdAt);
+  const acao = textoDaAcao(entrada);
   return {
     id: String(entrada.id),
     dataHora: Number.isNaN(data.getTime()) ? entrada.createdAt : data.toLocaleString("pt-BR"),

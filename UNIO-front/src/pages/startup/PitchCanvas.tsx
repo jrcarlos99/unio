@@ -19,11 +19,12 @@ import { LEAN_CANVAS_FIELDS, formatUpdatedAt, parseVideoUrl } from "../../utils/
 
 const TABS_ID = "pitch-tabs";
 
-const PHASE_MESSAGE: Record<SubmitPhase, string> = {
-  idle: "",
-  saving: "Salvando alterações…",
-  publishing: "Enviando para moderação…",
-};
+// Labels follow unio.moderation.pitch-requer-aprovacao (ADR-013)
+function phaseMessage(phase: SubmitPhase, requiresApproval: boolean): string {
+  if (phase === "saving") return "Salvando alterações…";
+  if (phase === "publishing") return requiresApproval ? "Enviando para revisão…" : "Publicando…";
+  return "";
+}
 
 function profileText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -55,7 +56,8 @@ export default function PitchCanvas() {
   const startupName = profileText(user?.nome);
   const sector = profileText(user?.segmento);
 
-  const { pitch, values, errors, phase } = editor;
+  const { pitch, values, errors, phase, requiresApproval } = editor;
+  const publishLabel = requiresApproval ? "Enviar para publicação" : "Publicar";
   const updatedAt = formatUpdatedAt(pitch?.updatedAt ?? null);
   const video = values ? parseVideoUrl(values.videoUrl) : null;
 
@@ -88,7 +90,7 @@ export default function PitchCanvas() {
         />
 
         <div className="mt-4 space-y-4">
-          <ModerationBanner />
+          <ModerationBanner publication={editor.publication} />
           {editor.publishPending && (
             <PublishPendingAlert
               reason={editor.publishError}
@@ -157,7 +159,7 @@ export default function PitchCanvas() {
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-bold text-deepgreen sm:text-4xl">Pitch &amp; Lean Canvas</h1>
             {pitch && <PitchStatusBadge status={pitch.status} />}
-            {editor.isDirty && (
+            {(editor.isDirty || editor.isOutdated) && (
               <span className={`${CHIP} border border-deepgreen/30 bg-white text-deepgreen`}>
                 Alterações não publicadas
               </span>
@@ -190,7 +192,7 @@ export default function PitchCanvas() {
               className={PRIMARY_BUTTON}
             >
               <Check size={18} aria-hidden="true" />
-              {phase === "idle" ? "Publicar alterações" : PHASE_MESSAGE[phase]}
+              {phase === "idle" ? publishLabel : phaseMessage(phase, requiresApproval)}
             </button>
           </div>
         )}
@@ -198,7 +200,7 @@ export default function PitchCanvas() {
 
       {/* Progress of save/publish for screen readers; results go to the toasts */}
       <p className="sr-only" role="status" aria-live="polite">
-        {PHASE_MESSAGE[phase]}
+        {phaseMessage(phase, requiresApproval)}
       </p>
 
       {content}

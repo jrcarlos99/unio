@@ -3,13 +3,13 @@ import { CHIP } from "./styles";
 
 const STATUS: Record<PitchStatus, { label: string; badge: string; dot: string }> = {
   DRAFT: { label: "Rascunho", badge: "bg-lightgray text-deepgreen", dot: "bg-deepgreen/50" },
-  IN_REVIEW: { label: "Em moderação", badge: "bg-sage/30 text-deepgreen ring-1 ring-sage", dot: "bg-deepgreen" },
+  IN_REVIEW: { label: "Em revisão", badge: "bg-sage/30 text-deepgreen ring-1 ring-sage", dot: "bg-deepgreen" },
   PUBLISHED: { label: "Publicado", badge: "bg-deepgreen text-white", dot: "bg-sage" },
   // Same red as the error toasts and field errors of the app
-  REJECTED: { label: "Rejeitado", badge: "bg-red-50 text-red-800 ring-1 ring-red-200", dot: "bg-red-600" },
+  REJECTED: { label: "Removido pela moderação", badge: "bg-red-50 text-red-800 ring-1 ring-red-200", dot: "bg-red-600" },
 };
 
-// Status of the pitch from the API. The dot is decorative; the text says it.
+// Status of the last submission (GET /api/profile/startup/pitch/publication). The dot is decorative; the text says it.
 export default function PitchStatusBadge({ status }: { status: PitchStatus }) {
   const { label, badge, dot } = STATUS[status];
   return (

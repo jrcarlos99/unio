@@ -1,4 +1,4 @@
-import type { StartupPitch, UpdatePitchRequest } from "../types/pitch";
+import type { PitchPublication, StartupPitch, UpdatePitchRequest } from "../types/pitch";
 import {
   PITCH_STORAGE_KEY,
   PitchStorageError,
@@ -7,21 +7,28 @@ import {
   toStoredPitch,
 } from "../utils/pitch";
 import { AnswersTooLargeError, readAnswers, updateAnswers } from "./onboardingAnswersStore";
+import { enviarPublicacao, obterMinhaPublicacao } from "./pitchPublicacaoService";
 
 // Single data access point for the "Pitch & Lean Canvas" page.
 //
-// The backend has no pitch endpoint, so the page is stored in the free-form
-// answers of GET/PUT /api/profile/onboarding (same as team, documents and
-// visibility): the short pitch in respostas.pitch, the key the onboarding
-// fills and the matchmaking reads, and the rest in respostas.pitchLeanCanvas.
+// The draft lives in the free-form answers of GET/PUT /api/profile/onboarding
+// (same as team, documents and visibility): the short pitch in
+// respostas.pitch, the key the onboarding fills and the matchmaking reads,
+// and the rest in respostas.pitchLeanCanvas.
 //
-// TODO(api): there is no content moderation in the backend yet, so
-// publishing marks the pitch as PUBLISHED right away instead of IN_REVIEW.
+// Publishing is POST /api/profile/startup/pitch/publication (D063 of the
+// backend, ADR-013): the backend copies what is saved in the answers, so the
+// page always saves first. The status shown (in review, published, removed)
+// comes from the last submission, never from the answers.
 
 const STORAGE_FULL = "Não há espaço para salvar o pitch. Encurte os blocos do canvas ou libere espaço nas abas Equipe ou Documentos.";
 
 function pitchOf(answers: Record<string, unknown>): StartupPitch {
   return parseStoredPitch(answers[SHORT_PITCH_STORAGE_KEY], answers[PITCH_STORAGE_KEY]);
+}
+
+function withPublication(pitch: StartupPitch, publication: PitchPublication): StartupPitch {
+  return { ...pitch, status: publication.status, publication };
 }
 
 async function savePitch(update: (current: StartupPitch) => Record<string, unknown>): Promise<StartupPitch> {
@@ -35,20 +42,24 @@ async function savePitch(update: (current: StartupPitch) => Record<string, unkno
 }
 
 export async function getMyPitch(): Promise<StartupPitch> {
-  return pitchOf(await readAnswers());
+  const [answers, publication] = await Promise.all([readAnswers(), obterMinhaPublicacao()]);
+  return withPublication(pitchOf(answers), publication);
 }
 
-// Saves the changes as a draft; the startup still has to publish them
-export async function updateMyPitch(body: UpdatePitchRequest): Promise<StartupPitch> {
-  return savePitch(() => ({
+// Saves the changes as a draft; the startup still has to submit them. The
+// status of the last submission is kept.
+export async function updateMyPitch(body: UpdatePitchRequest, publication: PitchPublication | null): Promise<StartupPitch> {
+  const saved = await savePitch(() => ({
     [SHORT_PITCH_STORAGE_KEY]: body.shortPitch,
     [PITCH_STORAGE_KEY]: toStoredPitch(body, "DRAFT"),
   }));
+  return publication ? withPublication(saved, publication) : saved;
 }
 
+// Submits what is saved: IN_REVIEW, or PUBLISHED when the backend does not
+// require approval
 export async function publishMyPitch(): Promise<StartupPitch> {
-  return savePitch((current) => {
-    if (!current.shortPitch.trim()) throw new PitchStorageError("Escreva o pitch curto para publicar.");
-    return { [PITCH_STORAGE_KEY]: toStoredPitch(current, "PUBLISHED") };
-  });
+  const pitch = pitchOf(await readAnswers());
+  if (!pitch.shortPitch.trim()) throw new PitchStorageError("Escreva o pitch curto para publicar.");
+  return withPublication(pitch, await enviarPublicacao());
 }

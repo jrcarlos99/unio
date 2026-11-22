@@ -2,7 +2,7 @@ import { RotateCw, TriangleAlert } from "lucide-react";
 import { OUTLINE_BUTTON } from "./styles";
 
 interface PublishPendingAlertProps {
-  // Reason returned by the API for the failed POST /publish
+  // Reason returned by the API for the failed POST .../pitch/publication
   reason: string | null;
   // New edits after the save: retrying only the POST would skip them
   hasNewChanges: boolean;
@@ -10,8 +10,8 @@ interface PublishPendingAlertProps {
   onRetry: () => void;
 }
 
-// Shown when the PUT worked but the POST /publish failed: the changes are
-// saved, but not submitted for review yet.
+// Shown when the PUT worked but the POST .../pitch/publication failed: the
+// changes are saved, but not submitted yet.
 export default function PublishPendingAlert({ reason, hasNewChanges, retrying, onRetry }: PublishPendingAlertProps) {
   return (
     <div
@@ -21,10 +21,10 @@ export default function PublishPendingAlert({ reason, hasNewChanges, retrying, o
       <div className="flex items-start gap-2">
         <TriangleAlert size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
         <div>
-          <p className="font-semibold">Suas alterações foram salvas, mas não foram enviadas para moderação.</p>
+          <p className="font-semibold">Suas alterações foram salvas, mas não foram enviadas para publicação.</p>
           {reason && <p className="mt-0.5">{reason}</p>}
           {hasNewChanges && (
-            <p className="mt-0.5">Você fez novas alterações: use “Publicar alterações” para salvar e enviar tudo.</p>
+            <p className="mt-0.5">Você fez novas alterações. Envie de novo para salvar e enviar tudo.</p>
           )}
         </div>
       </div>

@@ -24,7 +24,7 @@ export type SubmitPhase = "idle" | "saving" | "publishing";
 
 const LOAD_ERROR = "Não foi possível carregar seu pitch.";
 const SAVE_ERROR = "Não foi possível salvar as alterações. Tente novamente.";
-const PUBLISH_ERROR = "Não foi possível enviar para moderação.";
+const PUBLISH_ERROR = "Não foi possível enviar o pitch para publicação.";
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof PitchStorageError ? error.message : getApiErrorMessage(error, fallback);
@@ -33,10 +33,11 @@ function errorMessage(error: unknown, fallback: string) {
 // State and actions of the "Pitch & Lean Canvas" page.
 //
 // The edited values live in `draft` only after the first change; until then
-// the form shows the loaded pitch. "Publicar alterações" = PUT (only when
-// there are changes) followed by POST /publish. If the PUT works and the
-// POST fails, the form is kept as is and `publishPending` lets the user
-// retry just the POST.
+// the form shows the loaded pitch. "Enviar para publicação" = PUT of the
+// onboarding answers (only when there are changes) followed by
+// POST /api/profile/startup/pitch/publication, which copies what was saved
+// (ADR-013). If the PUT works and the POST fails, the form is kept as is and
+// `publishPending` lets the user retry just the POST.
 export function usePitchEditor() {
   const { mostrar } = useToast();
   const { carregando, erro, dados: pitch, recarregar, alterarDados } = useCarregamento(getMyPitch, LOAD_ERROR);
@@ -53,6 +54,16 @@ export function usePitchEditor() {
   const values = draft ?? saved;
   const isDirty = draft !== null && saved !== null && !haveSameContent(draft, saved);
   const isBusy = phase !== "idle";
+  const publication = pitch?.publication ?? null;
+  const requiresApproval = publication?.requiresApproval ?? true;
+
+  // Saved content differs from the last submission (e.g. the short pitch was
+  // changed in the onboarding): there is something new to submit
+  const submitted = useMemo<PitchFormValues | null>(() => {
+    const content = publication?.content;
+    return content ? { shortPitch: content.shortPitch, videoUrl: content.videoUrl ?? "", leanCanvas: content.leanCanvas } : null;
+  }, [publication]);
+  const isOutdated = saved !== null && submitted !== null && !haveSameContent(saved, submitted);
 
   const errors = useMemo<PitchFormErrors>(() => (values ? validatePitchForm(values) : {}), [values]);
 
@@ -94,7 +105,12 @@ export function usePitchEditor() {
       setPublishError(null);
       setSubmitAttempted(false);
       setTouched(new Set());
-      mostrar("Alterações enviadas para moderação.", "sucesso");
+      mostrar(
+        published.status === "PUBLISHED"
+          ? "Pitch publicado. Os investidores já podem ver."
+          : "Pitch enviado para revisão da moderação.",
+        "sucesso",
+      );
     } catch (error) {
       setPublishPending(true);
       setPublishError(errorMessage(error, PUBLISH_ERROR));
@@ -119,7 +135,7 @@ export function usePitchEditor() {
     if (isDirty) {
       setPhase("saving");
       try {
-        const updated = await updateMyPitch(toUpdateRequest(values));
+        const updated = await updateMyPitch(toUpdateRequest(values), publication);
         // The draft stays untouched: it now matches the saved pitch, so the
         // form keeps exactly what the user typed and is no longer dirty.
         alterarDados(() => updated);
@@ -131,7 +147,7 @@ export function usePitchEditor() {
     }
 
     await submitForReview();
-  }, [alterarDados, isBusy, isDirty, mostrar, submitForReview, values]);
+  }, [alterarDados, isBusy, isDirty, mostrar, publication, submitForReview, values]);
 
   // Only the POST, after a publish whose PUT already worked
   const retryPublish = useCallback(() => {
@@ -148,7 +164,13 @@ export function usePitchEditor() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [shouldWarn]);
 
-  const canPublish = values !== null && !isBusy && (isDirty || publishPending || pitch?.status === "DRAFT");
+  // Nothing new to submit while the last submission is in review or published
+  // with the same content
+  const status = pitch?.status;
+  const canPublish =
+    values !== null &&
+    !isBusy &&
+    (isDirty || publishPending || isOutdated || status === "DRAFT" || status === "REJECTED");
 
   return {
     loading: carregando,
@@ -158,6 +180,9 @@ export function usePitchEditor() {
     values,
     errors: visibleErrors,
     isDirty,
+    isOutdated,
+    publication,
+    requiresApproval,
     phase,
     canPublish,
     publishPending,

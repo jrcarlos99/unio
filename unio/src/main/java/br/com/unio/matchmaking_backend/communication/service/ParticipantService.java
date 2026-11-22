@@ -5,6 +5,7 @@ import br.com.unio.matchmaking_backend.auth.entity.User;
 import br.com.unio.matchmaking_backend.auth.repository.UserRepository;
 import br.com.unio.matchmaking_backend.auth.service.AuthUser;
 import br.com.unio.matchmaking_backend.communication.dto.ParticipantDto;
+import br.com.unio.matchmaking_backend.moderation.service.AccountVisibility;
 import br.com.unio.matchmaking_backend.profile.entity.Startup;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
 import java.util.Objects;
@@ -30,6 +31,14 @@ public class ParticipantService {
     private final UserRepository userRepository;
     private final StartupRepository startupRepository;
     private final MeetingMatchPolicy matchPolicy;
+
+    // D063: moderação de cadastros. Opcional (setter) para os construtores não mudarem.
+    private AccountVisibility accountVisibility;
+
+    @Autowired(required = false)
+    public void setAccountVisibility(AccountVisibility accountVisibility) {
+        this.accountVisibility = accountVisibility;
+    }
 
     /** Sem a regra de match (D051 desligada); usado pelos testes de unidade. */
     public ParticipantService(UserRepository userRepository, StartupRepository startupRepository) {
@@ -112,9 +121,14 @@ public class ParticipantService {
         return matchPolicy.required() ? Optional.of(matchPolicy.matchedUserIds(me.getId())) : Optional.empty();
     }
 
-    /** Usuários anonimizados pela exclusão de conta (T13) deixam de estar ativos. */
+    /**
+     * Usuários anonimizados pela exclusão de conta (T13) deixam de estar ativos. D063: conta
+     * PENDENTE, RECUSADO ou SUSPENSO na moderação também (sai da descoberta, dos perfis
+     * públicos e das contrapartes); conta sem registro de moderação segue igual.
+     */
     public boolean isActive(User user) {
-        return user != null && !user.isDeleted();
+        return user != null && !user.isDeleted()
+                && (accountVisibility == null || !accountVisibility.isHidden(user.getId()));
     }
 
     public ParticipantDto toDto(User user) {

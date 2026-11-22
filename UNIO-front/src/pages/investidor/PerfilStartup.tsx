@@ -3,16 +3,11 @@ import { useParams } from "react-router-dom";
 import {
   BadgeCheck,
   Banknote,
-  ChartPie,
   CircleAlert,
   Info,
-  Lightbulb,
   MapPin,
   SearchX,
   Sparkles,
-  Table2,
-  TrendingUp,
-  TriangleAlert,
 } from "lucide-react";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
 import EsqueletoPerfil from "../../components/discovery/EsqueletoPerfil";
@@ -20,7 +15,7 @@ import FaixaStatusInteresse from "../../components/discovery/FaixaStatusInteress
 import LinkVoltar from "../../components/discovery/LinkVoltar";
 import CompatibilidadeCard from "../../components/discovery/CompatibilidadeCard";
 import InteresseButton from "../../components/discovery/InteresseButton";
-import PitchCanvasCard from "../../components/discovery/PitchCanvasCard";
+import PitchPublicadoSecao from "../../components/discovery/PitchPublicadoSecao";
 import SalvarButton from "../../components/discovery/SalvarButton";
 import SecaoPerfil from "../../components/discovery/SecaoPerfil";
 import StartupLogo from "../../components/discovery/StartupLogo";
@@ -203,21 +198,8 @@ export default function PerfilStartup() {
             </dl>
           </SecaoPerfil>
 
-          {/* Canvas: só aparece quando o back enviar (hoje não envia; ADR-008) */}
-          {startup.canvas && (
-            <SecaoPerfil
-              titulo="Canvas do pitch"
-              icone={Table2}
-              selo={<span className={`${CHIP} bg-lightgray`}>Dossiê UNIO Audit</span>}
-            >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <PitchCanvasCard titulo="Problema" icone={TriangleAlert} texto={startup.canvas.problema} />
-                <PitchCanvasCard titulo="Solução" icone={Lightbulb} texto={startup.canvas.solucao} />
-                <PitchCanvasCard titulo="Mercado" icone={ChartPie} texto={startup.canvas.mercado} />
-                <PitchCanvasCard titulo="Tração" icone={TrendingUp} texto={startup.canvas.tracao} />
-              </div>
-            </SecaoPerfil>
-          )}
+          {/* Pitch e Lean Canvas publicados (GET /api/discovery/startups/{id}/pitch, ADR-013) */}
+          <PitchPublicadoSecao startupId={startup.id} />
 
           <SecaoPerfil titulo="Capital procurado" icone={Banknote}>
             <p className="text-3xl font-bold tracking-tight text-deepgreen">{textoCapital(startup)}</p>

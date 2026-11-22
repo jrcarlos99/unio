@@ -4,6 +4,12 @@
 import type { MetricasAdminBack, AuditLogBack, UsuarioAdminBack } from "../../src/services/admin.mapping.ts";
 import type { PopularityBack } from "../../src/services/avaliacoes.mapping.ts";
 import type { MeetingResponseBack } from "../../src/services/reunioes.mapping.ts";
+import type {
+  ContaModeracaoBack,
+  EnvioPitchBack,
+  PaginaModeracaoBack,
+} from "../../src/services/moderacao.mapping.ts";
+import type { PitchPublicationBack, PublishedPitchBack } from "../../src/services/pitchPublicacao.mapping.ts";
 
 // popularity/dto/PopularityResponse (GET /api/profile/me/popularity)
 export const POPULARIDADE_BACK: PopularityBack = {
@@ -109,3 +115,103 @@ export const USUARIOS_ADMIN_BACK: UsuarioAdminBack[] = [
 export function erroBack(status: number, message: string) {
   return { status, error: "", message, path: "/api/teste" };
 }
+
+// D063: moderation/dto/AccountModerationItem em ModerationPage
+// (GET /api/admin/moderation/accounts)
+export const CONTAS_MODERACAO_BACK: PaginaModeracaoBack<ContaModeracaoBack> = {
+  total: 2,
+  limit: 20,
+  offset: 0,
+  items: [
+    {
+      userId: 12,
+      email: "nova@startup.test",
+      role: "STARTUP",
+      nome: "Tidalog",
+      status: "PENDENTE",
+      reason: null,
+      reviewedBy: null,
+      reviewedAt: null,
+      createdAt: "2026-11-20T10:00:00Z",
+      profileComplete: true,
+    },
+    {
+      userId: 13,
+      email: "anjo@investidor.test",
+      role: "INVESTOR",
+      nome: null,
+      status: "SUSPENSO",
+      reason: "Spam em mensagens",
+      reviewedBy: "admin@unio.test",
+      reviewedAt: "2026-11-21T10:00:00Z",
+      createdAt: "2026-11-02T10:00:00Z",
+      profileComplete: false,
+    },
+  ],
+};
+
+// D063: moderation/dto/PitchModerationItem (GET /api/admin/moderation/content)
+export const ENVIO_PITCH_BACK: EnvioPitchBack = {
+  id: 5,
+  startupId: 12,
+  startupName: "Tidalog",
+  startupEmail: "nova@startup.test",
+  version: 2,
+  status: "EM_REVISAO",
+  reason: null,
+  current: true,
+  submittedAt: "2026-11-22T09:00:00Z",
+  reviewedAt: null,
+  reviewedBy: null,
+  shortPitch: "Logística inteligente para o Nordeste",
+  videoUrl: "https://youtu.be/dQw4w9WgXcQ",
+  leanCanvas: {
+    problem: "Frete caro",
+    solution: "Roteirização com IA",
+    keyMetrics: "",
+    uniqueValueProposition: "Frete mais barato",
+    unfairAdvantage: "",
+    channels: "",
+    customerSegments: "Transportadoras regionais",
+    costStructure: "",
+    revenueStreams: "Assinatura mensal",
+  },
+};
+
+// D063: moderation/dto/PitchPublicationStatusResponse
+// (GET e POST /api/profile/startup/pitch/publication)
+export const PUBLICACAO_REMOVIDA_BACK: PitchPublicationBack = {
+  id: 5,
+  version: 2,
+  status: "REMOVIDO",
+  reason: "Contém telefone pessoal",
+  submittedAt: "2026-11-22T09:00:00Z",
+  reviewedAt: "2026-11-22T10:00:00Z",
+  requiresApproval: true,
+  shortPitch: "Logística inteligente para o Nordeste",
+  videoUrl: null,
+  leanCanvas: ENVIO_PITCH_BACK.leanCanvas,
+};
+
+export const SEM_PUBLICACAO_BACK: PitchPublicationBack = {
+  id: null,
+  version: null,
+  status: null,
+  reason: null,
+  submittedAt: null,
+  reviewedAt: null,
+  requiresApproval: false,
+  shortPitch: null,
+  videoUrl: null,
+  leanCanvas: null,
+};
+
+// D063: moderation/dto/PublishedPitchResponse (GET /api/discovery/startups/{id}/pitch)
+export const PITCH_PUBLICADO_BACK: PublishedPitchBack = {
+  startupId: 12,
+  version: 2,
+  shortPitch: "Logística inteligente para o Nordeste",
+  videoUrl: "https://youtu.be/dQw4w9WgXcQ",
+  leanCanvas: ENVIO_PITCH_BACK.leanCanvas,
+  publishedAt: "2026-11-22T10:00:00Z",
+};

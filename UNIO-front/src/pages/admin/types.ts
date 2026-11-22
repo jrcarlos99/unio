@@ -14,6 +14,67 @@ export interface UsuarioCadastrado {
   excluida: boolean;
 }
 
+// Moderação de cadastros (GET /api/admin/moderation/accounts, D063 do back).
+// Sem registro no back, a conta vale APROVADO.
+export type SituacaoConta = "APROVADO" | "PENDENTE" | "RECUSADO" | "SUSPENSO";
+export type PerfilModerado = "STARTUP" | "INVESTOR";
+export type AcaoConta = "aprovar" | "recusar" | "suspender" | "reativar";
+
+export interface ContaModeracao {
+  id: string;
+  email: string;
+  tipo: TipoConta;
+  // Nome da startup; null para investidor ou startup sem perfil
+  nome: string | null;
+  situacao: SituacaoConta;
+  motivo: string | null;
+  revisadoPor: string | null;
+  revisadoEm: string | null;
+  dataCadastro: string | null;
+  perfilCompleto: boolean;
+}
+
+export interface FiltroContas {
+  situacao: SituacaoConta | "";
+  perfil: PerfilModerado | "";
+  busca: string;
+  deslocamento: number;
+}
+
+// Moderação de conteúdo (GET /api/admin/moderation/content)
+export type SituacaoEnvio = "EM_REVISAO" | "PUBLICADO" | "REMOVIDO";
+
+export interface BlocoCanvas {
+  chave: string;
+  texto: string;
+}
+
+export interface EnvioPitch {
+  id: string;
+  startupId: string;
+  startupNome: string | null;
+  startupEmail: string | null;
+  versao: number;
+  situacao: SituacaoEnvio;
+  motivo: string | null;
+  // false: a startup já mandou um envio mais novo; só o atual aceita ação
+  atual: boolean;
+  enviadoEm: string | null;
+  revisadoEm: string | null;
+  revisadoPor: string | null;
+  pitchCurto: string;
+  videoUrl: string | null;
+  // Os nove blocos, na ordem de leitura do canvas
+  canvas: BlocoCanvas[];
+}
+
+export interface PaginaModeracao<T> {
+  total: number;
+  limite: number;
+  deslocamento: number;
+  itens: T[];
+}
+
 // Uma linha do log de auditoria (GET /api/admin/audit)
 export interface LogEntry {
   id: string;
