@@ -1,9 +1,9 @@
 # Contrato: moderação de cadastros e de conteúdo, pitch publicado
 
 Autora: Carol
-Data: 2026-11-22
+Data: 2026-11-22 (exportação de dados na D064)
 Status: Aceita
-Decisão: D063 (`docs/decisoes.md`)
+Decisões: D063 e D064 (`docs/decisoes.md`)
 Requisitos: RF06 (pitch e canvas), RF08 (moderação), RNF10 (auditoria)
 
 Todas as rotas exigem `Authorization: Bearer <token>`. Erros seguem o formato único da
@@ -223,4 +223,40 @@ SUSPENSO:
   `/api/profile/investor/{id}`, `/api/meetings/counterparts`, iniciar conversa, reunião,
   interesse ou avaliação com ela, contar visita ao perfil dela, e o nome de exibição dela
   nas listas dos outros ("Usuário removido") enquanto durar a moderação.
-- `POST /api/privacy/delete-account`: apaga também os envios do pitch da conta (LGPD).
+- `POST /api/privacy/delete-account`: apaga também os envios do pitch e o registro de
+  moderação da conta (LGPD, D064).
+- `GET /api/privacy/export`: duas chaves novas no fim, depois de `auditLog` (D064). As
+  que já existiam não mudaram.
+
+## Exportação de dados do titular (D064)
+
+`moderation` traz o registro de moderação do próprio titular, sem o administrador que
+decidiu. Sem registro, `status` APROVADO e `hasRecord` false. `pitchPublications` traz os
+envios do titular, do mais recente para o mais antigo; para quem não é startup, lista vazia.
+`removalReason` só vem preenchido em envio REMOVIDO.
+
+```json
+{
+  "auditLog": [],
+  "moderation": {
+    "status": "SUSPENSO", "hasRecord": true,
+    "reason": "Investigação de fraude", "reviewedAt": "2026-11-22T10:00:00Z"
+  },
+  "pitchPublications": [
+    {
+      "id": 8, "version": 2, "status": "EM_REVISAO",
+      "submittedAt": "2026-11-22T11:00:00Z", "reviewedAt": null, "removalReason": null,
+      "shortPitch": "Logística inteligente para o Nordeste",
+      "videoUrl": "https://youtu.be/dQw4w9WgXcQ",
+      "leanCanvas": { "problem": "Frete caro", "solution": "Roteirização com IA", "...": "..." }
+    },
+    {
+      "id": 5, "version": 1, "status": "REMOVIDO",
+      "submittedAt": "2026-11-21T09:00:00Z", "reviewedAt": "2026-11-21T10:00:00Z",
+      "removalReason": "Contém telefone pessoal",
+      "shortPitch": "Primeira versão", "videoUrl": null,
+      "leanCanvas": { "problem": "Frete caro", "...": "..." }
+    }
+  ]
+}
+```

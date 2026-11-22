@@ -20,7 +20,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Documentos do projeto
 
-- `docs/decisoes.md`: decisões de design (D001 a D063)
+- `docs/decisoes.md`: decisões de design (D001 a D064)
 - `docs/dominio.md` — especificação de domínio
 - `docs/contrato/contrato-v2.md` — contrato ativo da API
 - `docs/contrato/contrato-onboarding.md`: onboarding e criação de perfil a partir dele
@@ -104,7 +104,8 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
   - moderação de cadastros pelo ADMIN (aprovar, recusar, suspender, reativar), login 403 e conta fora da descoberta (RF08);
   - moderação de conteúdo do pitch e do Lean Canvas (aprovar, remover com motivo) e leitura pelo investidor em `GET /api/discovery/startups/{userId}/pitch` (RF06, RF08);
   - toda ação no log de auditoria existente (RNF10);
-  - `V30__cria_moderacao_de_contas_e_pitch.sql`, duas propriedades com variável de ambiente e quatro ganchos mínimos no código existente (D063).
+  - `V30__cria_moderacao_de_contas_e_pitch.sql`, duas propriedades com variável de ambiente e quatro ganchos mínimos no código existente (D063);
+  - exportação de dados com a moderação e os envios do pitch do titular, e exclusão que apaga os dois (RNF03, D064).
 
 ### Bloco E — Testes
 
@@ -112,7 +113,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] Tarefa 15 — Testes de integração (fluxo RF05/RF10, LGPD, segurança) — 2026-10-26
 - [x] Tarefa 16 — Hardening (method security, 401, filtro JWT, erro padrão) — 2026-10-26
 - [x] Testes da unificação com o `main` (`UnificacaoMainIntegrationTest`) — 2026-11-21
-- [x] Testes da moderação e do pitch publicado (`ModeracaoContasIntegrationTest`, `PitchPublicacaoIntegrationTest`, `ModeracaoConfiguracaoInvertidaIntegrationTest`, `ModeracaoUnitTest`, `PitchConteudoTest`) — 2026-11-22
+- [x] Testes da moderação e do pitch publicado (`ModeracaoContasIntegrationTest`, `PitchPublicacaoIntegrationTest`, `ModeracaoConfiguracaoInvertidaIntegrationTest`, `ModeracaoUnitTest`, `PitchConteudoTest`, `ExportacaoModeracaoIntegrationTest`) — 2026-11-22
 - [ ] Beta testers (parte de RNF07) — pendente
 
 ### Infraestrutura
@@ -162,7 +163,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] RNF09 — Código modular
 - [x] RNF10 — Log de auditoria (T07; ações de moderação, D063)
 - [ ] RNF02 — Criptografia em repouso
-- [x] RNF03 — LGPD (consentimento T08 + exportação/exclusão T13)
+- [x] RNF03 — LGPD (consentimento T08 + exportação/exclusão T13; moderação e pitch no export e na exclusão, D064)
 - [ ] RNF07 — Testes + beta testers (testes automatizados feitos; falta beta)
 - [ ] RNF08 — Responsividade mobile
 
@@ -206,4 +207,4 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Fora do MVP (trabalho futuro)
 
-Ver D011, D025, D027 e as pendências da D028, D030, D035, D042, D043, D045, D046 e D052 em `docs/decisoes.md`, e a seção "Fora de escopo desta entrega" depois da D063.
+Ver D011, D025, D027 e as pendências da D028, D030, D035, D042, D043, D045, D046 e D052 em `docs/decisoes.md`, e a seção "Fora de escopo desta entrega" depois da D064.

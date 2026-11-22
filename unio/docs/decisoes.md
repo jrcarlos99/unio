@@ -1986,6 +1986,55 @@ serviços `AccountModerationService`, `PitchPublicationService`, `AccountModerat
 Front: ADR-013.
 
 
+## D064: Exportação de dados com a moderação e os envios do pitch do titular
+
+Autora: Carol
+Data: 2026-11-22
+Status: Aceita
+
+**Contexto:** A D063 criou `account_moderation` e `startup_pitch_publication`. A exclusão de
+conta (T13) já apagava os envios do pitch, mas `GET /api/privacy/export` não trazia nenhuma
+das duas tabelas, e o registro de moderação ficava depois da exclusão. O RNF03 pede acesso e
+exclusão coerentes: o que é apagado também deve poder ser exportado.
+
+**Alternativas:**
+
+- (a) Montar as duas partes dentro do `DataPrivacyService`, com mais dois repositórios
+  injetados.
+- (b) Um serviço pequeno no pacote `moderation` (`ModerationPrivacyData`) que monta os dados
+  do titular e apaga os dois registros, injetado no `DataPrivacyService` pelo mesmo setter
+  opcional da D063.
+
+**Decisão:** (b).
+
+- Duas chaves novas no fim do export, depois de `auditLog`; as 15 que já existiam ficam com o
+  mesmo nome, ordem e tipo:
+  - `moderation`: `{ status, hasRecord, reason, reviewedAt }`. Sem registro:
+    `status` APROVADO e `hasRecord` false, como o sistema já interpreta. Nunca o e-mail
+    nem o id do administrador que decidiu.
+  - `pitchPublications`: envios do titular do mais recente para o mais antigo, com `id`,
+    `version`, `status`, `submittedAt`, `reviewedAt`, `removalReason` (só quando REMOVIDO),
+    `shortPitch`, `videoUrl` e `leanCanvas` (os nove blocos). Lista vazia para quem não é
+    startup.
+- Só o titular exporta os próprios dados (a regra do export não mudou); o ADMIN recebe só o
+  dele.
+- A exclusão de conta passa a apagar também o registro de `account_moderation`, além dos
+  envios do pitch. O histórico das decisões continua no log de auditoria, sem dados da
+  conta excluída.
+- O setter da D063 em `DataPrivacyService` trocou o repositório do pitch pelo
+  `ModerationPrivacyData`. Sem ele (testes de unidade que montam a classe na mão), o export
+  devolve `moderation` sem registro e `pitchPublications` vazia, e a exclusão segue como antes.
+
+**Justificativa:** mantém o `DataPrivacyService` com uma linha por chave, como já era, e
+deixa num lugar só o que a moderação guarda sobre o titular, para a exportação e a exclusão
+não divergirem.
+
+**Impacto:** `privacy/service/DataPrivacyService.java` (método `export`, o setter e a linha
+da exclusão), `moderation/service/ModerationPrivacyData.java` (novo),
+`moderation/repository/StartupPitchPublicationRepository.java` (consulta por titular). Sem
+migration. Teste: `ExportacaoModeracaoIntegrationTest`.
+
+
 ## Fora de escopo desta entrega (registrado, não implementado)
 
 - Chat (`/api/conversations`): o produto decidiu que não há chat; o contato é externo,
@@ -1994,4 +2043,3 @@ Front: ADR-013.
 - Notificações em tempo real.
 - Popularidade no ranking do back (a ordem da descoberta é só o score; D042).
 - Revogar na hora o token de uma conta suspensa ou recusada (hoje vale até expirar; D063).
-- Envios do pitch na exportação de dados do titular (D063).

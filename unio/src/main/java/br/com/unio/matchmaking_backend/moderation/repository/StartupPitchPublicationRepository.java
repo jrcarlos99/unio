@@ -22,6 +22,9 @@ public interface StartupPitchPublicationRepository extends JpaRepository<Startup
 
     List<StartupPitchPublication> findAllByOrderBySubmittedAtDesc();
 
+    /** D064: todos os envios do titular, do mais recente para o mais antigo (exportação de dados). */
+    List<StartupPitchPublication> findByUserIdOrderByVersionDesc(Long userId);
+
     /** T13 (LGPD): a exclusão da conta apaga também as cópias publicadas do pitch. */
     @Modifying
     @Query("delete from StartupPitchPublication p where p.userId = :userId")

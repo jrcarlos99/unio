@@ -19,7 +19,7 @@ import br.com.unio.matchmaking_backend.consent.repository.ConsentRecordRepositor
 import br.com.unio.matchmaking_backend.interest.repository.UserSavedRepository;
 import br.com.unio.matchmaking_backend.interest.service.InterestService;
 import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
-import br.com.unio.matchmaking_backend.moderation.repository.StartupPitchPublicationRepository;
+import br.com.unio.matchmaking_backend.moderation.service.ModerationPrivacyData;
 import br.com.unio.matchmaking_backend.onboarding.repository.UserOnboardingRepository;
 import br.com.unio.matchmaking_backend.onboarding.service.OnboardingService;
 import br.com.unio.matchmaking_backend.popularity.repository.ProfileViewRepository;
@@ -91,12 +91,12 @@ public class DataPrivacyService {
     @Value("${app.upload.dir:./uploads/pitch/}")
     private String uploadDirectory;
 
-    // D063: pitch publicado. Opcional (setter) para o construtor não mudar.
-    private StartupPitchPublicationRepository pitchPublicationRepository;
+    // D063 e D064: moderação e pitch publicado do titular. Opcional (setter) para o construtor não mudar.
+    private ModerationPrivacyData moderationPrivacyData;
 
     @Autowired(required = false)
-    public void setPitchPublicationRepository(StartupPitchPublicationRepository pitchPublicationRepository) {
-        this.pitchPublicationRepository = pitchPublicationRepository;
+    public void setModerationPrivacyData(ModerationPrivacyData moderationPrivacyData) {
+        this.moderationPrivacyData = moderationPrivacyData;
     }
 
     // ============================================================
@@ -128,6 +128,9 @@ public class DataPrivacyService {
         export.put("interestsReceivedTotal", interestRepository.countActiveReceivedBy(user.getId()));
         export.put("saved", savedData(user));
         export.put("auditLog", auditData(user));
+        // D064: moderação da conta e envios do pitch do titular (o que a exclusão também apaga)
+        export.put("moderation", moderationData(user));
+        export.put("pitchPublications", pitchPublicationsData(user));
         return export;
     }
 
@@ -159,9 +162,9 @@ public class DataPrivacyService {
         startupRepository.findById(userId).ifPresent(startupRepository::delete);
         investorRepository.findById(userId).ifPresent(investorRepository::delete);
         onboardingRepository.findById(userId).ifPresent(onboardingRepository::delete);
-        // D063: as cópias publicadas do pitch e do Lean Canvas saem junto com o onboarding
-        if (pitchPublicationRepository != null) {
-            pitchPublicationRepository.deleteByUserId(userId);
+        // D063 e D064: envios do pitch e registro de moderação saem junto com o onboarding
+        if (moderationPrivacyData != null) {
+            moderationPrivacyData.deleteAllOf(userId);
         }
         passwordResetTokenRepository.deleteByUser(user);
 
@@ -233,6 +236,17 @@ public class DataPrivacyService {
             // Não impede a exclusão da conta; o arquivo fica para limpeza manual
             log.warn("Não foi possível apagar o pitch do usuário {}: {}", userId, exception.getMessage());
         }
+    }
+
+    /** D064: sem o serviço (testes de unidade), vale o que o sistema assume sem registro. */
+    private Map<String, Object> moderationData(User user) {
+        return moderationPrivacyData == null
+                ? ModerationPrivacyData.noModerationRecord()
+                : moderationPrivacyData.moderationOf(user.getId());
+    }
+
+    private List<Map<String, Object>> pitchPublicationsData(User user) {
+        return moderationPrivacyData == null ? List.of() : moderationPrivacyData.pitchPublicationsOf(user.getId());
     }
 
     private Map<String, Object> accountData(User user) {
