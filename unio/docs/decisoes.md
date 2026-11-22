@@ -1886,13 +1886,112 @@ protegidas sem token continuam com o 401 "Não autenticado" e o 403 "Acesso nega
 `loginInvalidoRespondeCredenciaisInvalidas`.
 
 
+## D063: Moderação de cadastros e de conteúdo, com o pitch publicado para o investidor
+
+Autora: Carol
+Data: 2026-11-22
+Status: Aceita
+
+**Contexto:** RF08 (o administrador modera cadastros e conteúdo), RNF10 (toda ação
+administrativa fica no log de auditoria) e RF06 (o investidor vê o pitch e o Lean Canvas no
+perfil da startup) não tinham back: o admin só listava usuários, a tela de conteúdo dizia
+"ainda não disponível" e o perfil público tinha `canvas: null`. O pitch da startup existe
+só nas respostas livres do onboarding (`respostas.pitch` e `respostas.pitchLeanCanvas`).
+Restrição da entrega: nada do que existe no `main` (trabalho do João e do Robson) muda de
+contrato, rota, status, campo ou regra; o trabalho é aditivo, com ganchos mínimos.
+
+**Alternativas:**
+
+- Situação da conta: (a) coluna nova em `users`; (b) tabela própria em que a ausência de
+  linha vale APROVADO.
+- Esconder conta moderada: (a) filtro em cada consulta (descoberta, perfis públicos,
+  contrapartes); (b) um gancho no `ParticipantService.isActive`, que todas essas consultas
+  já usam para esconder conta excluída.
+- Origem do conteúdo publicado: (a) corpo do POST; (b) as respostas do onboarding da
+  própria startup.
+- Envio novo com o anterior publicado: (a) o anterior segue público até o novo ser aprovado;
+  (b) o envio novo substitui o anterior para o público na hora.
+- Onde expor o pitch ao investidor: (a) campos novos no `PublicProfileDto`; (b) rota nova.
+
+**Decisão:**
+
+- Situação: (b), `account_moderation` (V30). APROVADO, PENDENTE, RECUSADO, SUSPENSO.
+  Contas antigas seguem iguais sem migração de dados. O ADMIN nunca é moderado nem
+  bloqueado; ninguém modera a si mesmo (400) nem outro ADMIN (403); estado repetido é
+  idempotente.
+- RECUSADO e SUSPENSO: o login responde 403 "Conta recusada pela moderação" ou "Conta
+  suspensa", depois da senha conferida (senha errada continua 401, D062). PENDENTE entra
+  para completar o perfil.
+- Esconder: (b). `isActive` passa a consultar `AccountVisibility`, que guarda em memória,
+  por até 5 segundos, os ids das contas não APROVADO (uma consulta por janela em vez de uma
+  por candidato) e é limpa a cada ação de moderação. Em outra instância do App Service a
+  mudança aparece em até 5 segundos. O login lê o banco direto.
+- Recusar cancela as reuniões futuras da conta com o `cancelFutureBetween` que já existe
+  (D051), com o motivo "Reunião cancelada porque a conta foi recusada pela moderação".
+  Suspender não cancela. Matches, mensagens e reuniões passadas nunca são apagados.
+- Conteúdo: (b) para a origem: o POST não tem corpo e copia o que a startup salvou; o que
+  vai para revisão é exatamente o que está salvo. Limite de 20000 caracteres somando pitch,
+  link e blocos; link de vídeo só do YouTube ou do Vimeo (mesma regra do front).
+- `startup_pitch_publication` (V30): um registro por envio, versão crescente; vale o de
+  maior versão, e só se estiver PUBLICADO: (b) para o envio novo, como pedido na entrega.
+  Só o envio atual aceita aprovar ou remover (409 no antigo).
+- Exposição: (b), `GET /api/discovery/startups/{userId}/pitch` (INVESTOR, a própria startup
+  e ADMIN). `PublicProfileDto` e `GET /api/discovery/startups/{userId}` não mudam.
+- Duas propriedades, com variável de ambiente: `unio.moderation.cadastro-requer-aprovacao`
+  (`UNIO_MODERATION_CADASTRO_REQUER_APROVACAO`, padrão false) e
+  `unio.moderation.pitch-requer-aprovacao` (`UNIO_MODERATION_PITCH_REQUER_APROVACAO`,
+  padrão true).
+- Auditoria: cada ação grava em `audit_logs` pelo `AuditService` existente, com o e-mail do
+  ADMIN, o código da ação (`MODERACAO_CONTA_*`, `MODERACAO_PITCH_*`), o id do alvo e os
+  detalhes (situação anterior e nova, motivo, reuniões canceladas), sem senha, documento
+  nem o e-mail da conta moderada. `GET /api/admin/audit` não muda.
+
+**Ganchos no código existente (os únicos):**
+
+| Arquivo | Gancho | Motivo |
+| --- | --- | --- |
+| `auth/service/AuthService.java` | `login`: `moderationGate.checkLogin(user)` depois da autenticação | 403 para RECUSADO e SUSPENSO |
+| `auth/service/AuthService.java` | `register`: `moderationGate.onAccountCreated(savedUser)` | PENDENTE quando `cadastro-requer-aprovacao=true`; com false não grava nada |
+| `communication/service/ParticipantService.java` | `isActive`: `&& !accountVisibility.isHidden(id)` | tira a conta moderada da descoberta, dos perfis públicos e das contrapartes |
+| `privacy/service/DataPrivacyService.java` | `deleteAccount`: `pitchPublicationRepository.deleteByUserId(userId)` | LGPD: a cópia do pitch sai junto com o onboarding |
+
+Os quatro entram por setter `@Autowired(required = false)`, sem mudar construtor; quando a
+dependência não existe (testes de unidade que montam a classe na mão), o comportamento é o
+de antes. Para conta sem registro de moderação, as quatro rotas respondem igual.
+
+**Justificativa:** tabela própria e setter opcional deixam o código do `main` intacto e
+tornam o recurso removível sem migração de dados. O gancho único em `isActive` cobre todas
+as listas públicas de uma vez, com a mesma semântica de conta excluída, em vez de quatro
+filtros espalhados. Ler o conteúdo do onboarding evita que a startup publique algo
+diferente do que salvou e mantém o front como único dono do formato das respostas.
+
+**Consequências:**
+
+- Conta moderada aparece como "Usuário removido" nas conversas, reuniões e avaliações já
+  existentes dos outros, e mandar mensagem a ela responde o 409 de conta removida, enquanto
+  durar a moderação.
+- Token emitido antes da suspensão vale até expirar (até 60 minutos).
+- Com pitch-requer-aprovacao=true, a startup que envia uma versão nova fica sem pitch
+  público até a aprovação (o front avisa).
+- A exportação de dados (T13) não inclui os envios do pitch (o conteúdo já sai no
+  onboarding exportado).
+
+**Impacto:** `db/migration/V30__cria_moderacao_de_contas_e_pitch.sql`; pacote novo
+`moderation` (controllers `AdminModerationController` e `PitchPublicationController`,
+serviços `AccountModerationService`, `PitchPublicationService`, `AccountModerationGate`,
+`AccountVisibility`, `ModerationSettings`, `ModerationActions`); os quatro ganchos acima;
+`application.properties`. Contrato em `docs/contrato/contrato-moderacao.md`. Testes:
+`ModeracaoContasIntegrationTest`, `PitchPublicacaoIntegrationTest`,
+`ModeracaoConfiguracaoInvertidaIntegrationTest`, `ModeracaoUnitTest`, `PitchConteudoTest`.
+Front: ADR-013.
+
+
 ## Fora de escopo desta entrega (registrado, não implementado)
 
 - Chat (`/api/conversations`): o produto decidiu que não há chat; o contato é externo,
   depois do match.
 - Telefone e WhatsApp no perfil.
-- Pitch e canvas públicos e regra de visibilidade (dependem de moderação e do JSON de
-  onboarding).
 - Notificações em tempo real.
 - Popularidade no ranking do back (a ordem da descoberta é só o score; D042).
-- Aprovar e rejeitar cadastros (moderação) não têm endpoint.
+- Revogar na hora o token de uma conta suspensa ou recusada (hoje vale até expirar; D063).
+- Envios do pitch na exportação de dados do titular (D063).

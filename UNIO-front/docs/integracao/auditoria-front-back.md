@@ -1,10 +1,10 @@
 # Auditoria da integração front x back
 
 - **Autora:** Carol
-- **Data:** 2026-11-20 (inventário refeito em 2026-11-21 sobre o back unido com o `main`)
+- **Data:** 2026-11-20 (inventário refeito em 2026-11-21 sobre o back unido com o `main`; moderação e pitch publicado em 2026-11-22)
 - **Branch:** `feat/unificacao-main` (front da Carol e back unido com o `origin/main`)
 - **Back na nuvem:** `https://unio-webapp-ghbmd2a6a4fmc4cb.brazilsouth-01.azurewebsites.net`
-- **Decisões:** ADR-011 e ADR-012 (front), D056 a D062 (back)
+- **Decisões:** ADR-011 a ADR-013 (front), D056 a D063 (back)
 
 ## Resumo
 
@@ -93,9 +93,18 @@ Colunas: **Back** = existe no back unido (`feat/unificacao-main`); **Nuvem** = e
 | Admin: Visão geral | `obterVisaoGeralAdmin` | GET | `/api/admin/metrics` | sim | sim | `AdminMetricsResponse` (`interestsSent`, `mutualMatches` só na branch) | erro na tela; 403 se não for ADMIN | OK |
 | Admin: Auditoria | `listarAuditoria` | GET | `/api/admin/audit` | sim | sim | `AuditLogResponse[]` | erro na tela | OK |
 | Admin: Cadastros | `listarUsuarios` | GET | `/api/admin/users` | sim | sim | `{id:number,email,role,createdAt,deletedAt}` | erro na tela | OK (era DIVERGENTE) |
+| Admin: Cadastros | `listarContasModeracao` | GET | `/api/admin/moderation/accounts?status&role&q&limit&offset` | sim (D063) | **não** | `ModerationPage<AccountModerationItem>` | erro na tela; 400 filtro inválido; 403 se não for ADMIN | OK |
+| Admin: Cadastros | `moderarConta` | POST | `/api/admin/moderation/accounts/{userId}/{approve,reject,suspend,reactivate}` | sim (D063) | **não** | `{reason}` em reject e suspend; → `AccountModerationItem` | mensagem do back no modal (400 a si mesmo ou motivo, 403 outro ADMIN, 404, 409 conta excluída) | OK |
+| Admin: Conteúdo | `listarEnvios` | GET | `/api/admin/moderation/content?status&limit&offset` | sim (D063) | **não** | `ModerationPage<PitchModerationItem>` | erro na tela | OK |
+| Admin: Conteúdo | `aprovarEnvio`, `removerEnvio` | POST | `/api/admin/moderation/content/{id}/{approve,remove}` | sim (D063) | **não** | `{reason}` em remove; → `PitchModerationItem` | mensagem do back no modal (409 envio substituído, 404) | OK |
+| Pitch e Canvas | `obterMinhaPublicacao` (via `getMyPitch`) | GET | `/api/profile/startup/pitch/publication` | sim (D063) | **não** | `PitchPublicationStatusResponse` | 404 (back sem a rota) = rascunho; outros = erro da página | OK |
+| Pitch e Canvas | `enviarPublicacao` (via `publishMyPitch`) | POST | `/api/profile/startup/pitch/publication` | sim (D063) | **não** | sem corpo (o back lê o onboarding) → `PitchPublicationStatusResponse` | 400 e 409 com a mensagem do back no alerta de envio pendente | OK |
+| Perfil da startup (investidor) | `obterPitchPublicado` | GET | `/api/discovery/startups/{userId}/pitch` | sim (D063) | **não** | `PublishedPitchResponse` | 404 = "Esta startup ainda não publicou o pitch", sem erro | OK |
 
 Pontos de chamada por método: 22 GET, 15 POST, 9 PUT, 6 DELETE e 1 PATCH (53 no total;
-algumas linhas juntam a mesma rota usada por mais de um serviço).
+algumas linhas juntam a mesma rota usada por mais de um serviço). Em 2026-11-22 entraram
+mais 8 pontos de chamada (4 GET e 4 POST; `moderarConta` monta a rota pela ação) para 11
+operações novas do back (seção "Moderação e pitch publicado").
 
 ## Divergências encontradas e corrigidas
 
@@ -203,6 +212,44 @@ feito pela API com duas contas e2e, apagadas no final, e o banco foi descartado.
 | Match some das métricas depois da exclusão | OK (0) |
 | **Total** | **36 de 36 OK** |
 
+## Moderação e pitch publicado (2026-11-22)
+
+Branch `feat/moderacao-e-pitch` (a partir do `main` com o #14). As 11 operações novas do
+back (D063) foram conferidas no `/v3/api-docs` do back rodando contra um PostgreSQL
+descartável: todas existem, e cada chamada nova do front (tabela acima) tem a sua.
+
+| Chamada do front | Operação no back | Existe |
+| --- | --- | --- |
+| `listarContasModeracao` | GET `/api/admin/moderation/accounts` | sim |
+| `moderarConta("aprovar")` | POST `/api/admin/moderation/accounts/{userId}/approve` | sim |
+| `moderarConta("recusar")` | POST `/api/admin/moderation/accounts/{userId}/reject` | sim |
+| `moderarConta("suspender")` | POST `/api/admin/moderation/accounts/{userId}/suspend` | sim |
+| `moderarConta("reativar")` | POST `/api/admin/moderation/accounts/{userId}/reactivate` | sim |
+| `listarEnvios` | GET `/api/admin/moderation/content` | sim |
+| `aprovarEnvio` | POST `/api/admin/moderation/content/{id}/approve` | sim |
+| `removerEnvio` | POST `/api/admin/moderation/content/{id}/remove` | sim |
+| `obterMinhaPublicacao` | GET `/api/profile/startup/pitch/publication` | sim |
+| `enviarPublicacao` | POST `/api/profile/startup/pitch/publication` | sim |
+| `obterPitchPublicado` | GET `/api/discovery/startups/{userId}/pitch` | sim |
+
+O log de auditoria (`GET /api/admin/audit`) não mudou de formato; `logDoBack` traduz os
+códigos novos (`MODERACAO_CONTA_*`, `MODERACAO_PITCH_*`) para texto em português.
+
+Fluxo pela API, com o admin do seed e duas contas e2e, banco descartado no final:
+
+| Etapa | Resultado |
+| --- | --- |
+| Cadastro de startup e investidor, login do admin do seed, perfis | OK |
+| Startup salva o pitch e envia | OK (`EM_REVISAO`) |
+| Investidor tenta ler | OK (404 "Esta startup ainda não publicou o pitch") |
+| Admin aprova; investidor lê pitch e canvas | OK (`PUBLICADO`; 200) |
+| Admin remove; investidor deixa de ver; startup vê o motivo | OK (404; `REMOVIDO` com motivo) |
+| Admin suspende a startup: login, descoberta e detalhe | OK (403 "Conta suspensa"; fora da lista; 404) |
+| Admin reativa: login e descoberta | OK (200; volta à lista) |
+| Admin age sobre si; investidor nas rotas de moderação | OK (400; 403) |
+| Auditoria com as quatro ações, com o e-mail do admin | OK |
+| **Total** | **22 de 22 OK** |
+
 ## Endpoints do back sem uso no front
 
 | Endpoint | Motivo |
@@ -235,9 +282,9 @@ Busca final em `src/` por `fetch(`, `axios.`, `new WebSocket`, `EventSource`, `h
 
 | # | Pendência | Tamanho | Dono |
 | --- | --- | --- | --- |
-| P1 | Publicar no App Service: abrir o pull request de `feat/unificacao-main` para o `main`. A reconciliação das migrations está feita e provada (D059) | Pull request | Carol |
+| P1 | ~~Publicar no App Service a unificação~~: `feat/unificacao-main` entrou no `main` (#14). Falta o pull request de `feat/moderacao-e-pitch` (V30, D063) | Pull request | Carol |
 | P2 | ~~Mensagem do 401 de login~~: resolvida no merge, "Credenciais inválidas" (D062) | Feito | Carol |
 | P3 | Notificações no back (hoje derivadas no front, estado local) | Médio | Squad |
-| P4 | Moderação de cadastros (aprovar e rejeitar) e de conteúdo | Médio | Squad |
+| P4 | ~~Moderação de cadastros e de conteúdo~~: feita (D063, ADR-013); depende do P1 para chegar à nuvem | Feito | Carol |
 | P5 | Contato além do e-mail, upload de logo, histórico de métricas, data do interesse recebido | Médio | Squad |
 | P6 | URL de produção do front: confirmar se está em `UNIO_CORS_ALLOWED_ORIGINS` | Configuração | Carol |
