@@ -2,8 +2,8 @@ package br.com.unio.matchmaking_backend.match.service;
 
 import br.com.unio.matchmaking_backend.auth.entity.Role;
 import br.com.unio.matchmaking_backend.auth.service.AuthUser;
+import br.com.unio.matchmaking_backend.interest.service.InterestService;
 import br.com.unio.matchmaking_backend.match.entity.MatchInterest;
-import br.com.unio.matchmaking_backend.match.entity.MatchInterestStatus;
 import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
@@ -14,6 +14,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Contrato das rotas /api/matches (T23 do main): POST /interest com {startupId, investorId},
+ * GET /api/matches e GET /api/matches/saved, devolvendo as linhas de match_interests.
+ *
+ * <p>D058: a regra de interesse e match é uma só, em {@link InterestService} (a mesma de
+ * /api/interests). Este service mantém as validações e mensagens próprias do contrato
+ * /api/matches (ids obrigatórios, "em seu próprio nome", 404 do outro lado) e delega a
+ * gravação e as consultas.
+ */
 @Service
 @RequiredArgsConstructor
 public class MatchInterestService {
@@ -21,58 +30,36 @@ public class MatchInterestService {
     private final MatchInterestRepository matchInterestRepository;
     private final StartupRepository startupRepository;
     private final InvestorRepository investorRepository;
+    private final InterestService interestService;
 
     @Transactional
     public MatchInterest like(AuthUser authUser, Long startupId, Long investorId) {
         validateParticipant(authUser, startupId, investorId);
 
-        MatchInterest interest = matchInterestRepository
-                .findByStartupIdAndInvestorIdAndLikedByUserId(
-                        startupId, investorId, authUser.getId())
-                .orElseGet(() -> MatchInterest.builder()
-                        .startupId(startupId)
-                        .investorId(investorId)
-                        .likedByUserId(authUser.getId())
-                        .status(MatchInterestStatus.LIKED)
-                        .build());
+        Long counterpartId = authUser.getRole() == Role.STARTUP ? investorId : startupId;
+        interestService.express(authUser, counterpartId);
 
-        if (interest.getStatus() == MatchInterestStatus.MATCHED) {
-            return interest;
-        }
-
-        interest.setStatus(MatchInterestStatus.LIKED);
-        MatchInterest savedInterest = matchInterestRepository.save(interest);
-
-        MatchInterest reciprocalInterest = matchInterestRepository
-                .findByStartupIdAndInvestorIdAndLikedByUserIdNot(
-                        startupId, investorId, authUser.getId())
-                .stream()
-                .filter(item -> item.getStatus() == MatchInterestStatus.LIKED)
-                .findFirst()
-                .orElse(null);
-        if (reciprocalInterest != null
-                && reciprocalInterest.getLikedByUserId() != null) {
-            savedInterest.setStatus(MatchInterestStatus.MATCHED);
-            reciprocalInterest.setStatus(MatchInterestStatus.MATCHED);
-            matchInterestRepository.save(reciprocalInterest);
-            return matchInterestRepository.save(savedInterest);
-        }
-
-        return savedInterest;
+        return matchInterestRepository
+                .findByStartupIdAndInvestorIdAndLikedByUserId(startupId, investorId, authUser.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Interesse não foi gravado"));
     }
 
+    /** Linhas do usuário com match confirmado (status MATCHED). */
     @Transactional(readOnly = true)
     public List<MatchInterest> listMatches(AuthUser authUser) {
         requireParticipant(authUser);
-        return matchInterestRepository.findByLikedByUserIdAndStatusOrderByCreatedAtDesc(
-                authUser.getId(), MatchInterestStatus.MATCHED);
+        return interestService.matchedRowsOf(authUser);
     }
 
+    /**
+     * Interesses enviados que ainda aguardam o outro lado (status LIKED). Não confundir com
+     * os perfis salvos (bookmark) de GET /api/saved (D050).
+     */
     @Transactional(readOnly = true)
     public List<MatchInterest> listSaved(AuthUser authUser) {
         requireParticipant(authUser);
-        return matchInterestRepository.findByLikedByUserIdAndStatusOrderByCreatedAtDesc(
-                authUser.getId(), MatchInterestStatus.LIKED);
+        return interestService.pendingSentRowsOf(authUser);
     }
 
     private void validateParticipant(AuthUser authUser, Long startupId, Long investorId) {

@@ -26,6 +26,8 @@ export interface ItemMenu {
   to: string;
   rotulo: string;
   icone: LucideIcon;
+  // Bolinha com número ao lado do rótulo (ex.: solicitações de reunião)
+  contador?: "solicitacoesReuniao";
 }
 
 export interface ConfigPerfil {
@@ -41,7 +43,7 @@ export interface ConfigPerfil {
 const COMUNS: ItemMenu[] = [
   { to: "/salvos", rotulo: "Salvos", icone: Bookmark },
   { to: "/meus-unios", rotulo: "Meus unios", icone: MessageSquare },
-  { to: "/reunioes", rotulo: "Reuniões", icone: CalendarDays },
+  { to: "/reunioes", rotulo: "Reuniões", icone: CalendarDays, contador: "solicitacoesReuniao" },
   { to: "/meu-perfil", rotulo: "Meu perfil", icone: User },
 ];
 

@@ -1,18 +1,22 @@
 package br.com.unio.matchmaking_backend.scorecard.recommendation.service;
 
 import br.com.unio.matchmaking_backend.auth.entity.User;
+import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
 import br.com.unio.matchmaking_backend.profile.entity.Investor;
 import br.com.unio.matchmaking_backend.profile.entity.Startup;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
 import br.com.unio.matchmaking_backend.scorecard.calculation.MatchScore;
 import br.com.unio.matchmaking_backend.scorecard.calculation.MatchScoreRepository;
+import br.com.unio.matchmaking_backend.scorecard.common.ScorecardAccess;
 import br.com.unio.matchmaking_backend.scorecard.explanation.dto.MatchScoreExplanationResponse;
 import br.com.unio.matchmaking_backend.scorecard.explanation.service.ExplanationService;
 import br.com.unio.matchmaking_backend.scorecard.recommendation.dto.RecommendedInvestorDto;
 import br.com.unio.matchmaking_backend.scorecard.recommendation.dto.RecommendedStartupDto;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +29,7 @@ public class RecommendationService {
     private final StartupRepository startupRepository;
     private final InvestorRepository investorRepository;
     private final ExplanationService explanationService;
+    private final MatchInterestRepository matchInterestRepository;
 
     public List<RecommendedStartupDto> recommend(UUID investorId, int limit) {
         List<MatchScore> scores = matchScoreRepository.findByInvestorId(investorId);
@@ -38,11 +43,16 @@ public class RecommendationService {
 
     public List<RecommendedInvestorDto> recommendInvestors(UUID startupId, int limit) {
         List<MatchScore> scores = matchScoreRepository.findByStartupId(startupId);
+        // D052 e D061: o e-mail do investidor só aparece para quem já tem match mútuo com ele
+        Long startupUserId = ScorecardAccess.userIdOf(startupId);
+        Set<Long> matched = startupUserId == null
+                ? Set.of()
+                : new HashSet<>(matchInterestRepository.findMatchedUserIds(startupUserId));
 
         return scores.stream()
                 .sorted(Comparator.comparing(MatchScore::getTotalScore).reversed())
                 .limit(limit)
-                .map(this::toRecommendedInvestor)
+                .map(score -> toRecommendedInvestor(score, matched))
                 .toList();
     }
 
@@ -62,13 +72,16 @@ public class RecommendationService {
                 .build();
     }
 
-    private RecommendedInvestorDto toRecommendedInvestor(MatchScore score) {
-        Long realInvestorId = score.getInvestorId().getLeastSignificantBits();
+    private RecommendedInvestorDto toRecommendedInvestor(MatchScore score, Set<Long> matched) {
+        Long realInvestorId = ScorecardAccess.userIdOf(score.getInvestorId());
 
-        String email = investorRepository.findById(realInvestorId)
-                .map(Investor::getUser)
-                .map(User::getEmail)
-                .orElse("investidor-desconhecido@unio.com");
+        // Sem match, sem e-mail (D052). Sem perfil, null em vez de um endereço inventado (D061).
+        String email = realInvestorId == null || !matched.contains(realInvestorId)
+                ? null
+                : investorRepository.findById(realInvestorId)
+                        .map(Investor::getUser)
+                        .map(User::getEmail)
+                        .orElse(null);
 
         return new RecommendedInvestorDto(
                 score.getInvestorId(),

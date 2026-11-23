@@ -23,8 +23,11 @@ import br.com.unio.matchmaking_backend.communication.repository.MeetingRepositor
 import br.com.unio.matchmaking_backend.communication.repository.MessageRepository;
 import br.com.unio.matchmaking_backend.consent.entity.ConsentRecord;
 import br.com.unio.matchmaking_backend.consent.repository.ConsentRecordRepository;
+import br.com.unio.matchmaking_backend.interest.repository.UserSavedRepository;
+import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
 import br.com.unio.matchmaking_backend.onboarding.repository.UserOnboardingRepository;
 import br.com.unio.matchmaking_backend.onboarding.service.OnboardingService;
+import br.com.unio.matchmaking_backend.popularity.repository.ProfileViewRepository;
 import br.com.unio.matchmaking_backend.privacy.service.DataPrivacyService;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
@@ -69,10 +72,13 @@ class DataPrivacyServiceTest {
     @Mock private MessageRepository messageRepository;
     @Mock private MeetingRepository meetingRepository;
     @Mock private InteractionReviewRepository reviewRepository;
+    @Mock private ProfileViewRepository profileViewRepository;
     @Mock private MatchScoreFactorRepository matchScoreFactorRepository;
     @Mock private MatchScoreRepository matchScoreRepository;
     @Mock private FeedbackEventRepository feedbackEventRepository;
     @Mock private AuditLogRepository auditLogRepository;
+    @Mock private MatchInterestRepository interestRepository; // D058: antes UserInterestRepository
+    @Mock private UserSavedRepository savedRepository;
     @Mock private AuditService auditService;
 
     @InjectMocks
@@ -145,6 +151,10 @@ class DataPrivacyServiceTest {
         UUID scorecardId = new UUID(0L, 1L);
         verify(messageRepository).replaceContentSentBy(eq(1L), anyString());
         verify(reviewRepository).clearCommentsWrittenBy(1L);
+        verify(profileViewRepository).deleteAllInvolving(1L);
+        // D055: interesses e salvos do titular, dos dois lados
+        verify(interestRepository).deleteAllInvolving(1L);
+        verify(savedRepository).deleteAllInvolving(1L);
         verify(matchScoreFactorRepository).deleteByParticipant(scorecardId);
         verify(matchScoreRepository).deleteByParticipant(scorecardId);
         verify(feedbackEventRepository).deleteByParticipant(scorecardId);

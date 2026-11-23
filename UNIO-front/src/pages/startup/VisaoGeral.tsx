@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   ArrowRight,
-  Bell,
   Bookmark,
   CircleAlert,
   CircleCheck,
@@ -10,10 +9,11 @@ import {
   Eye,
   FilePlus2,
   Handshake,
-  MessageSquare,
+  LineChart,
   Search,
   SearchX,
   SlidersHorizontal,
+  TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import InterestFunnel from "../../components/dashboard/InterestFunnel";
@@ -22,11 +22,15 @@ import PainelCard from "../../components/dashboard/PainelCard";
 import ProfileCompleteness from "../../components/dashboard/ProfileCompleteness";
 import RecommendedInvestorCard from "../../components/dashboard/RecommendedInvestorCard";
 import ViewsChart from "../../components/dashboard/ViewsChart";
+import CardPopularidade from "../../components/popularidade/CardPopularidade";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
+import SinoNotificacoes from "../../components/layout/SinoNotificacoes";
 import { FOCO_VISIVEL } from "../../components/onboarding/selecao";
 import SuccessMessage from "../../components/ui/SuccessMessage";
 import { useAuth } from "../../contexts/AuthContext";
+import { usePopularidade } from "../../hooks/useAvaliacoes";
 import { useCarregamento } from "../../hooks/useDescoberta";
+import { useSessaoReunioes } from "../../hooks/useReunioes";
 import { useToast } from "../../hooks/useToast";
 import { obterContextoStartup, obterResumo } from "../../services/dashboardStartupService";
 import { aplicarFiltrosInvestidores, listarInvestidoresRecomendados } from "../../services/investidoresService";
@@ -37,12 +41,21 @@ const BOTAO_ICONE = `relative inline-flex h-12 w-12 shrink-0 items-center justif
 const BOTAO_CLARO = `inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-lightgray bg-white px-5 text-sm font-semibold text-deepgreen hover:border-sage ${FOCO_VISIVEL}`;
 const SELO = "inline-flex items-center gap-1 rounded-full bg-sage/30 px-2 py-0.5 font-semibold text-deepgreen";
 
+// Grid dos 4 cards de métrica: 2 colunas e os 4 lado a lado no xl
+const GRID_METRICAS = "grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4";
+const INDISPONIVEL = "—";
+
+// Número do back ou "—" quando a chamada daquele bloco falhou
+function valorOuTraco(valor: number | null) {
+  return valor === null ? INDISPONIVEL : valor;
+}
+
 function Esqueleto() {
   const bloco = "animate-pulse rounded-3xl bg-lightgray";
   return (
     <div aria-busy="true">
       <span className="sr-only">Carregando visão geral</span>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={GRID_METRICAS}>
         {Array.from({ length: 4 }, (_, i) => (
           <div key={i} className={`h-44 ${bloco}`} />
         ))}
@@ -56,14 +69,19 @@ function Esqueleto() {
   );
 }
 
-// Home da startup ("Visão geral"). Todos os dados vêm do
-// dashboardStartupService (mock por enquanto).
+// Home da startup ("Visão geral"). Todos os dados vêm do back, pelo
+// dashboardStartupService e pelo investidoresService: visualizações, gráfico,
+// interessados, matches, reuniões, popularidade e os investidores
+// recomendados (top 3 por score). O bloco cuja chamada falhar mostra
+// "indisponível"; não existe número de exemplo (ADR-011).
 export default function VisaoGeral() {
   const { user } = useAuth();
   const { mostrar } = useToast();
   const location = useLocation();
   const cadastroSucesso = (location.state as { cadastroSucesso?: boolean } | null)?.cadastroSucesso;
   const [busca, setBusca] = useState("");
+  const sessao = useSessaoReunioes();
+  const popularidade = usePopularidade(sessao);
 
   const carregar = useCallback(async () => {
     const [resumo, contexto, investidores] = await Promise.all([
@@ -99,78 +117,99 @@ export default function VisaoGeral() {
   } else {
     const { resumo, contexto, investidores } = dados;
     const { metricas } = resumo;
-    const totalSemanas = resumo.visualizacoesSemanais.reduce((soma, p) => soma + p.atual, 0);
-    const mediaDiaria = totalSemanas / (resumo.visualizacoesSemanais.length * 7);
+    const variacao = metricas.variacaoVisualizacoes;
+    const IconeVariacao = variacao !== null && variacao < 0 ? TrendingDown : TrendingUp;
+    const sinalVariacao = variacao !== null && variacao > 0 ? "+" : "";
+    const semanas = resumo.visualizacoesSemanais;
+    const totalSemanas = semanas ? semanas.reduce((soma, p) => soma + p.atual, 0) : 0;
+    const mediaDiaria = semanas && semanas.length > 0 ? totalSemanas / (semanas.length * 7) : 0;
     const segmento = contexto.dados.segmento ?? "o seu segmento";
 
     conteudo = (
       <>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={GRID_METRICAS}>
           <MetricCard
             rotulo="Visualizações do perfil"
-            valor={metricas.visualizacoes}
+            valor={valorOuTraco(metricas.visualizacoes)}
             icone={Eye}
             rodape={
-              <>
-                <span className={SELO}>
-                  <TrendingUp size={12} aria-hidden="true" />+{metricas.variacaoVisualizacoes}%
-                </span>
-                vs mês anterior
-              </>
+              variacao === null ? (
+                "Indisponível no momento"
+              ) : (
+                <>
+                  <span className={SELO}>
+                    <IconeVariacao size={12} aria-hidden="true" />
+                    {sinalVariacao}
+                    {variacao}%
+                  </span>
+                  últimos 28 dias, vs 28 dias anteriores
+                </>
+              )
             }
           />
           <MetricCard
             rotulo="Investidores interessados"
-            valor={metricas.interessados}
+            valor={valorOuTraco(metricas.interessados)}
             icone={Bookmark}
-            para="/investidores?filtro=interessados"
-            rodape={
-              <>
-                <span className={SELO}>
-                  <TrendingUp size={12} aria-hidden="true" />+{metricas.interessadosNovosSemana} novos
-                </span>
-                esta semana
-              </>
-            }
+            rodape={metricas.interessados === null ? "Indisponível no momento" : "demonstraram interesse em você"}
           />
           <MetricCard
             rotulo="Matches"
-            valor={metricas.matches}
+            valor={valorOuTraco(metricas.matches)}
             icone={Handshake}
             rodape={
-              <>
-                <span className={SELO}>
-                  <CircleCheck size={12} aria-hidden="true" />
-                  Teses alinhadas
-                </span>
-                ({metricas.scoreMinimoMatches}%+ score)
-              </>
+              metricas.matches === null ? (
+                "Indisponível no momento"
+              ) : (
+                <>
+                  <span className={SELO}>
+                    <CircleCheck size={12} aria-hidden="true" />
+                    Interesse mútuo
+                  </span>
+                  com investidores
+                </>
+              )
             }
           />
-          <MetricCard
-            rotulo="Contatos iniciados"
-            valor={metricas.contatosIniciados}
-            icone={MessageSquare}
-            rodape="via WhatsApp, e-mail ou telefone"
+          <CardPopularidade
+            {...popularidade}
+            apoio="Quanto maior a popularidade, mais perfis você aparece para recomendados."
           />
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <ViewsChart semanas={resumo.visualizacoesSemanais} mediaDiaria={mediaDiaria} />
+          {semanas && semanas.length > 0 ? (
+            <ViewsChart semanas={semanas} mediaDiaria={mediaDiaria} />
+          ) : (
+            <PainelCard titulo="Evolução das visualizações">
+              <AvisoEstado
+                icone={LineChart}
+                titulo={semanas === null ? "Gráfico indisponível no momento" : "Ainda sem visualizações"}
+                texto={
+                  semanas === null
+                    ? "Não foi possível carregar as visualizações. Tente atualizar a página."
+                    : "Quando investidores abrirem o seu perfil, a evolução aparece aqui."
+                }
+              />
+            </PainelCard>
+          )}
           <ProfileCompleteness completude={contexto.completude} para="/meu-perfil" />
-          <InterestFunnel etapas={resumo.funil} benchmark={resumo.benchmark} />
+          <InterestFunnel etapas={resumo.funil} />
 
           <PainelCard
             titulo="Investidores recomendados"
             subtitulo={`Anjos com alta afinidade com ${segmento} e sua faixa de captação`}
             extra={
-              <Link
-                to="/investidores"
-                className={`inline-flex items-center gap-1 rounded-lg text-sm font-semibold text-deepgreen hover:underline ${FOCO_VISIVEL}`}
-              >
-                Ver todos ({investidores.length})
-                <ArrowRight size={14} aria-hidden="true" />
-              </Link>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* Os três com maior score do back (/api/discovery/investors) */}
+                <Link
+                  to="/investidores"
+                  className={`inline-flex items-center gap-1 rounded-lg text-sm font-semibold text-deepgreen hover:underline ${FOCO_VISIVEL}`}
+                >
+                  Ver todos ({investidores.length})
+                  <ArrowRight size={14} aria-hidden="true" />
+                </Link>
+              </div>
             }
           >
             {busca && (
@@ -251,15 +290,7 @@ export default function VisaoGeral() {
           <button type="button" onClick={() => emBreve("Os filtros")} aria-label="Filtros" className={BOTAO_ICONE}>
             <SlidersHorizontal size={20} aria-hidden="true" />
           </button>
-          <button
-            type="button"
-            onClick={() => emBreve("A central de notificações")}
-            aria-label="Notificações (há novidades)"
-            className={BOTAO_ICONE}
-          >
-            <Bell size={20} aria-hidden="true" />
-            <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white" aria-hidden="true" />
-          </button>
+          <SinoNotificacoes className={BOTAO_ICONE} />
         </div>
       </div>
 

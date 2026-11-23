@@ -11,7 +11,12 @@ import br.com.unio.matchmaking_backend.scorecard.calculation.dto.ScorePersistenc
 import br.com.unio.matchmaking_backend.scorecard.calculation.service.ScorePersistenceService;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import br.com.unio.matchmaking_backend.auth.service.AuthUser;
+import br.com.unio.matchmaking_backend.scorecard.common.ScorecardAccess;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
+@Tag(name = "Scorecard", description = "Score de compatibilidade startup x investidor")
 @RequestMapping("/api/scorecard")
 @RequiredArgsConstructor
 public class ScorecardCalculationController {
@@ -32,9 +38,15 @@ public class ScorecardCalculationController {
 
     @PostMapping("/calculate")
     @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Calcula e grava o score de um par",
+            description = "D048: o investidor só calcula pares em que é o investorId; a startup, pares em que é "
+                    + "o startupId; ADMIN, qualquer par. A descoberta (GET /api/discovery/...) já calcula sob "
+                    + "demanda, então o front não precisa chamar este endpoint.")
     public ResponseEntity<CalculateResponse> calculate(
+            @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody CalculateRequest request
     ) {
+        ScorecardAccess.requireOwnPair(authUser, request.getStartupId(), request.getInvestorId());
         Long startupIdLong = toLong(request.getStartupId());
         Long investorIdLong = toLong(request.getInvestorId());
 

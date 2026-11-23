@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useParams } from "react-router-dom";
 import {
   BadgeCheck,
+  Banknote,
   ChartPie,
   CircleAlert,
   Info,
@@ -17,7 +18,6 @@ import AvisoEstado from "../../components/discovery/AvisoEstado";
 import EsqueletoPerfil from "../../components/discovery/EsqueletoPerfil";
 import FaixaStatusInteresse from "../../components/discovery/FaixaStatusInteresse";
 import LinkVoltar from "../../components/discovery/LinkVoltar";
-import CapitalCard from "../../components/discovery/CapitalCard";
 import CompatibilidadeCard from "../../components/discovery/CompatibilidadeCard";
 import InteresseButton from "../../components/discovery/InteresseButton";
 import PitchCanvasCard from "../../components/discovery/PitchCanvasCard";
@@ -26,10 +26,14 @@ import SecaoPerfil from "../../components/discovery/SecaoPerfil";
 import StartupLogo from "../../components/discovery/StartupLogo";
 import WhyList from "../../components/discovery/WhyList";
 import { FOCO_VISIVEL } from "../../components/onboarding/selecao";
+import SeloPopularidade from "../../components/popularidade/SeloPopularidade";
+import { useRegistrarVisita } from "../../hooks/useAvaliacoes";
+import { useSessaoReunioes } from "../../hooks/useReunioes";
 import { useCarregamento, useUserKey } from "../../hooks/useDescoberta";
 import { useAcoesRecomendacao } from "../../hooks/useRecomendacoes";
 import { obterStartup } from "../../services/discoveryService";
 import type { AlteracaoRecomendacao } from "../../types/recomendacoes";
+import { localDaStartup, textoCapital } from "../../utils/perfilDescoberta";
 
 // Pílulas do cabeçalho; a cor do texto fica em cada uso para não conflitar
 const PILULA = "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs";
@@ -38,6 +42,8 @@ const CHIP = `${PILULA} font-medium text-deepgreen`;
 // Tela "Perfil da startup" vista pelo investidor (/startups/:id)
 export default function PerfilStartup() {
   const { id = "" } = useParams();
+  // Uma visita por abertura, sem mostrar quem visitou (RF10, ADR-006)
+  useRegistrarVisita(useSessaoReunioes(), id);
   const userKey = useUserKey();
 
   const carregar = useCallback(() => obterStartup(userKey, id), [id, userKey]);
@@ -120,6 +126,7 @@ export default function PerfilStartup() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-3xl font-bold text-deepgreen sm:text-4xl">{startup.nome}</h1>
+                <SeloPopularidade percentual={detalhe.popularidade} tamanho="md" />
                 {startup.verificada && (
                   <span className={`${PILULA} bg-sage/40 font-semibold text-deepgreen`}>
                     <BadgeCheck size={14} aria-hidden="true" />
@@ -137,12 +144,14 @@ export default function PerfilStartup() {
                 <li className={`${PILULA} border-[1.5px] border-deepgreen bg-sage/20 font-semibold text-deepgreen`}>
                   {startup.segmento}
                 </li>
-                <li className={`${CHIP} bg-lightgray`}>{startup.estagio}</li>
-                <li className={`${CHIP} bg-lightgray`}>
-                  <MapPin size={12} aria-hidden="true" />
-                  {startup.cidade}, {startup.uf}
-                </li>
-                <li className={`${CHIP} bg-lightgray`}>Fundada em {startup.fundacao}</li>
+                {startup.estagio && <li className={`${CHIP} bg-lightgray`}>{startup.estagio}</li>}
+                {localDaStartup(startup) && (
+                  <li className={`${CHIP} bg-lightgray`}>
+                    <MapPin size={12} aria-hidden="true" />
+                    {localDaStartup(startup)}
+                  </li>
+                )}
+                {startup.fundacao !== null && <li className={`${CHIP} bg-lightgray`}>Fundada em {startup.fundacao}</li>}
               </ul>
             </div>
           </div>
@@ -171,16 +180,21 @@ export default function PerfilStartup() {
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="min-w-0 space-y-6 xl:col-span-2">
           <SecaoPerfil titulo="Sobre a startup" icone={Info}>
-            <p className="leading-relaxed text-deepgreen/90">{startup.descricao}</p>
-            <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {startup.descricao && <p className="mb-5 leading-relaxed text-deepgreen/90">{startup.descricao}</p>}
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
                 { rotulo: "Modelo de negócio", valor: startup.modeloNegocio },
                 { rotulo: "Mercado-alvo", valor: startup.mercadoAlvo },
                 {
                   rotulo: "Tamanho de equipe",
-                  valor: `${startup.tamanhoEquipe} ${startup.tamanhoEquipe === 1 ? "colaborador" : "colaboradores"}`,
+                  valor:
+                    startup.tamanhoEquipe === null
+                      ? ""
+                      : `${startup.tamanhoEquipe} ${startup.tamanhoEquipe === 1 ? "colaborador" : "colaboradores"}`,
                 },
-              ].map(({ rotulo, valor }) => (
+              ]
+                .filter(({ valor }) => valor)
+                .map(({ rotulo, valor }) => (
                 <div key={rotulo} className="rounded-2xl border border-lightgray bg-lightgray/30 p-4">
                   <dt className="text-xs text-deepgreen/75">{rotulo}</dt>
                   <dd className="mt-1 font-bold text-deepgreen">{valor}</dd>
@@ -189,20 +203,25 @@ export default function PerfilStartup() {
             </dl>
           </SecaoPerfil>
 
-          <SecaoPerfil
-            titulo="Canvas do pitch"
-            icone={Table2}
-            selo={<span className={`${CHIP} bg-lightgray`}>Dossiê UNIO Audit</span>}
-          >
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <PitchCanvasCard titulo="Problema" icone={TriangleAlert} texto={startup.canvas.problema} />
-              <PitchCanvasCard titulo="Solução" icone={Lightbulb} texto={startup.canvas.solucao} />
-              <PitchCanvasCard titulo="Mercado" icone={ChartPie} texto={startup.canvas.mercado} />
-              <PitchCanvasCard titulo="Tração" icone={TrendingUp} texto={startup.canvas.tracao} />
-            </div>
-          </SecaoPerfil>
+          {/* Canvas: só aparece quando o back enviar (hoje não envia; ADR-008) */}
+          {startup.canvas && (
+            <SecaoPerfil
+              titulo="Canvas do pitch"
+              icone={Table2}
+              selo={<span className={`${CHIP} bg-lightgray`}>Dossiê UNIO Audit</span>}
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <PitchCanvasCard titulo="Problema" icone={TriangleAlert} texto={startup.canvas.problema} />
+                <PitchCanvasCard titulo="Solução" icone={Lightbulb} texto={startup.canvas.solucao} />
+                <PitchCanvasCard titulo="Mercado" icone={ChartPie} texto={startup.canvas.mercado} />
+                <PitchCanvasCard titulo="Tração" icone={TrendingUp} texto={startup.canvas.tracao} />
+              </div>
+            </SecaoPerfil>
+          )}
 
-          <CapitalCard captacao={startup.captacao} />
+          <SecaoPerfil titulo="Capital procurado" icone={Banknote}>
+            <p className="text-3xl font-bold tracking-tight text-deepgreen">{textoCapital(startup)}</p>
+          </SecaoPerfil>
         </div>
 
         <div className="min-w-0 space-y-6">

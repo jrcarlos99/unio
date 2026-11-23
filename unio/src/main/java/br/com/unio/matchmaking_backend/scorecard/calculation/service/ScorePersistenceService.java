@@ -7,6 +7,7 @@ import br.com.unio.matchmaking_backend.scorecard.calculation.MatchScoreRepositor
 import br.com.unio.matchmaking_backend.scorecard.calculation.dto.CriterionEvaluation;
 import br.com.unio.matchmaking_backend.scorecard.calculation.dto.ScoreCalculationResult;
 import br.com.unio.matchmaking_backend.scorecard.calculation.dto.ScorePersistenceResult;
+import br.com.unio.matchmaking_backend.scorecard.common.InvestorProfileType;
 import br.com.unio.matchmaking_backend.scorecard.common.MatchScoreFactorType;
 import br.com.unio.matchmaking_backend.scorecard.common.exception.CriticalCriterionViolatedException;
 import br.com.unio.matchmaking_backend.scorecard.common.exception.PolicyNotFoundException;
@@ -17,10 +18,12 @@ import br.com.unio.matchmaking_backend.scorecard.policy.ScorePolicy;
 import br.com.unio.matchmaking_backend.scorecard.policy.ScorePolicyRepository;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -39,11 +42,7 @@ public class ScorePersistenceService {
 
     @Transactional
     public ScorePersistenceResult calculateAndPersist(Startup startup, Investor investor) {
-        ScorePolicy policy = scorePolicyRepository
-                .findByInvestorProfileTypeAndActiveTrue(investor.getPerfilRisco() != null
-                        ? mapToProfileType(investor)
-                        : null)
-                .orElseThrow(() -> new PolicyNotFoundException("POLICY_NOT_FOUND"));
+        ScorePolicy policy = resolvePolicy(investor);
 
         ScoreCalculationResult result = scoreCalculatorService.calculate(startup, investor, policy);
 
@@ -138,9 +137,35 @@ public class ScorePersistenceService {
         return id == null ? null : new UUID(0L, id);
     }
 
-    private br.com.unio.matchmaking_backend.scorecard.common.InvestorProfileType mapToProfileType(
-            Investor investor
-    ) {
-        return br.com.unio.matchmaking_backend.scorecard.common.InvestorProfileType.ANGEL_INVESTOR;
+    /**
+     * D047: política ativa do tipo do investidor. Se esse tipo não tiver política
+     * ativa, usa a de ANGEL_INVESTOR; sem nenhuma das duas, POLICY_NOT_FOUND.
+     */
+    public ScorePolicy resolvePolicy(Investor investor) {
+        InvestorProfileType type = mapToProfileType(investor.getPerfilRisco());
+        return scorePolicyRepository.findByInvestorProfileTypeAndActiveTrue(type)
+                .or(() -> scorePolicyRepository.findByInvestorProfileTypeAndActiveTrue(InvestorProfileType.ANGEL_INVESTOR))
+                .orElseThrow(() -> new PolicyNotFoundException("POLICY_NOT_FOUND"));
+    }
+
+    /**
+     * D047: tipo de política pelo perfilRisco do cadastro. "Mentor" vira MENTOR;
+     * "Capital de risco" ou "Venture capital" vira VENTURE_CAPITAL; qualquer outro
+     * valor ("Investidor Anjo", "Ambos"), nulo ou em branco vira ANGEL_INVESTOR.
+     */
+    public static InvestorProfileType mapToProfileType(String perfilRisco) {
+        if (perfilRisco == null || perfilRisco.isBlank()) {
+            return InvestorProfileType.ANGEL_INVESTOR;
+        }
+        String normalized = Normalizer.normalize(perfilRisco, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .trim()
+                .replaceAll("\\s+", " ");
+        return switch (normalized) {
+            case "mentor" -> InvestorProfileType.MENTOR;
+            case "capital de risco", "venture capital" -> InvestorProfileType.VENTURE_CAPITAL;
+            default -> InvestorProfileType.ANGEL_INVESTOR;
+        };
     }
 }

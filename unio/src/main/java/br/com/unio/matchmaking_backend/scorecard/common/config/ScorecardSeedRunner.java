@@ -13,11 +13,19 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+/**
+ * Políticas padrão do scorecard (pesos dos critérios), não dados de exemplo.
+ *
+ * <p>D057: antes só rodava no perfil dev, e um banco novo em produção ficava sem política
+ * ativa: a descoberta respondia 500 (POLICY_NOT_FOUND). Agora roda em qualquer perfil,
+ * continua idempotente (não faz nada se já existir alguma política, nem altera as que o
+ * admin criou) e pode ser desligado com unio.scorecard.seed-default-policies=false.
+ */
 @Component
-@Profile("dev")
+@ConditionalOnProperty(name = "unio.scorecard.seed-default-policies", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 @Slf4j
 public class ScorecardSeedRunner implements CommandLineRunner {

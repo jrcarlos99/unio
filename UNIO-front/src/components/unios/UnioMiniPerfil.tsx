@@ -2,7 +2,8 @@ import type { Ref } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, BadgeCheck, MapPin } from "lucide-react";
 import type { Recomendacao } from "../../types/recomendacoes";
-import { formatarFaixaTicket, formatarMoeda } from "../../utils/formatoDescoberta";
+import { formatarFaixaTicket } from "../../utils/formatoDescoberta";
+import { localDaStartup, localDoInvestidor, textoCapital, textoDisponibilidade } from "../../utils/perfilDescoberta";
 import AvatarIniciais from "../discovery/AvatarIniciais";
 import MatchRing from "../discovery/MatchRing";
 import StartupLogo from "../discovery/StartupLogo";
@@ -39,13 +40,13 @@ export default function UnioMiniPerfil({ rec, idTitulo, refTitulo }: UnioMiniPer
     nome = startup.nome;
     verificado = startup.verificada;
     chips = [startup.segmento, startup.estagio];
-    cidade = `${startup.cidade}, ${startup.uf}`;
+    cidade = localDaStartup(startup);
     descricao = startup.descricao;
     fatos = [
-      { rotulo: "Captação", valor: `Busca ${formatarMoeda(startup.captacao.meta)}` },
+      { rotulo: "Capital procurado", valor: textoCapital(startup) },
       { rotulo: "Estágio", valor: startup.estagio },
       { rotulo: "Mercado-alvo", valor: startup.mercadoAlvo },
-      { rotulo: startup.metrica.rotulo, valor: startup.metrica.valor },
+      ...(startup.metrica ? [{ rotulo: startup.metrica.rotulo, valor: startup.metrica.valor }] : []),
     ];
     href = `/startups/${startup.id}`;
   } else {
@@ -55,7 +56,7 @@ export default function UnioMiniPerfil({ rec, idTitulo, refTitulo }: UnioMiniPer
     nome = investidor.nome;
     verificado = investidor.verificado;
     chips = [rotuloTipoInvestidor(investidor.tipo)];
-    cidade = `${investidor.cidade}, ${investidor.uf}`;
+    cidade = localDoInvestidor(investidor);
     descricao = investidor.tese;
     fatos = [
       {
@@ -66,7 +67,7 @@ export default function UnioMiniPerfil({ rec, idTitulo, refTitulo }: UnioMiniPer
       },
       { rotulo: "Segmentos de interesse", valor: investidor.segmentosInteresse.join(", ") },
       { rotulo: "Estágios preferidos", valor: investidor.estagiosInteresse.join(", ") },
-      { rotulo: "Disponibilidade", valor: investidor.disponibilidade },
+      { rotulo: "Disponibilidade", valor: textoDisponibilidade(investidor.disponibilidade) },
     ];
     href = `/investidores/${investidor.id}`;
   }
@@ -88,7 +89,7 @@ export default function UnioMiniPerfil({ rec, idTitulo, refTitulo }: UnioMiniPer
             )}
           </h2>
           <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Resumo">
-            {chips.map((chip) => (
+            {chips.filter(Boolean).map((chip) => (
               <li key={chip} className="rounded-full bg-lightgray px-2.5 py-0.5 text-xs font-medium text-deepgreen">
                 {chip}
               </li>
@@ -102,10 +103,10 @@ export default function UnioMiniPerfil({ rec, idTitulo, refTitulo }: UnioMiniPer
         <MatchRing valor={rec.item.compatibilidade.total} />
       </div>
 
-      <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-deepgreen/80">{descricao}</p>
+      {descricao && <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-deepgreen/80">{descricao}</p>}
 
       <dl className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {fatos.map((fato) => (
+        {fatos.filter((fato) => fato.valor).map((fato) => (
           <div key={fato.rotulo} className="rounded-2xl bg-lightgray/40 px-4 py-3">
             <dt className="text-xs text-deepgreen/75">{fato.rotulo}</dt>
             <dd className="mt-0.5 text-sm font-bold text-deepgreen">{fato.valor}</dd>

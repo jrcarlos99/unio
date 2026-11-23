@@ -4,12 +4,14 @@ import { FOCO_VISIVEL } from "../onboarding/selecao";
 interface ConfirmarDesfazerProps {
   nome: string;
   ocupado: boolean;
+  // Ex.: "As reuniões com BioPay serão canceladas."
+  avisoReunioes?: string | null;
   onCancelar: () => void;
   onConfirmar: () => void;
 }
 
 // Confirmação de "Desfazer match", dentro do próprio popup do unio
-export default function ConfirmarDesfazer({ nome, ocupado, onCancelar, onConfirmar }: ConfirmarDesfazerProps) {
+export default function ConfirmarDesfazer({ nome, ocupado, avisoReunioes, onCancelar, onConfirmar }: ConfirmarDesfazerProps) {
   const refCancelar = useRef<HTMLButtonElement>(null);
 
   // Foco vai para a opção segura
@@ -30,6 +32,7 @@ export default function ConfirmarDesfazer({ nome, ocupado, onCancelar, onConfirm
       <p id="texto-desfazer" className="mt-1 text-sm text-red-900/90">
         Vocês deixam de ser unios e o contato deixa de ser exibido. Você poderá demonstrar interesse de novo depois.
       </p>
+      {avisoReunioes && <p className="mt-2 text-sm font-semibold text-red-900">{avisoReunioes}</p>}
       <div className="mt-3 flex flex-wrap justify-end gap-2">
         <button
           ref={refCancelar}

@@ -21,6 +21,7 @@ import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
 import br.com.unio.matchmaking_backend.review.dto.ReceivedReviewsResponse;
 import br.com.unio.matchmaking_backend.review.dto.ReviewCreateRequest;
 import br.com.unio.matchmaking_backend.review.dto.ReviewResponse;
+import br.com.unio.matchmaking_backend.review.dto.ReviewSummaryResponse;
 import br.com.unio.matchmaking_backend.review.entity.InteractionReview;
 import br.com.unio.matchmaking_backend.review.repository.InteractionReviewRepository;
 import br.com.unio.matchmaking_backend.review.service.ReviewService;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -37,6 +39,7 @@ class ReviewServiceTest {
     private InteractionReviewRepository reviewRepository;
     private MeetingService meetingService;
     private ReviewService service;
+    private UserRepository userRepository;
     private User startup;
     private User investor;
 
@@ -44,7 +47,7 @@ class ReviewServiceTest {
     void setUp() {
         reviewRepository = mock(InteractionReviewRepository.class);
         meetingService = mock(MeetingService.class);
-        UserRepository userRepository = mock(UserRepository.class);
+        userRepository = mock(UserRepository.class);
         StartupRepository startupRepository = mock(StartupRepository.class);
         ParticipantService participantService = new ParticipantService(userRepository, startupRepository);
         service = new ReviewService(reviewRepository, meetingService, participantService);
@@ -66,7 +69,11 @@ class ReviewServiceTest {
         ReviewResponse response = service.create(new AuthUser(startup), 5L, new ReviewCreateRequest(5, "  Ótima conversa  "));
 
         assertThat(response.rating()).isEqualTo(5);
-        assertThat(response.comment()).isEqualTo("Ótima conversa");
+        // D043: o comentário é gravado (sem espaços nas pontas), mas não volta na resposta
+        ArgumentCaptor<InteractionReview> saved = ArgumentCaptor.forClass(InteractionReview.class);
+        verify(reviewRepository).save(saved.capture());
+        assertThat(saved.getValue().getComment()).isEqualTo("Ótima conversa");
+        assertThat(response.toString()).doesNotContain("Ótima conversa");
         assertThat(response.reviewed().id()).isEqualTo(2L);
         assertThat(response.reviewer().id()).isEqualTo(1L);
     }
@@ -113,6 +120,84 @@ class ReviewServiceTest {
         when(reviewRepository.averageRatingFor(1L)).thenReturn(null);
 
         assertThat(service.received(new AuthUser(startup)).averageRating()).isNull();
+    }
+
+    // ---------------------------------------------------------------- D040
+
+    @Test
+    void resumoSemAvaliacoesNaoExibeMediaNemPorcentagem() {
+        when(reviewRepository.countByReviewedId(2L)).thenReturn(0L);
+
+        ReviewSummaryResponse summary = service.summary(new AuthUser(startup), 2L);
+
+        assertThat(summary.totalReviews()).isZero();
+        assertThat(summary.averageRating()).isNull();
+        assertThat(summary.percentage()).isNull();
+        assertThat(summary.visible()).isFalse();
+    }
+
+    @Test
+    void resumoComDuasAvaliacoesContinuaOculto() {
+        when(reviewRepository.countByReviewedId(2L)).thenReturn(2L);
+        when(reviewRepository.averageRatingFor(2L)).thenReturn(5.0);
+
+        ReviewSummaryResponse summary = service.summary(new AuthUser(startup), 2L);
+
+        assertThat(summary.totalReviews()).isEqualTo(2);
+        assertThat(summary.averageRating()).isNull();
+        assertThat(summary.percentage()).isNull();
+        assertThat(summary.visible()).isFalse();
+    }
+
+    @Test
+    void resumoComTresAvaliacoesMostraMediaEPorcentagem() {
+        when(reviewRepository.countByReviewedId(2L)).thenReturn(3L);
+        when(reviewRepository.averageRatingFor(2L)).thenReturn(14.0 / 3); // 5, 5, 4
+
+        ReviewSummaryResponse summary = service.summary(new AuthUser(startup), 2L);
+
+        assertThat(summary.visible()).isTrue();
+        assertThat(summary.averageRating()).isEqualTo(4.7);
+        assertThat(summary.percentage()).isEqualTo(93);
+    }
+
+    @Test
+    void resumoDoProprioUsuarioEhPermitido() {
+        when(reviewRepository.countByReviewedId(1L)).thenReturn(0L);
+
+        assertThat(service.summary(new AuthUser(startup), 1L).userId()).isEqualTo(1L);
+    }
+
+    @Test
+    void resumoDeUsuarioDoMesmoPapelResponde404() {
+        User outraStartup = User.builder().id(3L).role(Role.STARTUP).email("b@unio.com").passwordHash("x").build();
+        when(userRepository.findById(3L)).thenReturn(Optional.of(outraStartup));
+
+        assertThatThrownBy(() -> service.summary(new AuthUser(startup), 3L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void resumoDeUsuarioRemovidoOuInexistenteResponde404() {
+        investor.setDeletedAt(Instant.now());
+
+        assertThatThrownBy(() -> service.summary(new AuthUser(startup), 2L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThatThrownBy(() -> service.summary(new AuthUser(startup), 99L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void porcentagemArredondaComoNoFront() {
+        assertThat(ReviewService.percentageOf(4.5)).isEqualTo(90);
+        assertThat(ReviewService.percentageOf(4.375)).isEqualTo(88);
+        assertThat(ReviewService.percentageOf(null)).isNull();
     }
 
     private Meeting meeting(MeetingStatus status) {

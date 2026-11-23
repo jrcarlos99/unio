@@ -9,7 +9,18 @@ import {
   type ReactNode,
 } from "react";
 import axios from "axios";
-import api, { getApiErrorMessage, TOKEN_KEY } from "../services/api";
+import api, { getApiErrorMessage, TOKEN_KEY, tokenExpirado } from "../services/api";
+
+// Token salvo que já venceu não abre sessão (nem dispara uma chamada que
+// voltaria 401): começa deslogado
+function tokenSalvoValido(): string | null {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token && tokenExpirado(token)) {
+    localStorage.removeItem(TOKEN_KEY);
+    return null;
+  }
+  return token;
+}
 
 export type UserRole = "startup" | "investidor" | "admin";
 
@@ -88,9 +99,7 @@ function profileFromToken(token: string): UserProfile | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem(TOKEN_KEY),
-  );
+  const [token, setToken] = useState<string | null>(tokenSalvoValido);
   const [isLoading, setIsLoading] = useState(true);
   const skipNextValidation = useRef(false);
 

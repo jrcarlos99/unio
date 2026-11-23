@@ -49,7 +49,13 @@ export default function AppLayout() {
             </span>
           </header>
 
-          <main id="conteudo" className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+          {/* Largura fluida até 1600px (1760px no 2xl). Cada tela limita o que
+              não deve esticar: textos com max-w-2xl, formulários e leitura com
+              max-w-6xl, listas de cards com mais colunas. */}
+          <main
+            id="conteudo"
+            className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8 xl:px-10 2xl:max-w-[1760px]"
+          >
             <Suspense fallback={<p className="text-deepgreen">Carregando...</p>}>
               <Outlet />
             </Suspense>

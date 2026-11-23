@@ -1,43 +1,20 @@
-// Tipos usados só dentro da área do admin (src/admin).
+// Tipos usados só dentro da área do admin. Tudo vem do back (ADR-010 e
+// ADR-011); os JSON do back são lidos só em services/admin.mapping.ts.
 
-export type TipoCadastro = "Startup" | "Investidor";
-export type StatusCadastro = "Pendente" | "Aprovado" | "Rejeitado";
+export type TipoConta = "Startup" | "Investidor" | "Admin";
 
-// Detalhes do perfil reaproveitando os campos do RF01 (startup) e RF02 (investidor)
-export interface DetalhesCadastro {
-  segmento?: string;
-  estagio?: string;
-  necessidades?: string[];
-  descricao?: string;
-  tipoPerfil?: string;
-  areaInteresse?: string[];
-  ticketMedio?: number | null;
-  disponibilidade?: string;
-}
-
-export interface CadastroPendente {
+// Uma conta de GET /api/admin/users
+export interface UsuarioCadastrado {
   id: string;
-  nome: string;
-  tipo: TipoCadastro;
-  dataCadastro: string;
-  status: StatusCadastro;
-  detalhes: DetalhesCadastro;
+  email: string;
+  tipo: TipoConta;
+  // ISO; null se o back não mandar
+  dataCadastro: string | null;
+  // Conta excluída pelo titular (LGPD): o back anonimiza e marca deletedAt
+  excluida: boolean;
 }
 
-export interface ConteudoPublicado {
-  id: string;
-  startup: string;
-  trecho: string;
-  dataPublicacao: string;
-  sinalizado: boolean;
-}
-
-export interface PontoEvolucao {
-  periodo: string;
-  matches: number;
-}
-
-// Uma linha do log de auditoria (alimentado pelas ações de moderação)
+// Uma linha do log de auditoria (GET /api/admin/audit)
 export interface LogEntry {
   id: string;
   dataHora: string;
@@ -45,13 +22,11 @@ export interface LogEntry {
   acao: string;
 }
 
-// Um card de métrica no topo da Visão Geral: valor + variação + um
-// mini-histórico (sparkline) dos últimos períodos.
+// Um card de número no topo da Visão Geral. O back não tem histórico, então
+// não há variação nem sparkline (ADR-010).
 export interface Metrica {
   label: string;
   valor: number;
-  variacaoPercentual: number;
-  sparkline: number[];
 }
 
 export interface FatiaSegmento {
@@ -62,10 +37,4 @@ export interface FatiaSegmento {
 export interface RegiaoCadastro {
   local: string;
   quantidade: number;
-}
-
-export interface PerfilAdmin {
-  nome: string;
-  cargo: string;
-  iniciais: string;
 }

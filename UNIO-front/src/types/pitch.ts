@@ -22,14 +22,6 @@ export interface StartupPitch {
   leanCanvas: LeanCanvas;
 }
 
-export interface StartupPitchResponse {
-  status: PitchStatus;
-  shortPitch: string | null;
-  videoUrl: string | null;
-  updatedAt: string | null;
-  leanCanvas: { [K in LeanCanvasField]: string | null } | null;
-}
-
 export interface UpdatePitchRequest {
   shortPitch: string;
   videoUrl: string | null;

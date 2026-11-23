@@ -1,57 +1,54 @@
-import api from "./api";
-import type { LeanCanvas, StartupPitch, StartupPitchResponse, UpdatePitchRequest } from "../types/pitch";
+import type { StartupPitch, UpdatePitchRequest } from "../types/pitch";
+import {
+  PITCH_STORAGE_KEY,
+  PitchStorageError,
+  SHORT_PITCH_STORAGE_KEY,
+  parseStoredPitch,
+  toStoredPitch,
+} from "../utils/pitch";
+import { AnswersTooLargeError, readAnswers, updateAnswers } from "./onboardingAnswersStore";
 
-// Single data access point for the "Pitch & Lean Canvas" page. Uses the
-// shared axios instance, so the JWT Bearer token and the 401 redirect come
-// from services/api.ts.
+// Single data access point for the "Pitch & Lean Canvas" page.
 //
-// TODO(api): none of these endpoints exist in the backend yet. Until they
-// do, the page shows its error state against the real back. With
-// VITE_MOCK_BACKEND=true they are answered by services/mockBackend.ts.
-const BASE_PATH = "/api/startups/me/pitch";
+// The backend has no pitch endpoint, so the page is stored in the free-form
+// answers of GET/PUT /api/profile/onboarding (same as team, documents and
+// visibility): the short pitch in respostas.pitch, the key the onboarding
+// fills and the matchmaking reads, and the rest in respostas.pitchLeanCanvas.
+//
+// TODO(api): there is no content moderation in the backend yet, so
+// publishing marks the pitch as PUBLISHED right away instead of IN_REVIEW.
 
-function text(value: string | null | undefined) {
-  return value ?? "";
+const STORAGE_FULL = "Não há espaço para salvar o pitch. Encurte os blocos do canvas ou libere espaço nas abas Equipe ou Documentos.";
+
+function pitchOf(answers: Record<string, unknown>): StartupPitch {
+  return parseStoredPitch(answers[SHORT_PITCH_STORAGE_KEY], answers[PITCH_STORAGE_KEY]);
 }
 
-function normalize(data: StartupPitchResponse): StartupPitch {
-  const canvas = data.leanCanvas;
-  const leanCanvas: LeanCanvas = {
-    problem: text(canvas?.problem),
-    customerSegments: text(canvas?.customerSegments),
-    uniqueValueProposition: text(canvas?.uniqueValueProposition),
-    solution: text(canvas?.solution),
-    channels: text(canvas?.channels),
-    revenueStreams: text(canvas?.revenueStreams),
-    costStructure: text(canvas?.costStructure),
-    keyMetrics: text(canvas?.keyMetrics),
-    unfairAdvantage: text(canvas?.unfairAdvantage),
-  };
-  return {
-    status: data.status,
-    shortPitch: text(data.shortPitch),
-    videoUrl: data.videoUrl || null,
-    updatedAt: data.updatedAt,
-    leanCanvas,
-  };
+async function savePitch(update: (current: StartupPitch) => Record<string, unknown>): Promise<StartupPitch> {
+  try {
+    // pitchOf also refuses to overwrite a pitch saved in an unknown format
+    return pitchOf(await updateAnswers((answers) => ({ ...answers, ...update(pitchOf(answers)) })));
+  } catch (error) {
+    if (error instanceof AnswersTooLargeError) throw new PitchStorageError(STORAGE_FULL);
+    throw error;
+  }
 }
 
-// TODO(api): assumes the backend answers 200 with an empty DRAFT (not 404)
-// when the startup has never saved a pitch.
 export async function getMyPitch(): Promise<StartupPitch> {
-  const response = await api.get<StartupPitchResponse>(BASE_PATH);
-  return normalize(response.data);
+  return pitchOf(await readAnswers());
 }
 
-// TODO(api): assumes PUT replaces the whole pitch and returns it updated.
+// Saves the changes as a draft; the startup still has to publish them
 export async function updateMyPitch(body: UpdatePitchRequest): Promise<StartupPitch> {
-  const response = await api.put<StartupPitchResponse>(BASE_PATH, body);
-  return normalize(response.data);
+  return savePitch(() => ({
+    [SHORT_PITCH_STORAGE_KEY]: body.shortPitch,
+    [PITCH_STORAGE_KEY]: toStoredPitch(body, "DRAFT"),
+  }));
 }
 
-// TODO(api): assumes POST has no body, submits the saved version for
-// moderation and returns the pitch with status IN_REVIEW.
 export async function publishMyPitch(): Promise<StartupPitch> {
-  const response = await api.post<StartupPitchResponse>(`${BASE_PATH}/publish`);
-  return normalize(response.data);
+  return savePitch((current) => {
+    if (!current.shortPitch.trim()) throw new PitchStorageError("Escreva o pitch curto para publicar.");
+    return { [PITCH_STORAGE_KEY]: toStoredPitch(current, "PUBLISHED") };
+  });
 }

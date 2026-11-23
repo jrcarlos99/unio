@@ -5,6 +5,7 @@ import SectionCard from "../../../components/onboarding/SectionCard";
 import SelectableCard from "../../../components/onboarding/SelectableCard";
 import { alternarItem, tabIndexRadio } from "../../../components/onboarding/selecao";
 import { TAMANHOS_EQUIPE, TRACOES_STARTUP } from "../../../data/options";
+import { TAMANHO_MAX_TEXTO } from "../../../services/perfilFromOnboarding";
 import type { PassoStartupProps } from "./tipos";
 
 export default function PassoLocalizacao({ respostas, atualizar }: PassoStartupProps) {
@@ -17,6 +18,7 @@ export default function PassoLocalizacao({ respostas, atualizar }: PassoStartupP
           <input
             id="startup-localizacao"
             value={respostas.localizacao}
+            maxLength={TAMANHO_MAX_TEXTO}
             onChange={(event) => atualizar({ localizacao: event.target.value })}
             placeholder="Digite a cidade e o estado"
             className="w-full bg-transparent text-sm text-deepgreen outline-none placeholder:text-deepgreen/50"

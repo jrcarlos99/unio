@@ -13,6 +13,14 @@ export function formatarPercentual(valor: number) {
   return `${decimal.format(valor)}%`;
 }
 
+// Busca sem acento e sem diferenciar maiúsculas ("Saúde" acha "saude")
+export function normalizarBusca(texto: string) {
+  return texto
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 // "Fintech, B2B SaaS, AgTech & HealthTech"
 export function juntarComE(itens: string[]) {
   if (itens.length <= 1) return itens.join("");

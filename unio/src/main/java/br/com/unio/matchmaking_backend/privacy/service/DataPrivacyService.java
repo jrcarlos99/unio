@@ -16,8 +16,12 @@ import br.com.unio.matchmaking_backend.communication.repository.ConversationRepo
 import br.com.unio.matchmaking_backend.communication.repository.MeetingRepository;
 import br.com.unio.matchmaking_backend.communication.repository.MessageRepository;
 import br.com.unio.matchmaking_backend.consent.repository.ConsentRecordRepository;
+import br.com.unio.matchmaking_backend.interest.repository.UserSavedRepository;
+import br.com.unio.matchmaking_backend.interest.service.InterestService;
+import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
 import br.com.unio.matchmaking_backend.onboarding.repository.UserOnboardingRepository;
 import br.com.unio.matchmaking_backend.onboarding.service.OnboardingService;
+import br.com.unio.matchmaking_backend.popularity.repository.ProfileViewRepository;
 import br.com.unio.matchmaking_backend.profile.entity.Startup;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
@@ -73,10 +77,13 @@ public class DataPrivacyService {
     private final MessageRepository messageRepository;
     private final MeetingRepository meetingRepository;
     private final InteractionReviewRepository reviewRepository;
+    private final ProfileViewRepository profileViewRepository;
     private final MatchScoreFactorRepository matchScoreFactorRepository;
     private final MatchScoreRepository matchScoreRepository;
     private final FeedbackEventRepository feedbackEventRepository;
     private final AuditLogRepository auditLogRepository;
+    private final MatchInterestRepository interestRepository;
+    private final UserSavedRepository savedRepository;
     private final AuditService auditService;
 
     @Value("${app.upload.dir:./uploads/pitch/}")
@@ -98,8 +105,18 @@ public class DataPrivacyService {
         export.put("onboarding", onboardingData(authUser));
         export.put("conversations", conversationsData(user));
         export.put("meetings", meetingsData(user));
-        export.put("reviewsWritten", reviewsData(reviewRepository.findByReviewerIdOrderByCreatedAtDesc(user.getId())));
-        export.put("reviewsReceived", reviewsData(reviewRepository.findByReviewedIdOrderByCreatedAtDesc(user.getId())));
+        // D043: o titular recebe os comentários que ELE escreveu; os recebidos saem sem o texto
+        export.put("reviewsWritten",
+                reviewsData(reviewRepository.findByReviewerIdOrderByCreatedAtDesc(user.getId()), true));
+        export.put("reviewsReceived",
+                reviewsData(reviewRepository.findByReviewedIdOrderByCreatedAtDesc(user.getId()), false));
+        // D044: visitas que o titular fez (dele) e só o total das recebidas (sem os visitantes)
+        export.put("profileViewsMade", profileViewsMadeData(user));
+        export.put("profileViewsReceivedTotal", profileViewRepository.countByTargetUserId(user.getId()));
+        // D055: interesses que o titular enviou e salvos (dele); dos recebidos, só o total
+        export.put("interestsSent", interestsSentData(user));
+        export.put("interestsReceivedTotal", interestRepository.countActiveReceivedBy(user.getId()));
+        export.put("saved", savedData(user));
         export.put("auditLog", auditData(user));
         return export;
     }
@@ -143,6 +160,11 @@ public class DataPrivacyService {
 
         messageRepository.replaceContentSentBy(userId, REMOVED_MESSAGE);
         reviewRepository.clearCommentsWrittenBy(userId);
+        // D044: visitas ao perfil (como visitante e como visitado) não têm finalidade sem a conta
+        profileViewRepository.deleteAllInvolving(userId);
+        // D055: interesses (enviados e recebidos) e salvos (dele e dos outros sobre ele)
+        interestRepository.deleteAllInvolving(userId);
+        savedRepository.deleteAllInvolving(userId);
         cancelActiveMeetings(userId);
 
         // Scorecard usa UUID "Long-encoded" (D018): new UUID(0, userId)
@@ -285,7 +307,8 @@ public class DataPrivacyService {
                 .toList();
     }
 
-    private List<Map<String, Object>> reviewsData(List<InteractionReview> reviews) {
+    /** {@code includeComment} só é true para as avaliações escritas pelo próprio titular (D043). */
+    private List<Map<String, Object>> reviewsData(List<InteractionReview> reviews, boolean includeComment) {
         return reviews.stream()
                 .map(review -> {
                     Map<String, Object> data = new LinkedHashMap<>();
@@ -294,8 +317,43 @@ public class DataPrivacyService {
                     data.put("reviewerId", review.getReviewer().getId());
                     data.put("reviewedId", review.getReviewed().getId());
                     data.put("rating", review.getRating());
-                    data.put("comment", review.getComment());
+                    if (includeComment) {
+                        data.put("comment", review.getComment());
+                    }
                     data.put("createdAt", review.getCreatedAt());
+                    return data;
+                })
+                .toList();
+    }
+
+    private List<Map<String, Object>> profileViewsMadeData(User user) {
+        return profileViewRepository.findByViewerUserIdOrderByViewedOnDesc(user.getId()).stream()
+                .map(view -> {
+                    Map<String, Object> data = new LinkedHashMap<>();
+                    data.put("targetUserId", view.getTargetUserId());
+                    data.put("viewedOn", view.getViewedOn());
+                    return data;
+                })
+                .toList();
+    }
+
+    private List<Map<String, Object>> interestsSentData(User user) {
+        return interestRepository.findActiveSentBy(user.getId()).stream()
+                .map(interest -> {
+                    Map<String, Object> data = new LinkedHashMap<>();
+                    data.put("targetUserId", InterestService.otherSide(interest, user.getId()));
+                    data.put("createdAt", interest.getCreatedAt());
+                    return data;
+                })
+                .toList();
+    }
+
+    private List<Map<String, Object>> savedData(User user) {
+        return savedRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
+                .map(saved -> {
+                    Map<String, Object> data = new LinkedHashMap<>();
+                    data.put("targetUserId", saved.getTargetUserId());
+                    data.put("createdAt", saved.getCreatedAt());
                     return data;
                 })
                 .toList();

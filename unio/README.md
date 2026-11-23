@@ -153,12 +153,25 @@ O cadastro cria o usuário. Depois do login, o perfil completo deve ser criado n
 - `PUT /api/profile/me`
 - `POST /api/profile/startup` — role `STARTUP`
 - `POST /api/profile/investor` — role `INVESTOR`
+- `GET /api/profile/startup/{id}` e `GET /api/profile/investor/{id}` — perfil público (e-mail só depois do match, D060)
+- `GET /api/profile/startup/dashboard` — role `STARTUP` (D060)
+- `GET /api/profile/me/popularity` e `POST /api/profile-views` — popularidade e visitas (D041, D042)
+
+### Descoberta, interesse, match e salvos
+
+Contrato completo em `docs/contrato/contrato-descoberta.md`.
+
+- `GET /api/discovery/startups`, `GET /api/discovery/investors` e o detalhe `/{userId}` (D045, D046)
+- `PUT` e `DELETE /api/interests/{targetUserId}`, `GET /api/interests/matches` (D049, D052)
+- `POST /api/matches/interest`, `GET /api/matches`, `GET /api/matches/saved` — contrato do `main`, mesma tabela e mesma regra (D058)
+- `PUT` e `DELETE /api/saved/{targetUserId}`, `GET /api/saved` (D050)
 
 ### Scorecard
 
 - `POST /api/scorecard/calculate`
 - `GET /api/scorecard/{startupId}/explanation?investorId={investorId}`
-- `GET /api/scorecard/recommendations?investorId={investorId}&limit=20`
+- `GET /api/scorecard/recommendations?investorId={investorId}&limit=20` — `investorId` opcional; sem ele, o investidor logado (D061)
+- `GET /api/scorecard/recommendations/investors?startupId={startupId}&limit=20` — role `STARTUP`; `startupId` opcional (D061)
 - `POST /api/scorecard/feedback`
 
 O cálculo retorna `201 Created` na primeira persistência e `200 OK` quando o par é recalculado. O contrato usa UUIDs compatíveis com os IDs numéricos dos perfis legados.

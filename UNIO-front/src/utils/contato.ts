@@ -1,7 +1,7 @@
 import type { Contato } from "../types/contato";
 
 // Validação de contatos e montagem dos links externos (WhatsApp, e-mail,
-// telefone, Google Agenda). Nunca renderizar um link a partir de texto
+// telefone). Nunca renderizar um link a partir de texto
 // digitado sem passar por aqui: os links só usam números/e-mails validados e
 // tudo que vai na URL passa por encodeURIComponent.
 
@@ -81,16 +81,4 @@ export function linkEmail(email: string, assunto: string, corpo: string): string
 export function linkTelefone(numero: string): string | null {
   const valido = normalizarTelefone(numero);
   return valido ? `tel:+${valido}` : null;
-}
-
-// Modelo de evento do Google Agenda (a pessoa escolhe o horário lá)
-export function linkGoogleAgenda(titulo: string, detalhes: string, convidado?: string): string {
-  const parametros = [
-    "action=TEMPLATE",
-    `text=${encodeURIComponent(titulo)}`,
-    `details=${encodeURIComponent(detalhes)}`,
-  ];
-  const email = validarEmail(convidado);
-  if (email) parametros.push(`add=${encodeURIComponent(email)}`);
-  return `https://calendar.google.com/calendar/render?${parametros.join("&")}`;
 }

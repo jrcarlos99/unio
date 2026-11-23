@@ -20,6 +20,9 @@ public interface MatchScoreRepository extends JpaRepository<MatchScore, Long> {
 
     Optional<MatchScore> findByInvestorIdAndStartupId(UUID investorId, UUID startupId);
 
+    /** Pode haver um score por política para o mesmo par (D047). */
+    List<MatchScore> findAllByInvestorIdAndStartupId(UUID investorId, UUID startupId);
+
     /** T16 — distribuição por classificação calculada no banco (antes era findAll + groupingBy). */
     @Query("select m.classification, count(m) from MatchScore m group by m.classification")
     List<Object[]> countByClassification();
