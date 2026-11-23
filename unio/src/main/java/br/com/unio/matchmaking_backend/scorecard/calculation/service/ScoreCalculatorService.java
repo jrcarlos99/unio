@@ -90,7 +90,9 @@ public class ScoreCalculatorService {
             // D047: sem acentos, por cidade, por UF e "Nordeste" (ver RegionMatcher)
             case "REGIAO_FIT" -> RegionMatcher.matches(
                     startup.getLocalizacao(), investor.getRegiaoInteresse()) ? HUNDRED : ZERO;
-            case "MODELO_NEGOCIO_FIT" -> new BigDecimal("50");
+            // O investidor não possui filtro de modelo de negócio no perfil atual.
+            // Portanto o critério não deve penalizar startups por esse campo ausente.
+            case "MODELO_NEGOCIO_FIT" -> HUNDRED;
             default -> new BigDecimal("50");
         };
 

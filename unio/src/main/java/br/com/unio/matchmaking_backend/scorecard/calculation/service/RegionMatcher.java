@@ -45,6 +45,25 @@ public final class RegionMatcher {
             Map.entry("santa catarina", "sc"), Map.entry("sao paulo", "sp"), Map.entry("sergipe", "se"),
             Map.entry("tocantins", "to"));
 
+    /** Cidades usadas pelo cadastro que não informam explicitamente a UF. */
+    static final Map<String, String> CITY_UFS = Map.ofEntries(
+            Map.entry("recife", "pe"),
+            Map.entry("natal", "rn"),
+            Map.entry("joao pessoa", "pb"),
+            Map.entry("maceio", "al"),
+            Map.entry("aracaju", "se"),
+            Map.entry("salvador", "ba"),
+            Map.entry("fortaleza", "ce"),
+            Map.entry("sao luis", "ma"),
+            Map.entry("teresina", "pi"),
+            Map.entry("belo horizonte", "mg"),
+            Map.entry("sao paulo", "sp"),
+            Map.entry("rio de janeiro", "rj"),
+            Map.entry("curitiba", "pr"),
+            Map.entry("porto alegre", "rs"),
+            Map.entry("florianopolis", "sc"),
+            Map.entry("brasilia", "df"));
+
     private RegionMatcher() {
     }
 
@@ -102,7 +121,8 @@ public final class RegionMatcher {
         if (words.size() == 1 && UFS.contains(last)) {
             return new Place(null, last);
         }
-        return new Place(String.join(" ", words), null);
+        String city = String.join(" ", words);
+        return new Place(city, CITY_UFS.get(city));
     }
 
     static String normalize(String text) {
