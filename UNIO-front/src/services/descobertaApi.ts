@@ -87,7 +87,7 @@ function percentualPublico(id: string): Promise<number | null> {
 // Preenche o selo de popularidade (GET /api/reviews/summary/{id}) e aplica a
 // ordenação da ADR-006: score primeiro, popularidade só desempata e dá um
 // bônus pequeno (utils/popularidade.ts, ADR-006)
-export async function comPopularidade<T extends { popularidade?: number | null; compatibilidade: { total: number } }>(
+export async function comPopularidade<T extends { popularidade?: number | null; compatibilidade: { total: number | null } }>(
   itens: T[],
   idDe: (item: T) => string,
 ): Promise<T[]> {
@@ -98,7 +98,7 @@ export async function comPopularidade<T extends { popularidade?: number | null; 
   );
   return ordenarComPopularidade(
     comSelo,
-    (item) => item.compatibilidade.total,
+    (item) => item.compatibilidade.total ?? -1,
     (item) => item.popularidade,
   );
 }

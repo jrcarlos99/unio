@@ -18,7 +18,7 @@ function corDoArco(valor: number) {
 }
 
 interface MatchRingProps {
-  valor: number;
+  valor: number | null;
   tamanho?: keyof typeof TAMANHOS;
 }
 
@@ -26,12 +26,12 @@ export default function MatchRing({ valor, tamanho = "sm" }: MatchRingProps) {
   const { lado, traco } = TAMANHOS[tamanho];
   const raio = (lado - traco) / 2;
   const circunferencia = 2 * Math.PI * raio;
-  const limitado = Math.min(Math.max(valor, 0), 100);
+  const limitado = valor === null ? 0 : Math.min(Math.max(valor, 0), 100);
 
   return (
     <div
       role="img"
-      aria-label={`Compatibilidade de ${limitado}%`}
+      aria-label={valor === null ? "Compatibilidade indisponível por falta de dados" : `Compatibilidade de ${limitado}%`}
       className="relative inline-flex shrink-0 items-center justify-center"
       style={{ width: lado, height: lado }}
     >
@@ -51,11 +51,11 @@ export default function MatchRing({ valor, tamanho = "sm" }: MatchRingProps) {
       </svg>
       {tamanho === "sm" ? (
         <span className="absolute text-xs font-bold text-deepgreen" aria-hidden="true">
-          {limitado}%
+          {valor === null ? "—" : `${limitado}%`}
         </span>
       ) : (
         <span className="absolute flex flex-col items-center" aria-hidden="true">
-          <span className="text-4xl font-bold leading-none text-deepgreen">{limitado}%</span>
+          <span className="text-4xl font-bold leading-none text-deepgreen">{valor === null ? "—" : `${limitado}%`}</span>
           <span className="mt-1 text-xs font-medium text-deepgreen/75">Match Score</span>
         </span>
       )}

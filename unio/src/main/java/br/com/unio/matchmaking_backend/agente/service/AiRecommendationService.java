@@ -1,7 +1,10 @@
 package br.com.unio.matchmaking_backend.agente.service;
 
 import br.com.unio.matchmaking_backend.auth.entity.Role;
+import br.com.unio.matchmaking_backend.auth.entity.User;
 import br.com.unio.matchmaking_backend.auth.service.AuthUser;
+import br.com.unio.matchmaking_backend.auth.repository.UserRepository;
+import br.com.unio.matchmaking_backend.communication.service.ParticipantService;
 import br.com.unio.matchmaking_backend.onboarding.entity.UserOnboarding;
 import br.com.unio.matchmaking_backend.onboarding.repository.UserOnboardingRepository;
 import br.com.unio.matchmaking_backend.profile.entity.Investor;
@@ -9,10 +12,16 @@ import br.com.unio.matchmaking_backend.profile.entity.Startup;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
 import br.com.unio.matchmaking_backend.agente.dto.AiRecommendationResponse;
+import br.com.unio.matchmaking_backend.agente.dto.AiRecommendation;
+import br.com.unio.matchmaking_backend.interest.dto.InterestStatus;
+import br.com.unio.matchmaking_backend.interest.service.InterestService;
 import br.com.unio.matchmaking_backend.onboarding.entity.OnboardingStatus;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.HashSet;
+import java.util.Set;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -33,12 +42,22 @@ import tools.jackson.databind.ObjectMapper;
 @RequiredArgsConstructor
 public class AiRecommendationService {
 
+    private static final Set<String> ONBOARDING_FIELDS = Set.of(
+            "segmentosInteresse", "estagiosInteresse", "preferenciasStartup", "ticketMedio",
+            "apenasMentor", "disponibilidade", "formasInteracao", "regioesInteresse",
+            "segmento", "estagio", "necessidades", "capitalProcurado", "localizacao",
+            "tracao", "tamanhoEquipe", "modeloNegocio", "mercadoAlvo", "pitch"
+    );
+
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
 
     private final StartupRepository startupRepository;
     private final InvestorRepository investorRepository;
     private final UserOnboardingRepository onboardingRepository;
+    private final UserRepository userRepository;
+    private final ParticipantService participantService;
+    private final InterestService interestService;
     private final ObjectMapper objectMapper;
 
     @Value("${agente-ia.url:http://localhost:8000}")
@@ -60,15 +79,15 @@ public class AiRecommendationService {
             Investor investor = investorRepository.findById(user.getId())
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND, "Perfil de investidor não encontrado"));
-                return askAgent("STARTUP", profile(investor), onboarding(user.getId()),
-                    startupCandidates(investor.getId()), limit);
+            return withConnectionState(user.getId(), askAgent("STARTUP", profile(investor), onboarding(user.getId()),
+                    startupCandidates(investor.getId()), limit));
         }
         if (role == Role.STARTUP) {
             Startup startup = startupRepository.findById(user.getId())
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND, "Perfil de startup não encontrado"));
-                return askAgent("INVESTOR", profile(startup), onboarding(user.getId()),
-                    investorCandidates(startup.getId()), limit);
+            return withConnectionState(user.getId(), askAgent("INVESTOR", profile(startup), onboarding(user.getId()),
+                    investorCandidates(startup.getId()), limit));
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                 "Recomendações disponíveis apenas para startups e investidores");
@@ -97,8 +116,8 @@ public class AiRecommendationService {
             String json = toJson(request);
             URL url = URI.create(agenteUrl + "/v1/recommendations").toURL();
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setConnectTimeout(120_000);
-            connection.setReadTimeout(120_000);
+            connection.setConnectTimeout(5_000);
+            connection.setReadTimeout(40_000);
             connection.setRequestMethod("POST");
             connection.setDoOutput(true);
             connection.setRequestProperty("Content-Type", "application/json");
@@ -135,17 +154,60 @@ public class AiRecommendationService {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                 "O agente de IA não retornou recomendações");
         }
-        return response;
+        Map<Long, Map<String, Object>> allowed = new LinkedHashMap<>();
+        for (Map<String, Object> candidate : candidates) {
+            Long candidateId = numericId(candidate.get("candidateId"));
+            if (candidateId != null) allowed.put(candidateId, candidate);
+        }
+        Set<Long> seen = new HashSet<>();
+        List<AiRecommendation> validated = response.recommendations().stream()
+                .filter(item -> item.candidateId() != null && allowed.containsKey(item.candidateId()))
+                .filter(item -> seen.add(item.candidateId()))
+                .limit(limit)
+                .map(item -> {
+                    Map<String, Object> source = allowed.get(item.candidateId());
+                    Map<String, Object> publicProfile = new LinkedHashMap<>(source);
+                    publicProfile.keySet().removeAll(Set.of("candidateId", "candidateName", "respostasOnboarding"));
+                    return new AiRecommendation(item.candidateId(),
+                            String.valueOf(source.get("candidateName")), publicProfile,
+                            item.compatibility(), item.classification(), item.dataCoverage(), item.summary(),
+                            item.strengths(), item.attentionPoints(), item.factors(), item.nextStep(), null, false);
+                })
+                .toList();
+        return new AiRecommendationResponse(candidateType, validated);
+    }
+
+    private Long numericId(Object value) {
+        return value instanceof Number number ? number.longValue() : null;
+    }
+
+    private AiRecommendationResponse withConnectionState(Long userId, AiRecommendationResponse response) {
+        Map<Long, InterestStatus> statuses = interestService.statusesOf(userId);
+        Set<Long> saved = interestService.savedIdsOf(userId);
+        List<br.com.unio.matchmaking_backend.agente.dto.AiRecommendation> recommendations =
+                response.recommendations().stream()
+                        .map(item -> new br.com.unio.matchmaking_backend.agente.dto.AiRecommendation(
+                                item.candidateId(), item.candidateName(), item.candidateProfile(),
+                                item.compatibility(), item.classification(), item.dataCoverage(), item.summary(),
+                                item.strengths(), item.attentionPoints(), item.factors(), item.nextStep(),
+                                statuses.getOrDefault(item.candidateId(), InterestStatus.NONE).name(),
+                                saved.contains(item.candidateId())))
+                        .toList();
+        return new AiRecommendationResponse(response.candidateType(), recommendations);
     }
 
     private List<Map<String, Object>> startupCandidates(Long currentId) {
         return startupRepository.findAll().stream()
                 .filter(startup -> !startup.getId().equals(currentId))
                 .map(startup -> {
+                    User candidateUser = activeCandidateUser(startup.getId(), Role.STARTUP);
+                    if (candidateUser == null) return null;
                     Map<String, Object> candidate = profile(startup);
+                    candidate.put("candidateName", participantService.displayName(candidateUser));
                     candidate.put("respostasOnboarding", onboarding(startup.getId()));
                     return candidate;
                 })
+                .filter(Objects::nonNull)
                 .toList();
     }
 
@@ -153,11 +215,22 @@ public class AiRecommendationService {
         return investorRepository.findAll().stream()
                 .filter(investor -> !investor.getId().equals(currentId))
                 .map(investor -> {
+                    User candidateUser = activeCandidateUser(investor.getId(), Role.INVESTOR);
+                    if (candidateUser == null) return null;
                     Map<String, Object> candidate = profile(investor);
+                    candidate.put("candidateName", participantService.displayName(candidateUser));
                     candidate.put("respostasOnboarding", onboarding(investor.getId()));
                     return candidate;
                 })
+                .filter(Objects::nonNull)
                 .toList();
+    }
+
+    private User activeCandidateUser(Long id, Role expectedRole) {
+        return userRepository.findById(id)
+                .filter(participantService::isActive)
+                .filter(user -> user.getRole() == expectedRole)
+                .orElse(null);
     }
 
     private Map<String, Object> profile(Startup startup) {
@@ -178,13 +251,23 @@ public class AiRecommendationService {
         Map<String, Object> profile = new LinkedHashMap<>();
         profile.put("candidateId", investor.getId());
         profile.put("candidateName", "Investidor " + investor.getId());
-        profile.put("segmentosInteresse", investor.getSegmentosInteresse());
-        profile.put("estagiosInteresse", investor.getEstagiosInteresse());
+        profile.put("segmentosInteresse", csvValues(investor.getSegmentosInteresse()));
+        profile.put("estagiosInteresse", csvValues(investor.getEstagiosInteresse()));
         profile.put("ticketMinimo", investor.getTicketMinimo());
         profile.put("ticketMaximo", investor.getTicketMaximo());
         profile.put("regiaoInteresse", investor.getRegiaoInteresse());
         profile.put("perfilRisco", investor.getPerfilRisco());
+        profile.put("disponibilidade", investor.getDisponibilidade() == null
+                ? null : investor.getDisponibilidade().name());
         return profile;
+    }
+
+    private List<String> csvValues(String value) {
+        if (value == null || value.isBlank()) return List.of();
+        return java.util.Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(part -> !part.isBlank())
+                .toList();
     }
 
     private Map<String, Object> onboarding(Long userId) {
@@ -192,7 +275,16 @@ public class AiRecommendationService {
                 .map(UserOnboarding::getRespostas)
                 .filter(value -> value != null && !value.isBlank())
                 .map(this::parseJson)
+                .map(this::relevantOnboardingAnswers)
                 .orElseGet(Map::of);
+    }
+
+    private Map<String, Object> relevantOnboardingAnswers(Map<String, Object> answers) {
+        Map<String, Object> relevant = new LinkedHashMap<>();
+        answers.forEach((key, value) -> {
+            if (ONBOARDING_FIELDS.contains(key)) relevant.put(key, value);
+        });
+        return relevant;
     }
 
     private Map<String, Object> parseJson(String value) {

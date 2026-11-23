@@ -42,7 +42,7 @@ export default function RecommendedInvestorCard({ item }: { item: InvestidorReco
 
       <div className="ml-auto flex items-center gap-3">
         <p className="text-right leading-tight">
-          <span className="block text-sm font-bold text-deepgreen">{compatibilidade.total}%</span>
+          <span className="block text-sm font-bold text-deepgreen">{compatibilidade.total === null ? "—" : `${compatibilidade.total}%`}</span>
           <span className="text-[11px] text-deepgreen/75">afinidade</span>
         </p>
         <Link

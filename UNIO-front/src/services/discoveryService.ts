@@ -9,12 +9,10 @@ import type {
 } from "../types/discovery";
 import { paraIdDoBack } from "../utils/idsBack";
 import api from "./api";
-import { buscarDescoberta, buscarDetalhe, comPopularidade, enviarFeedback } from "./descobertaApi";
+import { comPopularidade, enviarFeedback } from "./descobertaApi";
 import {
   contatoDeConexao,
-  motivosDoBack,
   startupDeConexao,
-  startupRecomendadaDoBack,
   statusDoInteresseEnviado,
   statusInteresseDoBack,
   type ConexaoBack,
@@ -25,11 +23,17 @@ import type { RespostasInvestidor } from "../types/onboarding";
 import { normalizarBusca } from "../utils/formatoDescoberta";
 import { readAnswer } from "./onboardingAnswersStore";
 import { CHAVE_RESPOSTAS_ONBOARDING } from "./perfilOnboardingService";
+import {
+  getAgenteRecommendations,
+  limparCacheRecomendacoesIa,
+  startupDetalheDaIa,
+  startupRecomendadaDaIa,
+} from "./agenteRecommendationService";
 
 // Único ponto de dados das telas do investidor: Descobrir, Perfil da startup,
 // Salvos e Meus unios (ADR-008 e ADR-011). Só o back:
 //
-// - Lista e perfil: /api/discovery/startups (score do scorecard do back).
+// - Lista e perfil: mesma resposta de /api/agente/recommendations (nota e ranking da IA).
 // - Interesse e match: /api/interests; salvos: /api/saved.
 // - Contato depois do match: só o e-mail de /api/interests/matches.
 // - Feedback do algoritmo (VIEWED ao abrir o perfil, INTERESTED no "Tenho
@@ -37,8 +41,6 @@ import { CHAVE_RESPOSTAS_ONBOARDING } from "./perfilOnboardingService";
 // - Tese no topo do Descobrir: respostas do onboarding guardadas no back
 //   (GET /api/profile/onboarding, chave "onboarding").
 // O userKey não é usado nas chamadas: o token identifica o usuário.
-
-const CAMINHO_LISTA = "/api/discovery/startups";
 
 // Filtro puro sobre a lista já carregada: as telas filtram no cliente a cada
 // tecla, sem buscar de novo
@@ -90,23 +92,16 @@ export async function listarStartupsRecomendadas(
   _userKey: string,
   filtros: FiltrosDescoberta = {},
 ): Promise<StartupRecomendada[]> {
-  const itens = await buscarDescoberta(CAMINHO_LISTA, {
-    busca: filtros.busca,
-    segmento: filtros.segmento,
-    estagio: filtros.estagio,
-  });
-  return comPopularidade(itens.map(startupRecomendadaDoBack), (item) => item.startup.id);
+  const response = await getAgenteRecommendations(20);
+  if (response.candidateType !== "STARTUP") return [];
+  return aplicarFiltros(response.recommendations.map(startupRecomendadaDaIa), filtros);
 }
 
 export async function obterStartup(_userKey: string, id: string): Promise<StartupDetalhe | null> {
-  const userId = paraIdDoBack(id);
-  if (userId === null) return null;
-  const item = await buscarDetalhe(`${CAMINHO_LISTA}/${userId}`);
-  if (!item) return null;
-  // Abriu o perfil: feedback VIEWED, sem esperar e sem erro na tela
-  void enviarFeedback(item.scorecard, "VIEWED");
-  const [comSelo] = await comPopularidade([startupRecomendadaDoBack(item)], (rec) => rec.startup.id);
-  return { ...comSelo, motivos: motivosDoBack(item, "investidor") };
+  const response = await getAgenteRecommendations(20);
+  if (response.candidateType !== "STARTUP") return null;
+  const item = response.recommendations.find((recommendation) => String(recommendation.candidateId) === id);
+  return item ? startupDetalheDaIa(item) : null;
 }
 
 function idObrigatorio(id: string): number {
@@ -117,10 +112,12 @@ function idObrigatorio(id: string): number {
 
 export async function salvarStartup(_userKey: string, id: string): Promise<void> {
   await api.put(`/api/saved/${idObrigatorio(id)}`);
+  limparCacheRecomendacoesIa();
 }
 
 export async function removerSalvo(_userKey: string, id: string): Promise<void> {
   await api.delete(`/api/saved/${idObrigatorio(id)}`);
+  limparCacheRecomendacoesIa();
 }
 
 export async function listarSalvos(_userKey: string): Promise<StartupRecomendada[]> {
@@ -144,12 +141,14 @@ export async function registrarInteresse(
 ): Promise<StatusInteresse> {
   const { data } = await api.put<InteresseBack>(`/api/interests/${idObrigatorio(id)}`);
   void enviarFeedback(scorecard, "INTERESTED");
+  limparCacheRecomendacoesIa();
   return statusDoInteresseEnviado(data);
 }
 
 // Retira o interesse enviado (antes do match)
 export async function desfazerInteresse(_userKey: string, id: string): Promise<StatusInteresse> {
   const { data } = await api.delete<RetiradaInteresseBack>(`/api/interests/${idObrigatorio(id)}`);
+  limparCacheRecomendacoesIa();
   return statusInteresseDoBack(data.status);
 }
 
@@ -175,6 +174,7 @@ export async function obterContato(_userKey: string, id: string): Promise<DadosU
 // Desfaz o match: o back apaga o interesse e cancela as reuniões futuras do par
 export async function desfazerMatch(_userKey: string, id: string): Promise<ResultadoDesfazerMatch> {
   const { data } = await api.delete<RetiradaInteresseBack>(`/api/interests/${idObrigatorio(id)}`);
+  limparCacheRecomendacoesIa();
   return { status: statusInteresseDoBack(data.status), reunioesCanceladas: data.canceledMeetings };
 }
 

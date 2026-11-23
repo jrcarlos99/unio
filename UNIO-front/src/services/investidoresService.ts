@@ -11,12 +11,16 @@ import { formatarMoeda, normalizarBusca } from "../utils/formatoDescoberta";
 import { paraIdDoBack } from "../utils/idsBack";
 import api from "./api";
 import { obterContextoStartup } from "./dashboardStartupService";
-import { buscarDescoberta, buscarDetalhe, comPopularidade, enviarFeedback } from "./descobertaApi";
+import { comPopularidade, enviarFeedback } from "./descobertaApi";
+import {
+  getAgenteRecommendations,
+  limparCacheRecomendacoesIa,
+  investidorDetalheDaIa,
+  investidorRecomendadoDaIa,
+} from "./agenteRecommendationService";
 import {
   contatoDeConexao,
   investidorDeConexao,
-  investidorRecomendadoDoBack,
-  motivosDoBack,
   statusDoInteresseEnviado,
   statusInteresseDoBack,
   type ConexaoBack,
@@ -28,12 +32,10 @@ import {
 // Investidores, Salvos, Meus unios, perfil do investidor e "Investidores
 // recomendados" da Visão geral (ADR-008 e ADR-011). Só o back:
 //
-// - Lista e perfil: /api/discovery/investors (score do scorecard do back).
+// - Lista e perfil recomendado: mesma resposta de /api/agente/recommendations (nota e ranking da IA).
 // - Interesse e match: /api/interests; salvos: /api/saved.
 // - Contato depois do match: só o e-mail de /api/interests/matches.
 // - Feedback do algoritmo: silencioso, nunca bloqueia a tela.
-
-const CAMINHO_LISTA = "/api/discovery/investors";
 
 // Filtro puro sobre a lista já carregada: as telas filtram no cliente a cada
 // tecla, sem buscar de novo
@@ -71,23 +73,25 @@ export async function listarInvestidoresRecomendados(
   _user: UserProfile | null,
   filtros: FiltrosInvestidores = {},
 ): Promise<InvestidorRecomendado[]> {
-  const itens = await buscarDescoberta(CAMINHO_LISTA, {
-    busca: filtros.busca,
-    segmento: filtros.segmento,
-    tipo: filtros.tipo,
+  const response = await getAgenteRecommendations(20);
+  if (response.candidateType !== "INVESTOR") return [];
+  return response.recommendations.map(investidorRecomendadoDaIa).filter((item) => {
+    if (filtros.segmento && !item.investidor.segmentosInteresse.includes(filtros.segmento)) return false;
+    if (filtros.tipo && ![filtros.tipo, "Ambos"].includes(item.investidor.tipo)) return false;
+    if (filtros.busca?.trim()) {
+      const alvo = [item.investidor.nome, item.investidor.tese, ...item.investidor.segmentosInteresse,
+        ...item.investidor.estagiosInteresse].join(" ").toLowerCase();
+      if (!alvo.includes(filtros.busca.trim().toLowerCase())) return false;
+    }
+    return true;
   });
-  return comPopularidade(itens.map(investidorRecomendadoDoBack), (item) => item.investidor.id);
 }
 
 export async function obterInvestidor(_user: UserProfile | null, id: string): Promise<InvestidorDetalhe | null> {
-  const userId = paraIdDoBack(id);
-  if (userId === null) return null;
-  const item = await buscarDetalhe(`${CAMINHO_LISTA}/${userId}`);
-  if (!item) return null;
-  // Abriu o perfil: feedback VIEWED, sem esperar e sem erro na tela
-  void enviarFeedback(item.scorecard, "VIEWED");
-  const [comSelo] = await comPopularidade([investidorRecomendadoDoBack(item)], (rec) => rec.investidor.id);
-  return { ...comSelo, motivos: motivosDoBack(item, "startup") };
+  const response = await getAgenteRecommendations(20);
+  if (response.candidateType !== "INVESTOR") return null;
+  const item = response.recommendations.find((recommendation) => String(recommendation.candidateId) === id);
+  return item ? investidorDetalheDaIa(item) : null;
 }
 
 function idObrigatorio(id: string): number {
@@ -98,10 +102,12 @@ function idObrigatorio(id: string): number {
 
 export async function salvarInvestidor(_user: UserProfile | null, id: string): Promise<void> {
   await api.put(`/api/saved/${idObrigatorio(id)}`);
+  limparCacheRecomendacoesIa();
 }
 
 export async function removerSalvo(_user: UserProfile | null, id: string): Promise<void> {
   await api.delete(`/api/saved/${idObrigatorio(id)}`);
+  limparCacheRecomendacoesIa();
 }
 
 export async function listarSalvos(_user: UserProfile | null): Promise<InvestidorRecomendado[]> {
@@ -134,11 +140,13 @@ export async function registrarInteresse(
 ): Promise<StatusInteresse> {
   const { data } = await api.put<InteresseBack>(`/api/interests/${idObrigatorio(id)}`);
   void enviarFeedback(scorecard, "INTERESTED");
+  limparCacheRecomendacoesIa();
   return statusDoInteresseEnviado(data);
 }
 
 export async function desfazerInteresse(_user: UserProfile | null, id: string): Promise<StatusInteresse> {
   const { data } = await api.delete<RetiradaInteresseBack>(`/api/interests/${idObrigatorio(id)}`);
+  limparCacheRecomendacoesIa();
   return statusInteresseDoBack(data.status);
 }
 
@@ -151,6 +159,7 @@ export async function obterContato(_user: UserProfile | null, id: string): Promi
 
 export async function desfazerMatch(_user: UserProfile | null, id: string): Promise<ResultadoDesfazerMatch> {
   const { data } = await api.delete<RetiradaInteresseBack>(`/api/interests/${idObrigatorio(id)}`);
+  limparCacheRecomendacoesIa();
   return { status: statusInteresseDoBack(data.status), reunioesCanceladas: data.canceledMeetings };
 }
 

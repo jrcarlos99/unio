@@ -158,7 +158,7 @@ export default function Investidores() {
 
       <GradeRecomendacoes
         titulo="Investidores para você"
-        selo="Recomendados pelo algoritmo de tese"
+        selo="Recomendados pelo agente de IA"
         carregando={carregando}
         erro={erro}
         tituloErro="Não foi possível carregar os investidores"

@@ -1,20 +1,19 @@
 # UNIO Agente de IA
 
-Servico independente responsavel pela recomendacao de startups e investidores.
+Serviço independente de recomendação de startups e investidores.
 
 ## Responsabilidades
 
-- Receber dados ja filtrados pelo back-end Java.
-- Preparar o contexto e montar o prompt.
-- Consultar a OpenAI.
-- Validar o JSON retornado.
-- Aceitar somente candidatos enviados pelo back-end.
-- Devolver compatibilidade, resumo, pontos fortes e pontos de atencao.
+- Receber perfil, onboarding relevante e candidatos preparados pelo backend Java.
+- Consultar a OpenAI para obter notas e justificativas por critério.
+- Validar a estrutura e os IDs retornados.
+- Aplicar a fórmula ponderada, calcular cobertura, classificar e ordenar candidatos.
+- Devolver resumo, fatores, pontos fortes, pontos de atenção e perfil público usado pelas telas.
+- Reutilizar resultados idênticos por até cinco minutos; qualquer mudança nos dados de entrada cria outra chave de cache.
 
-O agente nao acessa o PostgreSQL e nao conhece credenciais de usuarios. O back-end
-continua responsavel por autenticacao, perfis, banco e cache.
+O agente não acessa o PostgreSQL. Java continua responsável pela autenticação, perfis, dados e estado de salvar/interesse. O frontend apresenta a mesma resposta do agente nos cards e no perfil.
 
-## Execucao local
+## Execução local
 
 ```powershell
 cd agente-ia
@@ -25,13 +24,17 @@ $env:OPENAI_API_KEY = "sua-chave-da-openai"
 uvicorn app.main:app --reload --port 8000
 ```
 
-Para hospedagem com Docker, use o `Dockerfile` desta pasta. O processo escuta
-em `0.0.0.0` e usa a variável `PORT` fornecida pela plataforma.
+Para Docker, use o `Dockerfile` desta pasta. A aplicação escuta em `0.0.0.0` e usa `PORT` quando fornecido pela plataforma.
 
 Endpoints:
 
 - `GET /health`
 - `POST /v1/recommendations`
 
-O back-end Java deve usar `AGENTE_IA_URL=http://localhost:8000`.
-Nunca coloque a chave da OpenAI no front-end, no Java ou em arquivos versionados.
+O backend Java usa `agente-ia.url` (padrão local `http://localhost:8000`). Nunca coloque a chave OpenAI no front-end, no Java ou em arquivos versionados.
+
+## Modelo e avaliação
+
+Pesos, fórmula, dados, arquitetura, critérios de validação, limitações e roteiro de apresentação estão em [docs/validacao-recomendacoes.md](docs/validacao-recomendacoes.md).
+
+Configuração: `OPENAI_API_KEY`; opcionais `OPENAI_MODEL` (padrão `gpt-4o-mini`), `OPENAI_TIMEOUT_SECONDS` (35) e `RECOMMENDATION_CACHE_TTL_SECONDS` (300).

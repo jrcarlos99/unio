@@ -148,6 +148,7 @@ const ROTULO_CLASSIFICACAO: Record<string, string> = {
   MODERADO: "Moderado",
   FRACO: "Fraco",
   SEM_MATCH: "Sem match",
+  DADOS_INSUFICIENTES: "Dados insuficientes",
 };
 
 export function rotuloClassificacao(classificacao: string | null | undefined): string | null {

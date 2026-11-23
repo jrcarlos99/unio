@@ -90,14 +90,24 @@ export interface NotasCompatibilidade {
 export type CriterioCompatibilidade = keyof NotasCompatibilidade;
 
 export interface Compatibilidade {
-  total: number;
+  total: number | null;
   // Só os critérios que existem no scorecard do back: não há
   // "disponibilidade", então ela não aparece (ADR-008)
   notas: Partial<NotasCompatibilidade>;
   // Classificação do scorecard (EXCELENTE, FORTE...) e próximo passo
   classificacao?: string | null;
   proximoPasso?: string | null;
-  fonte?: "scorecard";
+  fonte?: "scorecard" | "agente_ia";
+  fatores?: FatorCompatibilidade[];
+  coberturaDados?: number;
+}
+
+export interface FatorCompatibilidade {
+  codigo: string;
+  rotulo: string;
+  nota: number | null;
+  peso: number;
+  explicacao: string;
 }
 
 // Par do scorecard no back, usado no feedback do algoritmo

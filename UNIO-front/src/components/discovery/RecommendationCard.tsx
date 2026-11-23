@@ -26,7 +26,7 @@ interface RecommendationCardProps {
   // Logo da startup ou avatar do investidor
   avatar: ReactNode;
   categoria: string;
-  match: number;
+  match: number | null;
   // Popularidade visível em % (selo pequeno); nula: sem selo
   popularidade?: number | null;
   melhorMatch: boolean;
