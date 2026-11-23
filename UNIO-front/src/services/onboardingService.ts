@@ -1,73 +1,54 @@
 import type { PerfilOnboarding, StatusOnboarding } from "../types/onboarding";
 
-// Persistência do estado do wizard (status e respostas por e-mail) no
-// localStorage do navegador. A criação do perfil no back e a cópia das
-// respostas em /api/profile/onboarding ficam em perfilOnboardingService.ts.
-// Todas as funções já retornam Promise, pra poderem virar chamadas HTTP sem
-// mudar as telas.
-
-const PREFIXO = "unio_onboarding_";
-
-interface RegistroStatus {
-  status: Exclude<StatusOnboarding, "pendente">;
-  perfil: PerfilOnboarding;
-  atualizadoEm: string;
+async function getApi() {
+  const module = await import("./api");
+  return module.default;
 }
 
-// Identificador do usuário usado nas chaves. Usa o e-mail porque é o único
-// dado que existe tanto logo após o cadastro (a resposta do /register não
-// traz id) quanto após o login (/api/profile/me) — com o id, a mesma pessoa
-// ficaria com duas chaves diferentes.
+// Único ponto de persistência do onboarding. As respostas precisam chegar ao
+// back para que o motor de IA consiga comparar perfis.
+
 export function chaveUsuario(user: { email: string }) {
   return user.email.trim().toLowerCase();
 }
 
-const chaveStatus = (userKey: string) => `${PREFIXO}${userKey}`;
-const chaveRespostas = (userKey: string, perfil: PerfilOnboarding) =>
-  `${PREFIXO}${userKey}_${perfil}_respostas`;
+interface RegistroStatus {
+  status: StatusOnboarding;
+  perfil: PerfilOnboarding;
+  atualizadoEm: string;
+}
 
-// localStorage pode lançar erro (modo privado, cota cheia); nesse caso o
-// onboarding continua funcionando, só não sobrevive ao recarregar a página.
-function ler<T>(chave: string): T | null {
+export type StatusOnboardingBack = "PENDENTE" | "CONCLUIDO" | "PULADO";
+
+function chaveStatus(userKey: string) {
+  return `unio_onboarding_${userKey.trim().toLowerCase()}`;
+}
+
+function lerStatusLocalRegistrado(userKey: string): RegistroStatus | null {
   try {
-    const bruto = localStorage.getItem(chave);
-    return bruto ? (JSON.parse(bruto) as T) : null;
+    const valor = localStorage.getItem(chaveStatus(userKey));
+    return valor ? JSON.parse(valor) as RegistroStatus : null;
   } catch {
     return null;
   }
 }
 
-function gravar(chave: string, valor: unknown) {
-  try {
-    localStorage.setItem(chave, JSON.stringify(valor));
-  } catch {
-    // ver comentário em ler()
-  }
-}
-
-export async function getStatus(userKey: string): Promise<StatusOnboarding> {
-  return (await lerStatusLocal(userKey)) ?? "pendente";
-}
-
-// null = este navegador nunca gravou o status (ex.: login em outro navegador).
-// O OnboardingGate usa isso para consultar o back antes de mandar ao wizard.
 export async function lerStatusLocal(userKey: string): Promise<StatusOnboarding | null> {
-  return ler<RegistroStatus>(chaveStatus(userKey))?.status ?? null;
+  return lerStatusLocalRegistrado(userKey)?.status ?? null;
 }
 
-// Grava o status vindo do back (concluído ou pulado em outro navegador)
 export async function gravarStatusLocal(
   userKey: string,
   perfil: PerfilOnboarding,
   status: Exclude<StatusOnboarding, "pendente">,
 ): Promise<void> {
-  const registro: RegistroStatus = { status, perfil, atualizadoEm: new Date().toISOString() };
-  gravar(chaveStatus(userKey), registro);
+  const registro: RegistroStatus = {
+    status,
+    perfil,
+    atualizadoEm: new Date().toISOString(),
+  };
+  localStorage.setItem(chaveStatus(userKey), JSON.stringify(registro));
 }
-
-// Status do /api/profile/onboarding (PENDENTE, CONCLUIDO, PULADO) ↔ front.
-// Qualquer outro valor (ou ausente) conta como pendente.
-export type StatusOnboardingBack = "PENDENTE" | "CONCLUIDO" | "PULADO";
 
 export function statusOnboardingDoBack(status: unknown): StatusOnboarding {
   if (status === "CONCLUIDO") return "concluido";
@@ -81,19 +62,26 @@ export function statusOnboardingParaBack(status: StatusOnboarding): StatusOnboar
   return "PENDENTE";
 }
 
-// Conta sem perfil precisa passar pelo onboarding para criá-lo (ADR-001),
-// então "concluido"/"pulado" antigos no localStorage (ex.: contas de teste de
-// antes da mudança) valem como "pendente". Nada é apagado: as respostas salvas
-// continuam lá e o wizard retoma de onde parou.
 export function statusEfetivo(status: StatusOnboarding, temPerfil: boolean): StatusOnboarding {
   return temPerfil ? status : "pendente";
+}
+
+export async function getStatus(userKey: string): Promise<StatusOnboarding> {
+  void userKey;
+  const api = await getApi();
+  const { data } = await api.get<{ status: string }>("/api/profile/onboarding");
+  return data.status.toLowerCase() as StatusOnboarding;
 }
 
 export async function loadAnswers<T>(
   userKey: string,
   perfil: PerfilOnboarding,
 ): Promise<Partial<T> | null> {
-  return ler<Partial<T>>(chaveRespostas(userKey, perfil));
+  void userKey;
+  void perfil;
+  const api = await getApi();
+  const { data } = await api.get<{ respostas: Partial<T> }>("/api/profile/onboarding");
+  return data.respostas ?? null;
 }
 
 export async function saveAnswers<T>(
@@ -101,7 +89,10 @@ export async function saveAnswers<T>(
   perfil: PerfilOnboarding,
   respostas: T,
 ): Promise<void> {
-  gravar(chaveRespostas(userKey, perfil), respostas);
+  void userKey;
+  void perfil;
+  const api = await getApi();
+  await api.put("/api/profile/onboarding", { respostas });
 }
 
 export async function markCompleted<T>(
@@ -109,13 +100,10 @@ export async function markCompleted<T>(
   perfil: PerfilOnboarding,
   respostas: T,
 ): Promise<void> {
-  gravar(chaveRespostas(userKey, perfil), respostas);
-  const registro: RegistroStatus = {
-    status: "concluido",
-    perfil,
-    atualizadoEm: new Date().toISOString(),
-  };
-  gravar(chaveStatus(userKey), registro);
+  void userKey;
+  void perfil;
+  const api = await getApi();
+  await api.put("/api/profile/onboarding", { status: "CONCLUIDO", respostas });
 }
 
 // As respostas parciais continuam salvas, pra quem pulou poder retomar
@@ -124,10 +112,8 @@ export async function markSkipped(
   userKey: string,
   perfil: PerfilOnboarding,
 ): Promise<void> {
-  const registro: RegistroStatus = {
-    status: "pulado",
-    perfil,
-    atualizadoEm: new Date().toISOString(),
-  };
-  gravar(chaveStatus(userKey), registro);
+  void userKey;
+  void perfil;
+  const api = await getApi();
+  await api.put("/api/profile/onboarding", { status: "PULADO" });
 }

@@ -17,10 +17,13 @@ Este repositório é um **monorepo**: contém o front-end e o back-end do projet
 ```text
 UNIO/
 ├── unio/             # Back-end — Java 21 + Spring Boot
-└── UNIO-front/        # Front-end — React + TypeScript + Vite
+├── UNIO-front/       # Front-end — React + TypeScript + Vite
+└── agente-ia/        # Serviço independente de IA — FastAPI + OpenAI
 ```
 
-Cada pasta tem suas próprias dependências e seu próprio ciclo de build — não há dependência direta de uma na outra além da comunicação via API HTTP.
+Cada pasta tem suas próprias dependências e seu próprio ciclo de build. O back-end
+Java autentica usuários, consulta o PostgreSQL e chama o serviço `agente-ia` por
+HTTP. Somente o `agente-ia` acessa a chave da OpenAI.
 
 ## Atores
 

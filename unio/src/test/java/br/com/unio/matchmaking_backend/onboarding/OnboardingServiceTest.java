@@ -37,7 +37,8 @@ class OnboardingServiceTest {
     void setUp() {
         onboardingRepository = mock(UserOnboardingRepository.class);
         userRepository = mock(UserRepository.class);
-        service = new OnboardingService(onboardingRepository, userRepository, JsonMapper.builder().build());
+        service = new OnboardingService(onboardingRepository, userRepository,
+                JsonMapper.builder().build());
         when(onboardingRepository.save(any(UserOnboarding.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 

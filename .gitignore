@@ -3,6 +3,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 node_modules/
+agente-ia/.env
+agente-ia/.venv/
+agente-ia/**/__pycache__/
 
 ### STS ###
 .apt_generated
