@@ -67,7 +67,7 @@ class DiscoveryIntegrationTest extends IntegrationTestSupport {
                 .perfilRisco("Investidor Anjo")
                 .build());
 
-        // 92.5: segmento, estágio, capital e região (Nordeste + PE) batem
+        // 100: segmento, estágio, capital, região e modelo de negócio batem
         goodStartup = startup("Tidalog Teste " + UUID.randomUUID(), "Logística", "Seed", "Recife, PE",
                 new BigDecimal("300000"));
         // 32.5: só o capital bate
@@ -127,7 +127,7 @@ class DiscoveryIntegrationTest extends IntegrationTestSupport {
 
         Map<String, Object> first = itemOf(items(listStartups("")), goodStartup);
         assertThat(first).isNotNull();
-        assertThat(new BigDecimal(first.get("scoreFinal").toString())).isEqualByComparingTo("92.5");
+        assertThat(new BigDecimal(first.get("scoreFinal").toString())).isEqualByComparingTo("100");
         assertThat(first.get("classification")).isEqualTo("EXCELENTE");
         assertThat(storedScores(goodStartup)).hasSize(1);
         Instant calculatedAt = storedScores(goodStartup).get(0).getCalculatedAt();
@@ -148,8 +148,8 @@ class DiscoveryIntegrationTest extends IntegrationTestSupport {
         startupRepository.saveAndFlush(profile);
 
         Map<String, Object> item = itemOf(items(listStartups("")), goodStartup);
-        // Estágio deixou de bater: 92.5 - 20
-        assertThat(new BigDecimal(item.get("scoreFinal").toString())).isEqualByComparingTo("72.5");
+        // Estágio deixou de bater: 100 - 20
+        assertThat(new BigDecimal(item.get("scoreFinal").toString())).isEqualByComparingTo("80");
         assertThat(storedScores(goodStartup).get(0).getCalculatedAt()).isAfter(before);
     }
 
