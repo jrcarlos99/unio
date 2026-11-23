@@ -1,6 +1,7 @@
 import { useCallback, useId, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ClipboardCheck, SearchX } from "lucide-react";
+import AgenteRecommendationPanel from "../../components/discovery/AgenteRecommendationPanel";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
 import BarraDescoberta from "../../components/discovery/BarraDescoberta";
 import ConviteFaixa from "../../components/discovery/ConviteFaixa";
@@ -107,6 +108,8 @@ export default function Investidores() {
 
   return (
     <div>
+      <AgenteRecommendationPanel candidateLabel="Investidores" />
+
       <BarraDescoberta
         busca={busca}
         onBusca={(valor) => filtrar(() => setBusca(valor))}

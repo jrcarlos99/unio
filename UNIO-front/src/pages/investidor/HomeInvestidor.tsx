@@ -1,6 +1,7 @@
 import { useCallback, useId, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { SearchX, WandSparkles } from "lucide-react";
+import AgenteRecommendationPanel from "../../components/discovery/AgenteRecommendationPanel";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
 import BarraDescoberta from "../../components/discovery/BarraDescoberta";
 import ConviteFaixa from "../../components/discovery/ConviteFaixa";
@@ -88,6 +89,8 @@ export default function HomeInvestidor() {
   return (
     <div>
       {cadastroSucesso && <SuccessMessage message="Cadastro realizado com sucesso! Bem-vindo(a) à UNIO." />}
+
+      <AgenteRecommendationPanel candidateLabel="Startups" />
 
       <BarraDescoberta
         busca={busca}
