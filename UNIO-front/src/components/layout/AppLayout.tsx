@@ -4,15 +4,15 @@ import { Menu } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import Logo from "../brand/Logo";
 import AppSidebar from "./AppSidebar";
-import { CONFIG_PERFIL, perfilDoPapel } from "./navegacao";
+import { CONFIG_PERFIL, perfilDoLayout } from "./navegacao";
 import ToastProvider from "./ToastProvider";
 
-// Shell de todas as telas logadas do investidor e da startup: sidebar fixa de
-// 260px no desktop e drawer com hambúrguer abaixo de lg. O perfil vem do
-// usuário logado.
+// Shell de todas as telas logadas do investidor, da startup e do
+// administrador (ADR-014): sidebar fixa de 260px no desktop e drawer com
+// hambúrguer abaixo de lg. O perfil vem do usuário logado.
 export default function AppLayout() {
   const { user } = useAuth();
-  const perfil = perfilDoPapel(user?.role);
+  const perfil = perfilDoLayout(user?.role);
   const [menuAberto, setMenuAberto] = useState(false);
 
   return (

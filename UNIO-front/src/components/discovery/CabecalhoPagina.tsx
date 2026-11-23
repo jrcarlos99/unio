@@ -3,7 +3,8 @@ interface CabecalhoPaginaProps {
   subtitulo?: string;
 }
 
-// Título das telas secundárias do investidor (Salvos, Meus unios...)
+// Título das telas secundárias (Salvos, Meus unios...) e das telas do
+// administrador (ADR-014)
 export default function CabecalhoPagina({ titulo, subtitulo }: CabecalhoPaginaProps) {
   return (
     <div className="mb-6 border-b border-lightgray pb-5">

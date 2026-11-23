@@ -5,10 +5,10 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useSolicitacoesRecebidas } from "../../hooks/useReunioes";
 import { iniciais, nomeUsuario } from "../../utils/nomeUsuario";
 import Logo from "../brand/Logo";
-import { CONFIG_PERFIL, type PerfilApp } from "./navegacao";
+import { CONFIG_PERFIL, type PerfilLayout } from "./navegacao";
 
 interface AppSidebarProps {
-  perfil: PerfilApp;
+  perfil: PerfilLayout;
   aberta: boolean;
   onFechar: () => void;
 }
@@ -23,15 +23,37 @@ function cargo(valor: unknown, padrao: string) {
   return typeof valor === "string" && valor.trim() ? valor : padrao;
 }
 
-// Sidebar das áreas logadas (investidor e startup): fixa de 260px no desktop,
-// drawer abaixo de lg. Itens, selo e textos vêm de navegacao.ts.
+// Bolinha de solicitações de reunião pendentes. Fica num componente próprio
+// para a contagem (chamada ao back) só existir onde o item tem contador: o
+// menu do administrador não tem, então o admin não consulta reuniões.
+function ContadorSolicitacoes() {
+  const solicitacoes = useSolicitacoesRecebidas();
+  if (solicitacoes <= 0) return null;
+  return (
+    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-sage px-1.5 text-xs font-bold text-deepgreen">
+      {solicitacoes}
+      <span className="sr-only">{solicitacoes === 1 ? " solicitação pendente" : " solicitações pendentes"}</span>
+    </span>
+  );
+}
+
+// Texto abaixo do nome no rodapé: cargo da startup, tipo do investidor ou o
+// padrão do perfil (o administrador sempre usa o padrão)
+function textoCargo(perfil: PerfilLayout, user: ReturnType<typeof useAuth>["user"], padrao: string) {
+  if (perfil === "startup") return cargo(user?.cargo, padrao);
+  if (perfil === "investidor") return cargo(user?.tipoPerfil, padrao);
+  return padrao;
+}
+
+// Sidebar das áreas logadas (investidor, startup e administrador): fixa de
+// 260px no desktop, drawer abaixo de lg. Itens, selo e textos vêm de
+// navegacao.ts.
 export default function AppSidebar({ perfil, aberta, onFechar }: AppSidebarProps) {
   const config = CONFIG_PERFIL[perfil];
   const { user, logout } = useAuth();
   const nome = nomeUsuario(user);
   const [menuAberto, setMenuAberto] = useState(false);
   const idMenu = useId();
-  const solicitacoes = useSolicitacoesRecebidas();
 
   return (
     <>
@@ -40,7 +62,7 @@ export default function AppSidebar({ perfil, aberta, onFechar }: AppSidebarProps
       )}
 
       <aside
-        aria-label={`Menu ${perfil === "startup" ? "da startup" : "do investidor"}`}
+        aria-label={config.rotuloMenu}
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-deepgreen text-white transition-transform duration-300 ease-in-out lg:w-[260px] lg:translate-x-0 ${
           aberta ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -63,10 +85,11 @@ export default function AppSidebar({ perfil, aberta, onFechar }: AppSidebarProps
         </div>
 
         <nav aria-label="Principal" className="flex flex-1 flex-col gap-1 px-4">
-          {config.itens.map(({ to, rotulo, icone: Icone, contador }) => (
+          {config.itens.map(({ to, rotulo, icone: Icone, contador, end }) => (
             <NavLink
               key={to}
               to={to}
+              end={end}
               onClick={onFechar}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] transition-colors ${FOCO_ESCURO} ${
@@ -76,14 +99,7 @@ export default function AppSidebar({ perfil, aberta, onFechar }: AppSidebarProps
             >
               <Icone size={18} aria-hidden="true" />
               {rotulo}
-              {contador === "solicitacoesReuniao" && solicitacoes > 0 && (
-                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-sage px-1.5 text-xs font-bold text-deepgreen">
-                  {solicitacoes}
-                  <span className="sr-only">
-                    {solicitacoes === 1 ? " solicitação pendente" : " solicitações pendentes"}
-                  </span>
-                </span>
-              )}
+              {contador === "solicitacoesReuniao" && <ContadorSolicitacoes />}
             </NavLink>
           ))}
         </nav>
@@ -99,13 +115,15 @@ export default function AppSidebar({ perfil, aberta, onFechar }: AppSidebarProps
               id={idMenu}
               className="absolute inset-x-4 bottom-full mb-2 overflow-hidden rounded-2xl bg-white py-1 text-sm text-deepgreen shadow-soft-lg"
             >
-              <Link
-                to={config.revisar.to}
-                className="flex items-center gap-2 px-4 py-2.5 hover:bg-lightgray/60 focus-visible:bg-lightgray/60 focus-visible:outline-none"
-              >
-                <SlidersHorizontal size={16} aria-hidden="true" />
-                {config.revisar.rotulo}
-              </Link>
+              {config.revisar && (
+                <Link
+                  to={config.revisar.to}
+                  className="flex items-center gap-2 px-4 py-2.5 hover:bg-lightgray/60 focus-visible:bg-lightgray/60 focus-visible:outline-none"
+                >
+                  <SlidersHorizontal size={16} aria-hidden="true" />
+                  {config.revisar.rotulo}
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={logout}
@@ -132,7 +150,7 @@ export default function AppSidebar({ perfil, aberta, onFechar }: AppSidebarProps
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold">{nome}</span>
               <span className="block truncate text-xs text-white/75">
-                {cargo(perfil === "startup" ? user?.cargo : user?.tipoPerfil, config.cargoPadrao)}
+                {textoCargo(perfil, user, config.cargoPadrao)}
               </span>
             </span>
             <ChevronsUpDown size={16} className="shrink-0 text-white/75" aria-hidden="true" />

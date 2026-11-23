@@ -1,12 +1,17 @@
 import { useCallback, useState } from "react";
-import { ExternalLink } from "lucide-react";
-import AdminPageHeader from "../components/AdminPageHeader";
+import { CircleAlert, ExternalLink, FileCheck, History, type LucideIcon } from "lucide-react";
 import ModalConfirmacao from "../components/ModalConfirmacao";
 import SeloSituacao from "../components/SeloSituacao";
-import { BOTAO_SECUNDARIO } from "../../../components/reunioes/estilos";
+import PainelCard from "../../../components/dashboard/PainelCard";
+import AvisoEstado from "../../../components/discovery/AvisoEstado";
+import CabecalhoPagina from "../../../components/discovery/CabecalhoPagina";
 import { FOCO_VISIVEL } from "../../../components/onboarding/selecao";
 import { LEAN_CANVAS_BLOCKS } from "../../../components/pitch/leanCanvasBlocks";
+import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from "../../../components/reunioes/estilos";
+import EsqueletoBlocos from "../../../components/ui/EsqueletoBlocos";
+import SeloStatus from "../../../components/ui/SeloStatus";
 import { useCarregamento } from "../../../hooks/useDescoberta";
+import { useToast } from "../../../hooks/useToast";
 import { acoesDoEnvio } from "../../../services/moderacao.mapping";
 import { aprovarEnvio, listarEnvios, removerEnvio } from "../../../services/moderacaoService";
 import type { LeanCanvasField } from "../../../types/pitch";
@@ -23,51 +28,49 @@ const HISTORICO: SituacaoEnvio[] = ["PUBLICADO", "REMOVIDO"];
 
 type Pedido = { acao: "aprovar" | "remover"; envio: EnvioPitch };
 
-// Um envio com o conteúdo completo para revisão
+// Um envio com o conteúdo completo para revisão, no mesmo cartão dos painéis do app
 function CartaoEnvio({ envio, onAcao }: { envio: EnvioPitch; onAcao: (pedido: Pedido) => void }) {
   const nome = envio.startupNome ?? envio.startupEmail ?? `Startup ${envio.startupId}`;
   const enviadoEm = formatarDataHora(envio.enviadoEm);
   const revisadoEm = formatarDataHora(envio.revisadoEm);
   const preenchidos = envio.canvas.filter((bloco) => bloco.texto).length;
+  const acoes = acoesDoEnvio(envio);
 
   return (
-    <article aria-label={`Pitch de ${nome}, versão ${envio.versao}`} className="rounded-2xl border border-deepgreen/10 bg-white p-4 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-lg font-bold text-deepgreen">{nome}</h3>
-          <p className="text-xs text-deepgreen/75">
-            Versão {envio.versao}
-            {enviadoEm ? `, enviada em ${enviadoEm}` : ""}
-            {envio.startupNome && envio.startupEmail ? `. ${envio.startupEmail}` : ""}
-          </p>
-        </div>
+    <PainelCard
+      nivel={3}
+      titulo={nome}
+      subtitulo={`Versão ${envio.versao}${enviadoEm ? `, enviada em ${enviadoEm}` : ""}${
+        envio.startupNome && envio.startupEmail ? `. ${envio.startupEmail}` : ""
+      }`}
+      extra={
         <div className="flex flex-wrap items-center gap-2">
           <SeloSituacao situacao={envio.situacao} />
-          {!envio.atual && (
-            <span className="rounded-full bg-lightgray px-3 py-1 text-xs font-semibold text-deepgreen">
-              Substituído por um envio mais novo
-            </span>
+          {!envio.atual && <SeloStatus rotulo="Substituído por um envio mais novo" tom="neutro" prefixo="" />}
+        </div>
+      }
+    >
+      {(envio.motivo || revisadoEm) && (
+        <div className="mb-4 space-y-1">
+          {envio.motivo && <p className="text-sm text-red-800">Motivo da remoção: {envio.motivo}</p>}
+          {revisadoEm && (
+            <p className="text-xs text-deepgreen/75">
+              Decidido em {revisadoEm}
+              {envio.revisadoPor ? ` por ${envio.revisadoPor}` : ""}
+            </p>
           )}
         </div>
-      </div>
-
-      {envio.motivo && <p className="mt-3 text-sm text-red-800">Motivo da remoção: {envio.motivo}</p>}
-      {revisadoEm && (
-        <p className="mt-1 text-xs text-deepgreen/75">
-          Decidido em {revisadoEm}
-          {envio.revisadoPor ? ` por ${envio.revisadoPor}` : ""}
-        </p>
       )}
 
-      <div className="mt-4 rounded-2xl bg-lightgray/40 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-deepgreen/75">Pitch curto</p>
+      <div className="rounded-2xl bg-lightgray/40 p-4">
+        <p className="text-sm font-semibold text-deepgreen/80">Pitch curto</p>
         <p className="mt-1 whitespace-pre-line text-deepgreen">{envio.pitchCurto || "Sem texto"}</p>
         {envio.videoUrl && (
           <a
             href={envio.videoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`mt-2 inline-flex items-center gap-1 break-all text-sm font-semibold text-deepgreen underline ${FOCO_VISIVEL}`}
+            className={`mt-2 inline-flex items-center gap-1 break-all rounded text-sm font-semibold text-deepgreen underline ${FOCO_VISIVEL}`}
           >
             <ExternalLink size={14} aria-hidden="true" />
             {envio.videoUrl}
@@ -92,25 +95,22 @@ function CartaoEnvio({ envio, onAcao }: { envio: EnvioPitch; onAcao: (pedido: Pe
         </dl>
       </details>
 
-      {acoesDoEnvio(envio).length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {acoesDoEnvio(envio).map((acao) => (
+      {acoes.length > 0 && (
+        <div className="mt-5 flex flex-wrap gap-2 border-t border-lightgray pt-4">
+          {acoes.map((acao) => (
             <button
               key={acao}
               type="button"
               onClick={() => onAcao({ acao, envio })}
-              className={`min-h-[44px] rounded-2xl px-4 text-sm font-semibold transition ${FOCO_VISIVEL} ${
-                acao === "remover"
-                  ? "border border-red-200 bg-white text-red-700 hover:bg-red-50"
-                  : "bg-deepgreen text-white hover:bg-sage hover:text-deepgreen"
-              }`}
+              aria-label={`${acao === "aprovar" ? "Aprovar" : "Remover"} o pitch de ${nome}, versão ${envio.versao}`}
+              className={acao === "remover" ? BOTAO_PERIGO : BOTAO_PRIMARIO}
             >
               {acao === "aprovar" ? "Aprovar" : "Remover"}
             </button>
           ))}
         </div>
       )}
-    </article>
+    </PainelCard>
   );
 }
 
@@ -119,11 +119,13 @@ function ListaEnvios({
   titulo,
   situacoes,
   vazio,
+  iconeVazio,
   onAcao,
 }: {
   titulo: string;
   situacoes: SituacaoEnvio[];
   vazio: string;
+  iconeVazio: LucideIcon;
   onAcao: (pedido: Pedido) => void;
 }) {
   const [deslocamento, setDeslocamento] = useState(0);
@@ -132,77 +134,84 @@ function ListaEnvios({
   const total = dados?.total ?? 0;
   const limite = dados?.limite ?? 20;
 
+  let conteudo;
+  if (carregando) {
+    conteudo = <EsqueletoBlocos rotulo={`Carregando ${titulo.toLowerCase()}`} quantidade={2} altura="h-48" className="space-y-5" />;
+  } else if (erro || !dados) {
+    conteudo = (
+      <AvisoEstado
+        erro
+        icone={CircleAlert}
+        titulo="Não foi possível carregar os envios"
+        texto={erro ?? undefined}
+        acao={
+          <button type="button" onClick={recarregar} className={BOTAO_SECUNDARIO}>
+            Tentar novamente
+          </button>
+        }
+      />
+    );
+  } else if (dados.itens.length === 0) {
+    conteudo = <AvisoEstado icone={iconeVazio} titulo={vazio} />;
+  } else {
+    conteudo = (
+      <>
+        <ul className="space-y-5">
+          {dados.itens.map((envio) => (
+            <li key={envio.id}>
+              <CartaoEnvio envio={envio} onAcao={onAcao} />
+            </li>
+          ))}
+        </ul>
+        {total > limite && (
+          <nav aria-label={`Páginas de ${titulo.toLowerCase()}`} className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              className={BOTAO_SECUNDARIO}
+              disabled={deslocamento === 0}
+              onClick={() => setDeslocamento((atual) => Math.max(0, atual - limite))}
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              className={BOTAO_SECUNDARIO}
+              disabled={deslocamento + limite >= total}
+              onClick={() => setDeslocamento((atual) => atual + limite)}
+            >
+              Próxima
+            </button>
+          </nav>
+        )}
+      </>
+    );
+  }
+
   return (
-    <section aria-label={titulo} className="mt-6">
-      <h2 className="mb-3 text-xl font-bold text-deepgreen">
+    <section aria-label={titulo} className="mb-10 last:mb-0">
+      <h2 className="mb-4 text-xl font-bold text-deepgreen">
         {titulo}
         {dados ? ` (${total})` : ""}
       </h2>
-      {carregando && (
-        <p className="text-sm text-deepgreen" role="status">
-          Carregando...
-        </p>
-      )}
-      {erro && (
-        <p className="text-sm text-red-700" role="alert">
-          {erro}{" "}
-          <button type="button" onClick={recarregar} className={`font-semibold underline ${FOCO_VISIVEL}`}>
-            Tentar novamente
-          </button>
-        </p>
-      )}
-      {!carregando && !erro && dados && (
-        <>
-          {dados.itens.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-deepgreen/20 px-4 py-6 text-center text-sm text-deepgreen">
-              {vazio}
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {dados.itens.map((envio) => (
-                <CartaoEnvio key={envio.id} envio={envio} onAcao={onAcao} />
-              ))}
-            </div>
-          )}
-          {total > limite && (
-            <nav aria-label={`Páginas de ${titulo.toLowerCase()}`} className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                className={BOTAO_SECUNDARIO}
-                disabled={deslocamento === 0}
-                onClick={() => setDeslocamento((atual) => Math.max(0, atual - limite))}
-              >
-                Anterior
-              </button>
-              <button
-                type="button"
-                className={BOTAO_SECUNDARIO}
-                disabled={deslocamento + limite >= total}
-                onClick={() => setDeslocamento((atual) => atual + limite)}
-              >
-                Próxima
-              </button>
-            </nav>
-          )}
-        </>
-      )}
+      {conteudo}
     </section>
   );
 }
 
 // Moderação de conteúdo (RF08, ADR-013): pitches e Lean Canvas enviados pelas
 // startups (GET /api/admin/moderation/content), com aprovar e remover. Cada
-// decisão vai para o log de auditoria do back.
+// decisão vai para o log de auditoria do back. Cartões, botões, estados e
+// toast iguais aos do restante do app (ADR-014).
 export default function ModeracaoConteudo() {
+  const { mostrar } = useToast();
   const [pedido, setPedido] = useState<Pedido | null>(null);
   const [versao, setVersao] = useState(0);
-  const [aviso, setAviso] = useState("");
 
   async function confirmar(motivo: string) {
     if (!pedido) return;
     const envio = pedido.acao === "aprovar" ? await aprovarEnvio(pedido.envio.id) : await removerEnvio(pedido.envio.id, motivo);
     const nome = envio.startupNome ?? envio.startupEmail ?? "a startup";
-    setAviso(
+    mostrar(
       pedido.acao === "aprovar"
         ? `Pitch de ${nome} aprovado. Os investidores já podem ver.`
         : `Pitch de ${nome} removido. A startup vê o motivo.`,
@@ -214,35 +223,27 @@ export default function ModeracaoConteudo() {
 
   return (
     <div>
-      <AdminPageHeader
-        title="Moderação de Conteúdo"
-        subtitle="Pitches e Lean Canvas enviados pelas startups. Só o envio aprovado aparece para os investidores."
+      <CabecalhoPagina
+        titulo="Moderação de conteúdo"
+        subtitulo="Pitches e Lean Canvas enviados pelas startups. Só o envio aprovado aparece para os investidores."
       />
-
-      <p role="status" aria-live="polite" className={aviso ? "rounded-2xl bg-sage/20 px-4 py-3 text-sm text-deepgreen" : "sr-only"}>
-        {aviso}
-      </p>
 
       {/* key: depois de cada ação as duas listas recarregam do back */}
       <ListaEnvios
         key={`fila-${versao}`}
         titulo="Aguardando revisão"
         situacoes={FILA}
-        vazio="Nenhum pitch aguardando revisão."
-        onAcao={(novo) => {
-          setAviso("");
-          setPedido(novo);
-        }}
+        vazio="Nenhum pitch aguardando revisão"
+        iconeVazio={FileCheck}
+        onAcao={setPedido}
       />
       <ListaEnvios
         key={`historico-${versao}`}
         titulo="Histórico de decisões"
         situacoes={HISTORICO}
-        vazio="Nenhuma decisão registrada ainda."
-        onAcao={(novo) => {
-          setAviso("");
-          setPedido(novo);
-        }}
+        vazio="Nenhuma decisão registrada ainda"
+        iconeVazio={History}
+        onAcao={setPedido}
       />
 
       {pedido && (

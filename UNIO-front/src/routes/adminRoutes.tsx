@@ -2,8 +2,10 @@ import { lazy, Suspense } from "react";
 import { Route } from "react-router-dom";
 
 // Cada tela do admin só é baixada quando alguém de fato entra em /admin
-// (code-splitting) — por isso o import lazy em vez do import normal.
-const AdminLayout = lazy(() => import("../pages/admin/AdminLayout"));
+// (code-splitting) — por isso o import lazy em vez do import normal. O
+// layout é o mesmo AppLayout das outras áreas (ADR-014); a proteção por
+// perfil ADMIN fica em routes/index.tsx.
+const AppLayout = lazy(() => import("../components/layout/AppLayout"));
 const VisaoGeral = lazy(() => import("../pages/admin/pages/VisaoGeral"));
 const ModeracaoCadastros = lazy(
   () => import("../pages/admin/pages/ModeracaoCadastros"),
@@ -23,7 +25,7 @@ const adminRoutes = (
         <Suspense
           fallback={<div className="p-8 text-deepgreen">Carregando...</div>}
         >
-          <AdminLayout />
+          <AppLayout />
         </Suspense>
       }
     >

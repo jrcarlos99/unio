@@ -1,12 +1,14 @@
 import { useCallback, useId, useState, type FormEvent } from "react";
-import { Search } from "lucide-react";
-import AdminPageHeader from "../components/AdminPageHeader";
-import DataTable from "../components/DataTable";
+import { CircleAlert, Search, SearchX, UserCheck } from "lucide-react";
 import ModalConfirmacao from "../components/ModalConfirmacao";
 import SeloSituacao from "../components/SeloSituacao";
-import { BOTAO_SECUNDARIO, CAMPO, ROTULO } from "../../../components/reunioes/estilos";
-import { FOCO_VISIVEL } from "../../../components/onboarding/selecao";
+import AvisoEstado from "../../../components/discovery/AvisoEstado";
+import CabecalhoPagina from "../../../components/discovery/CabecalhoPagina";
+import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, ROTULO } from "../../../components/reunioes/estilos";
+import DataTable from "../../../components/ui/DataTable";
+import EsqueletoBlocos from "../../../components/ui/EsqueletoBlocos";
 import { useCarregamento } from "../../../hooks/useDescoberta";
+import { useToast } from "../../../hooks/useToast";
 import { acoesDaConta } from "../../../services/moderacao.mapping";
 import { listarContasModeracao, moderarConta } from "../../../services/moderacaoService";
 import type { AcaoConta, ContaModeracao, FiltroContas, PerfilModerado, SituacaoConta } from "../types";
@@ -45,6 +47,11 @@ const ROTULO_FEITO: Record<AcaoConta, string> = {
   reativar: "Conta reativada",
 };
 
+// Recusar e suspender tiram a conta do ar: motivo obrigatório e botão vermelho
+function ehDestrutiva(acao: AcaoConta) {
+  return acao === "recusar" || acao === "suspender";
+}
+
 // Texto do modal de cada ação: o que muda para a conta
 function textoDoModal(acao: AcaoConta, conta: ContaModeracao) {
   const nome = conta.nome ?? conta.email;
@@ -78,13 +85,14 @@ const FILTRO_INICIAL: FiltroContas = { situacao: "", perfil: "", busca: "", desl
 
 // Moderação de cadastros (RF08, ADR-013): contas reais de
 // GET /api/admin/moderation/accounts, com aprovar, recusar, suspender e
-// reativar. Cada ação vai para o log de auditoria do back.
+// reativar. Cada ação vai para o log de auditoria do back. Cabeçalho, campos,
+// tabela, botões, estados e toast iguais aos do restante do app (ADR-014).
 export default function ModeracaoCadastros() {
   const id = useId();
+  const { mostrar } = useToast();
   const [filtro, setFiltro] = useState<FiltroContas>(FILTRO_INICIAL);
   const [busca, setBusca] = useState("");
   const [pedido, setPedido] = useState<{ acao: AcaoConta; conta: ContaModeracao } | null>(null);
-  const [aviso, setAviso] = useState("");
 
   const carregar = useCallback(() => listarContasModeracao(filtro), [filtro]);
   const { carregando, erro, dados, recarregar, alterarDados } = useCarregamento(
@@ -97,6 +105,11 @@ export default function ModeracaoCadastros() {
     setFiltro((atual) => ({ ...atual, busca, deslocamento: 0 }));
   }
 
+  function limparFiltros() {
+    setBusca("");
+    setFiltro(FILTRO_INICIAL);
+  }
+
   async function confirmar(motivo: string) {
     if (!pedido) return;
     const atualizada = await moderarConta(pedido.conta.id, pedido.acao, motivo);
@@ -105,22 +118,140 @@ export default function ModeracaoCadastros() {
       ...pagina,
       itens: pagina.itens.map((conta) => (conta.id === atualizada.id ? atualizada : conta)),
     }));
-    setAviso(`${ROTULO_FEITO[pedido.acao]}: ${atualizada.email}. A ação foi registrada no log de auditoria.`);
+    mostrar(`${ROTULO_FEITO[pedido.acao]}: ${atualizada.email}. A ação foi registrada no log de auditoria.`);
   }
 
-  const vazio =
-    filtro.situacao === "PENDENTE" ? "Nenhuma conta aguardando aprovação." : "Nenhuma conta encontrada com esses filtros.";
+  const filtrado = filtro.situacao !== "" || filtro.perfil !== "" || filtro.busca !== "";
   const total = dados?.total ?? 0;
   const inicio = total === 0 ? 0 : filtro.deslocamento + 1;
   const fim = Math.min(filtro.deslocamento + (dados?.limite ?? 0), total);
   const modal = pedido ? textoDoModal(pedido.acao, pedido.conta) : null;
 
+  let conteudo;
+  if (carregando) {
+    conteudo = <EsqueletoBlocos rotulo="Carregando cadastros" quantidade={5} altura="h-16" />;
+  } else if (erro || !dados) {
+    conteudo = (
+      <AvisoEstado
+        erro
+        icone={CircleAlert}
+        titulo="Não foi possível carregar os cadastros"
+        texto={erro ?? undefined}
+        acao={
+          <button type="button" onClick={recarregar} className={BOTAO_SECUNDARIO}>
+            Tentar novamente
+          </button>
+        }
+      />
+    );
+  } else if (dados.itens.length === 0) {
+    conteudo = (
+      <AvisoEstado
+        icone={filtrado ? SearchX : UserCheck}
+        titulo={
+          filtro.situacao === "PENDENTE" ? "Nenhuma conta aguardando aprovação" : "Nenhuma conta encontrada"
+        }
+        texto={filtrado ? "Tente outra situação, outro perfil ou outra busca." : undefined}
+        acao={
+          filtrado ? (
+            <button type="button" onClick={limparFiltros} className={BOTAO_SECUNDARIO}>
+              Limpar filtros
+            </button>
+          ) : undefined
+        }
+      />
+    );
+  } else {
+    conteudo = (
+      <>
+        <DataTable
+          legenda="Cadastros"
+          rowKey={(conta) => conta.id}
+          rows={dados.itens}
+          columns={[
+            {
+              header: "Conta",
+              render: (conta) => (
+                <div className="min-w-0">
+                  <p className="font-semibold">{conta.nome ?? conta.email}</p>
+                  {conta.nome && <p className="text-xs text-deepgreen/75">{conta.email}</p>}
+                </div>
+              ),
+            },
+            { header: "Perfil", render: (conta) => conta.tipo },
+            { header: "Cadastro", render: (conta) => formatarData(conta.dataCadastro), className: "whitespace-nowrap" },
+            { header: "Perfil completo", render: (conta) => (conta.perfilCompleto ? "Sim" : "Não") },
+            {
+              header: "Situação",
+              render: (conta) => (
+                <div className="space-y-1">
+                  <SeloSituacao situacao={conta.situacao} />
+                  {conta.motivo && <p className="max-w-xs text-xs text-deepgreen/80">Motivo: {conta.motivo}</p>}
+                </div>
+              ),
+            },
+            {
+              header: "Ações",
+              // Botões numa linha: no celular a tabela rola dentro do cartão
+              render: (conta) => (
+                <div className="flex gap-2">
+                  {acoesDaConta(conta.situacao).map((acao) => (
+                    <button
+                      key={acao}
+                      type="button"
+                      onClick={() => setPedido({ acao, conta })}
+                      aria-label={`${ROTULO_ACAO[acao]} ${conta.nome ?? conta.email}`}
+                      className={ehDestrutiva(acao) ? BOTAO_PERIGO : BOTAO_PRIMARIO}
+                    >
+                      {ROTULO_ACAO[acao]}
+                    </button>
+                  ))}
+                </div>
+              ),
+            },
+          ]}
+        />
+
+        <nav aria-label="Páginas de cadastros" className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p className="text-deepgreen/80">
+            {inicio} a {fim} de {total}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className={BOTAO_SECUNDARIO}
+              disabled={filtro.deslocamento === 0}
+              onClick={() =>
+                setFiltro((atual) => ({ ...atual, deslocamento: Math.max(0, atual.deslocamento - dados.limite) }))
+              }
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              className={BOTAO_SECUNDARIO}
+              disabled={fim >= total}
+              onClick={() => setFiltro((atual) => ({ ...atual, deslocamento: atual.deslocamento + dados.limite }))}
+            >
+              Próxima
+            </button>
+          </div>
+        </nav>
+      </>
+    );
+  }
+
   return (
     <div>
-      <AdminPageHeader title="Cadastros" subtitle="Aprove, recuse, suspenda ou reative contas de startups e investidores." />
+      <CabecalhoPagina titulo="Cadastros" subtitulo="Aprove, recuse, suspenda ou reative contas de startups e investidores." />
 
-      <form onSubmit={aplicarBusca} className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_2fr_auto] lg:items-end">
-        <div>
+      <form
+        onSubmit={aplicarBusca}
+        role="search"
+        aria-label="Filtrar cadastros"
+        className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:items-end"
+      >
+        <div className="lg:w-60">
           <label htmlFor={`${id}-situacao`} className={ROTULO}>
             Situação
           </label>
@@ -139,7 +270,7 @@ export default function ModeracaoCadastros() {
             ))}
           </select>
         </div>
-        <div>
+        <div className="lg:w-44">
           <label htmlFor={`${id}-perfil`} className={ROTULO}>
             Perfil
           </label>
@@ -158,134 +289,40 @@ export default function ModeracaoCadastros() {
             ))}
           </select>
         </div>
-        <div className="sm:col-span-2 lg:col-span-1">
+        <div className="min-w-0 sm:col-span-2 lg:flex-1">
           <label htmlFor={`${id}-busca`} className={ROTULO}>
             Buscar por e-mail ou nome
           </label>
-          <input
-            id={`${id}-busca`}
-            type="search"
-            value={busca}
-            onChange={(event) => setBusca(event.target.value)}
-            className={`mt-1 ${CAMPO()}`}
-          />
+          <div className="relative mt-1">
+            <Search
+              size={18}
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-deepgreen/75"
+              aria-hidden="true"
+            />
+            <input
+              id={`${id}-busca`}
+              type="search"
+              value={busca}
+              onChange={(event) => setBusca(event.target.value)}
+              className={`${CAMPO()} pl-11`}
+            />
+          </div>
         </div>
-        <button type="submit" className={`${BOTAO_SECUNDARIO} sm:col-span-2 lg:col-span-1`}>
+        <button type="submit" className={`${BOTAO_SECUNDARIO} sm:col-span-2`}>
           <Search size={16} aria-hidden="true" />
           Buscar
         </button>
       </form>
 
-      <p role="status" aria-live="polite" className={aviso ? "mb-4 rounded-2xl bg-sage/20 px-4 py-3 text-sm text-deepgreen" : "sr-only"}>
-        {aviso}
-      </p>
-
-      {carregando && (
-        <p className="mb-4 text-sm text-deepgreen" role="status">
-          Carregando cadastros...
-        </p>
-      )}
-      {erro && (
-        <p className="mb-4 text-sm text-red-700" role="alert">
-          {erro}{" "}
-          <button type="button" onClick={recarregar} className={`font-semibold underline ${FOCO_VISIVEL}`}>
-            Tentar novamente
-          </button>
-        </p>
-      )}
-      {!carregando && !erro && dados && (
-        <>
-          <DataTable
-            rowKey={(conta) => conta.id}
-            rows={dados.itens}
-            emptyMessage={vazio}
-            columns={[
-              {
-                header: "Conta",
-                render: (conta) => (
-                  <div className="min-w-0">
-                    <p className="font-medium text-deepgreen">{conta.nome ?? conta.email}</p>
-                    {conta.nome && <p className="text-xs text-deepgreen/75">{conta.email}</p>}
-                  </div>
-                ),
-              },
-              { header: "Perfil", render: (conta) => conta.tipo },
-              { header: "Cadastro", render: (conta) => formatarData(conta.dataCadastro) },
-              { header: "Perfil completo", render: (conta) => (conta.perfilCompleto ? "Sim" : "Não") },
-              {
-                header: "Situação",
-                render: (conta) => (
-                  <div className="space-y-1">
-                    <SeloSituacao situacao={conta.situacao} />
-                    {conta.motivo && <p className="max-w-[220px] text-xs text-deepgreen/80">Motivo: {conta.motivo}</p>}
-                  </div>
-                ),
-              },
-              {
-                header: "Ações",
-                render: (conta) => (
-                  <div className="flex flex-wrap gap-2">
-                    {acoesDaConta(conta.situacao).map((acao) => (
-                      <button
-                        key={acao}
-                        type="button"
-                        onClick={() => {
-                          setAviso("");
-                          setPedido({ acao, conta });
-                        }}
-                        aria-label={`${ROTULO_ACAO[acao]} ${conta.nome ?? conta.email}`}
-                        className={`min-h-[40px] rounded-xl px-3 text-xs font-semibold transition ${FOCO_VISIVEL} ${
-                          acao === "recusar" || acao === "suspender"
-                            ? "border border-red-200 bg-white text-red-700 hover:bg-red-50"
-                            : "bg-deepgreen text-white hover:bg-sage hover:text-deepgreen"
-                        }`}
-                      >
-                        {ROTULO_ACAO[acao]}
-                      </button>
-                    ))}
-                  </div>
-                ),
-              },
-            ]}
-          />
-
-          {total > 0 && (
-            <nav aria-label="Páginas de cadastros" className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-              <p className="text-deepgreen/80">
-                {inicio} a {fim} de {total}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className={BOTAO_SECUNDARIO}
-                  disabled={filtro.deslocamento === 0}
-                  onClick={() =>
-                    setFiltro((atual) => ({ ...atual, deslocamento: Math.max(0, atual.deslocamento - dados.limite) }))
-                  }
-                >
-                  Anterior
-                </button>
-                <button
-                  type="button"
-                  className={BOTAO_SECUNDARIO}
-                  disabled={fim >= total}
-                  onClick={() => setFiltro((atual) => ({ ...atual, deslocamento: atual.deslocamento + dados.limite }))}
-                >
-                  Próxima
-                </button>
-              </div>
-            </nav>
-          )}
-        </>
-      )}
+      {conteudo}
 
       {pedido && modal && (
         <ModalConfirmacao
           titulo={modal.titulo}
           descricao={modal.descricao}
           rotuloConfirmar={ROTULO_ACAO[pedido.acao]}
-          exigeMotivo={pedido.acao === "recusar" || pedido.acao === "suspender"}
-          destrutiva={pedido.acao === "recusar" || pedido.acao === "suspender"}
+          exigeMotivo={ehDestrutiva(pedido.acao)}
+          destrutiva={ehDestrutiva(pedido.acao)}
           onConfirmar={confirmar}
           onFechar={() => setPedido(null)}
         />
