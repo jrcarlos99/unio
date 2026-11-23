@@ -12,6 +12,7 @@ class RegionAndPolicyTest {
 
     @Test
     void regiaoAcertaPorCidadeUfENordeste() {
+        assertThat(RegionMatcher.matches("Recife", "Nordeste")).isTrue();
         assertThat(RegionMatcher.matches("Recife, PE", "Recife / Porto Digital")).isTrue();
         assertThat(RegionMatcher.matches("Recife, PE", "Nordeste")).isTrue();
         assertThat(RegionMatcher.matches("Salvador - BA", "nordeste")).isTrue();

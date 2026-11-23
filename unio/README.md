@@ -109,6 +109,16 @@ As migrations Flyway são executadas automaticamente na inicialização. Em prod
 | `JWT_SECRET` | chave de assinatura do JWT (mínimo 32 caracteres). Sem ela a API usa a chave de dev e avisa no log |
 | `OPENAPI_SERVER_URL` | opcional — URL pública mostrada no Swagger |
 
+A recomendação por IA usa a API da OpenAI somente no back-end. Configure a chave
+como variável de ambiente antes de iniciar a aplicação; nunca coloque a chave no
+front-end ou em arquivos versionados:
+
+```powershell
+$env:OPENAI_API_KEY = "sua-chave-da-openai"
+```
+
+Opcionalmente, `OPENAI_MODEL` pode definir o modelo usado. O padrão é `gpt-4o-mini`.
+
 ## Execução local
 
 Na raiz deste repositório:
@@ -173,6 +183,11 @@ Contrato completo em `docs/contrato/contrato-descoberta.md`.
 - `GET /api/scorecard/recommendations?investorId={investorId}&limit=20` — `investorId` opcional; sem ele, o investidor logado (D061)
 - `GET /api/scorecard/recommendations/investors?startupId={startupId}&limit=20` — role `STARTUP`; `startupId` opcional (D061)
 - `POST /api/scorecard/feedback`
+
+### Recomendações por IA
+
+- `GET /api/agente/recommendations?limit=10` — recomenda startups para investidores
+  ou investidores para startups, usando o perfil e as respostas do onboarding.
 
 O cálculo retorna `201 Created` na primeira persistência e `200 OK` quando o par é recalculado. O contrato usa UUIDs compatíveis com os IDs numéricos dos perfis legados.
 
