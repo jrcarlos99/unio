@@ -146,6 +146,10 @@ public class AiRecommendationService {
                     candidate.put("respostasOnboarding", onboarding(startup.getId()));
                     return candidate;
                 })
+                .filter(candidate -> onboardingRepository.findById(
+                                ((Number) candidate.get("candidateId")).longValue())
+                        .map(record -> record.getStatus() == OnboardingStatus.CONCLUIDO)
+                        .orElse(false))
                 .toList();
     }
 
@@ -157,6 +161,10 @@ public class AiRecommendationService {
                     candidate.put("respostasOnboarding", onboarding(investor.getId()));
                     return candidate;
                 })
+                .filter(candidate -> onboardingRepository.findById(
+                                ((Number) candidate.get("candidateId")).longValue())
+                        .map(record -> record.getStatus() == OnboardingStatus.CONCLUIDO)
+                        .orElse(false))
                 .toList();
     }
 

@@ -1,7 +1,6 @@
 import { useCallback, useId, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ClipboardCheck, SearchX } from "lucide-react";
-import AgenteRecommendationPanel from "../../components/discovery/AgenteRecommendationPanel";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
 import BarraDescoberta from "../../components/discovery/BarraDescoberta";
 import ConviteFaixa from "../../components/discovery/ConviteFaixa";
@@ -19,6 +18,7 @@ import {
   listarInvestidoresRecomendados,
   obterResumoStartup,
 } from "../../services/investidoresService";
+import { getAgenteRecommendations } from "../../services/agenteRecommendationService";
 import type { Segmento } from "../../types";
 import type { FiltrosInvestidores, InvestidorRecomendado } from "../../types/investidores";
 import type { AlteracaoRecomendacao } from "../../types/recomendacoes";
@@ -55,8 +55,26 @@ export default function Investidores() {
   const idChips = useId();
 
   const carregar = useCallback(async () => {
-    const [investidores, resumo] = await Promise.all([listarInvestidoresRecomendados(user), obterResumoStartup(user)]);
-    return { investidores, resumo };
+    const [investidores, resumo, ia] = await Promise.all([
+      listarInvestidoresRecomendados(user),
+      obterResumoStartup(user),
+      getAgenteRecommendations(100),
+    ]);
+    const porId = new Map(investidores.map((item) => [String(item.investidor.id), item]));
+    const recomendados = ia.recommendations
+      .map((recommendation) => {
+        const item = porId.get(String(recommendation.candidateId));
+        if (!item) return null;
+        return {
+          ...item,
+          compatibilidade: {
+            ...item.compatibilidade,
+            total: recommendation.compatibility,
+          },
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+    return { investidores: recomendados, resumo };
   }, [user]);
   const { carregando, erro, dados, recarregar, alterarDados } = useCarregamento(
     carregar,
@@ -108,8 +126,6 @@ export default function Investidores() {
 
   return (
     <div>
-      <AgenteRecommendationPanel candidateLabel="Investidores" />
-
       <BarraDescoberta
         busca={busca}
         onBusca={(valor) => filtrar(() => setBusca(valor))}
@@ -161,7 +177,7 @@ export default function Investidores() {
 
       <GradeRecomendacoes
         titulo="Investidores para você"
-        selo="Recomendados pelo algoritmo de tese"
+        selo="Recomendados pela IA"
         carregando={carregando}
         erro={erro}
         tituloErro="Não foi possível carregar os investidores"

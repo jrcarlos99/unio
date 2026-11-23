@@ -1,7 +1,6 @@
 import { useCallback, useId, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { SearchX, WandSparkles } from "lucide-react";
-import AgenteRecommendationPanel from "../../components/discovery/AgenteRecommendationPanel";
 import AvisoEstado from "../../components/discovery/AvisoEstado";
 import BarraDescoberta from "../../components/discovery/BarraDescoberta";
 import ConviteFaixa from "../../components/discovery/ConviteFaixa";
@@ -16,6 +15,7 @@ import { ESTAGIOS, SEGMENTOS } from "../../data/options";
 import { alterarItem, useCarregamento, useUserKey } from "../../hooks/useDescoberta";
 import { useAcoesRecomendacao } from "../../hooks/useRecomendacoes";
 import { aplicarFiltros, listarStartupsRecomendadas, obterTeseInvestidor } from "../../services/discoveryService";
+import { getAgenteRecommendations } from "../../services/agenteRecommendationService";
 import type { Estagio, Segmento } from "../../types";
 import type { TeseInvestidor } from "../../types/discovery";
 import { juntarComE } from "../../utils/formatoDescoberta";
@@ -37,8 +37,26 @@ export default function HomeInvestidor() {
   const idChips = useId();
 
   const carregar = useCallback(async () => {
-    const [startups, tese] = await Promise.all([listarStartupsRecomendadas(userKey), obterTeseInvestidor()]);
-    return { startups, tese };
+    const [startups, tese, ia] = await Promise.all([
+      listarStartupsRecomendadas(userKey),
+      obterTeseInvestidor(),
+      getAgenteRecommendations(100),
+    ]);
+    const porId = new Map(startups.map((item) => [String(item.startup.id), item]));
+    const recomendadas = ia.recommendations
+      .map((recommendation) => {
+        const item = porId.get(String(recommendation.candidateId));
+        if (!item) return null;
+        return {
+          ...item,
+          compatibilidade: {
+            ...item.compatibilidade,
+            total: recommendation.compatibility,
+          },
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+    return { startups: recomendadas, tese };
   }, [userKey]);
   const { carregando, erro, dados, recarregar, alterarDados } = useCarregamento(
     carregar,
@@ -89,8 +107,6 @@ export default function HomeInvestidor() {
   return (
     <div>
       {cadastroSucesso && <SuccessMessage message="Cadastro realizado com sucesso! Bem-vindo(a) à UNIO." />}
-
-      <AgenteRecommendationPanel candidateLabel="Startups" />
 
       <BarraDescoberta
         busca={busca}
@@ -145,7 +161,7 @@ export default function HomeInvestidor() {
 
       <GradeRecomendacoes
         titulo="Startups para você"
-        selo="Recomendadas pelo algoritmo de tese"
+        selo="Recomendadas pela IA"
         carregando={carregando}
         erro={erro}
         tituloErro="Não foi possível carregar as recomendações"
