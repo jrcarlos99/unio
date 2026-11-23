@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Check, Hourglass, Sparkles, ThumbsUp } from "lucide-react";
+import { ArrowRight, Check, HeartHandshake, Hourglass, Sparkles, ThumbsUp } from "lucide-react";
 import type { StatusInteresse } from "../../types/discovery";
 import { linkMeusUnios } from "../../utils/rotasUnio";
 import { FOCO_VISIVEL } from "../onboarding/selecao";
@@ -17,12 +17,16 @@ interface InteresseButtonProps {
   ocupado?: boolean;
   // card: seta no fim (home); perfil: ícone de joinha no começo
   variante?: "card" | "perfil";
+  // O outro lado já demonstrou interesse: o botão vira "Também tenho
+  // interesse" e o clique fecha o match na hora (ADR-015)
+  recebido?: boolean;
 }
 
 const BASE = `inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold transition ${FOCO_VISIVEL}`;
 
 // Centraliza os 3 estados do match mútuo:
-// nenhum → "Tenho interesse"; enviado → "Interesse enviado" (aguardando o
+// nenhum → "Tenho interesse" (ou "Também tenho interesse", se o outro lado
+// já demonstrou); enviado → "Interesse enviado" (aguardando o
 // outro lado, com opção de desfazer); match → acesso a "Meus unios". Serve
 // aos dois perfis: investidor → startup e startup → investidor.
 export default function InteresseButton({
@@ -34,6 +38,7 @@ export default function InteresseButton({
   onDesfazer,
   ocupado = false,
   variante = "card",
+  recebido = false,
 }: InteresseButtonProps) {
   if (status === "match") {
     return (
@@ -66,6 +71,22 @@ export default function InteresseButton({
           </button>
         </p>
       </div>
+    );
+  }
+
+  if (recebido) {
+    return (
+      <button
+        type="button"
+        onClick={onInteresse}
+        disabled={ocupado}
+        aria-busy={ocupado}
+        aria-label={`Também tenho interesse em ${nome}`}
+        className={`${BASE} bg-deepgreen text-white hover:bg-sage hover:text-deepgreen disabled:cursor-wait disabled:opacity-70`}
+      >
+        <HeartHandshake size={16} aria-hidden="true" />
+        {ocupado ? "Enviando..." : "Também tenho interesse"}
+      </button>
     );
   }
 

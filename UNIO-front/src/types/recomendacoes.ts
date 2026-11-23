@@ -15,4 +15,5 @@ export type Recomendacao =
 export interface AlteracaoRecomendacao {
   salvo?: boolean;
   statusInteresse?: StatusInteresse;
+  interesseRecebido?: boolean;
 }

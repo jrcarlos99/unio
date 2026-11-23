@@ -44,5 +44,6 @@ O que muda, o que fica pendente e os arquivos afetados.
 | [ADR-012](ADR-012-unificacao-com-o-main.md) | Front da linha da Carol no merge com o main | Aceita |
 | [ADR-013](ADR-013-moderacao-e-pitch-publicado.md) | Moderação no admin e pitch publicado para o investidor | Aceita |
 | [ADR-014](ADR-014-admin-com-o-layout-e-os-componentes-do-app.md) | Admin com o mesmo layout e os mesmos componentes do app | Aceita |
+| [ADR-015](ADR-015-interesses-recebidos-no-sino.md) | Interesses recebidos no sino, nos cards e no perfil | Aceita |
 
 Auditoria de integração front x back: [`docs/integracao/auditoria-front-back.md`](../integracao/auditoria-front-back.md).

@@ -48,8 +48,9 @@ export default function PerfilStartup() {
   );
 
   const aoAlterar = useCallback(
-    (_id: string, alteracao: AlteracaoRecomendacao) =>
-      alterarDados((atual) => (atual ? { ...atual, ...alteracao } : atual)),
+    // Só o perfil aberto (o sino avisa retribuições de qualquer pessoa)
+    (alterado: string, alteracao: AlteracaoRecomendacao) =>
+      alterarDados((atual) => (atual && atual.startup.id === alterado ? { ...atual, ...alteracao } : atual)),
     [alterarDados],
   );
   const { alternarSalvo, demonstrarInteresse, desfazer, estaOcupado } = useAcoesRecomendacao(aoAlterar);
@@ -111,7 +112,15 @@ export default function PerfilStartup() {
         <LinkVoltar para="/home-investidor" rotulo="Voltar para Startups recomendadas" />
       </div>
 
-      <FaixaStatusInteresse id={startup.id} status={statusInteresse} outroLado="a startup" />
+      <FaixaStatusInteresse
+        id={startup.id}
+        status={statusInteresse}
+        outroLado="a startup"
+        recebido={detalhe.interesseRecebido}
+        nome={startup.nome}
+        onRetribuir={() => demonstrarInteresse(rec)}
+        ocupado={ocupado}
+      />
 
       {/* Cabeçalho */}
       <section className="rounded-3xl border border-lightgray bg-white p-5 shadow-soft sm:p-7">
@@ -164,6 +173,7 @@ export default function PerfilStartup() {
               id={startup.id}
               status={statusInteresse}
               nome={startup.nome}
+              recebido={detalhe.interesseRecebido}
               onInteresse={() => demonstrarInteresse(rec)}
               onDesfazer={() => desfazer(rec)}
               ocupado={ocupado}

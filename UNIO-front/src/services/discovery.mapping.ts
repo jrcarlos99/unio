@@ -125,6 +125,13 @@ export function statusInteresseDoBack(status: InterestStatusBack | string | null
   return "nenhum";
 }
 
+// O outro lado demonstrou interesse e eu ainda não retribuí (ADR-015): os
+// cards mostram "Demonstrou interesse em você" e o botão vira "Também tenho
+// interesse". O status continua "nenhum" (ver acima).
+export function interesseRecebidoDoBack(status: InterestStatusBack | string | null | undefined): boolean {
+  return status === "RECEIVED";
+}
+
 export function statusDoInteresseEnviado(resposta: InteresseBack): StatusInteresse {
   return resposta.status === "MATCH" ? "match" : "enviado";
 }
@@ -360,6 +367,7 @@ export function startupRecomendadaDoBack(item: ItemDescobertaBack): StartupRecom
     startup: startupDoBack(item.userId, item.name, item.profile),
     compatibilidade: compatibilidadeDoBack(item.scoreFinal, item.classification, item.dimensions, item.nextStep),
     statusInteresse: statusInteresseDoBack(item.interestStatus),
+    interesseRecebido: interesseRecebidoDoBack(item.interestStatus),
     salvo: Boolean(item.saved),
     popularidade: null,
     scorecard: item.scorecard ?? null,
@@ -371,6 +379,7 @@ export function investidorRecomendadoDoBack(item: ItemDescobertaBack): Investido
     investidor: investidorDoBack(item.userId, item.name, item.profile),
     compatibilidade: compatibilidadeDoBack(item.scoreFinal, item.classification, item.dimensions, item.nextStep),
     statusInteresse: statusInteresseDoBack(item.interestStatus),
+    interesseRecebido: interesseRecebidoDoBack(item.interestStatus),
     salvo: Boolean(item.saved),
     popularidade: null,
     scorecard: item.scorecard ?? null,
@@ -383,6 +392,7 @@ export function startupDeConexao(conexao: ConexaoBack): StartupRecomendada {
     startup: startupDoBack(conexao.userId, conexao.name, conexao.profile),
     compatibilidade: compatibilidadeDoBack(conexao.scoreFinal, conexao.classification),
     statusInteresse: statusInteresseDoBack(conexao.interestStatus),
+    interesseRecebido: interesseRecebidoDoBack(conexao.interestStatus),
     salvo: Boolean(conexao.saved),
     popularidade: null,
     scorecard: null,
@@ -394,6 +404,7 @@ export function investidorDeConexao(conexao: ConexaoBack): InvestidorRecomendado
     investidor: investidorDoBack(conexao.userId, conexao.name, conexao.profile),
     compatibilidade: compatibilidadeDoBack(conexao.scoreFinal, conexao.classification),
     statusInteresse: statusInteresseDoBack(conexao.interestStatus),
+    interesseRecebido: interesseRecebidoDoBack(conexao.interestStatus),
     salvo: Boolean(conexao.saved),
     popularidade: null,
     scorecard: null,

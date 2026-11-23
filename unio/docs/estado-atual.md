@@ -20,7 +20,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Documentos do projeto
 
-- `docs/decisoes.md`: decisões de design (D001 a D064)
+- `docs/decisoes.md`: decisões de design (D001 a D065)
 - `docs/dominio.md` — especificação de domínio
 - `docs/contrato/contrato-v2.md` — contrato ativo da API
 - `docs/contrato/contrato-onboarding.md`: onboarding e criação de perfil a partir dele
@@ -106,6 +106,9 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
   - toda ação no log de auditoria existente (RNF10);
   - `V30__cria_moderacao_de_contas_e_pitch.sql`, duas propriedades com variável de ambiente e quatro ganchos mínimos no código existente (D063);
   - exportação de dados com a moderação e os envios do pitch do titular, e exclusão que apaga os dois (RNF03, D064).
+- [x] Interesses recebidos, 2026-11-22 (autora: Carol, branch `feat/moderacao-e-pitch`):
+  - `GET /api/interests/received` e `GET /api/interests/received/count`: quem demonstrou interesse e ainda não foi retribuído, sem contato, respeitando a moderação; retribuir continua no `PUT /api/interests/{id}` (D065, sem migration);
+  - no front, notificação no sino com "Também tenho interesse", etiqueta "Demonstrou interesse em você" nos cards e faixa no perfil (ADR-015 do front).
 
 ### Bloco E — Testes
 
@@ -114,6 +117,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - [x] Tarefa 16 — Hardening (method security, 401, filtro JWT, erro padrão) — 2026-10-26
 - [x] Testes da unificação com o `main` (`UnificacaoMainIntegrationTest`) — 2026-11-21
 - [x] Testes da moderação e do pitch publicado (`ModeracaoContasIntegrationTest`, `PitchPublicacaoIntegrationTest`, `ModeracaoConfiguracaoInvertidaIntegrationTest`, `ModeracaoUnitTest`, `PitchConteudoTest`, `ExportacaoModeracaoIntegrationTest`) — 2026-11-22
+- [x] Testes dos interesses recebidos (`InteressesRecebidosIntegrationTest`) — 2026-11-22
 - [ ] Beta testers (parte de RNF07) — pendente
 
 ### Infraestrutura
@@ -183,7 +187,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Branch atual
 
-- `feat/moderacao-e-pitch` (a partir do `main` com o #14): moderação de cadastros e de conteúdo, pitch publicado e auditoria (D063; ADR-013 do front). Só commits locais; falta o pull request.
+- `feat/moderacao-e-pitch` (a partir do `main` com o #14): moderação de cadastros e de conteúdo, pitch publicado e auditoria (D063; ADR-013 do front), admin com o layout do app (ADR-014 do front) e interesses recebidos (D065; ADR-015 do front). Sem push; falta o pull request.
 - `feat/unificacao-main` (a partir de `feat/producao-sem-mocks` + merge do `origin/main`): unificação descrita em D058 a D062 e na ADR-012 do front. Pronta para pull request no `main`.
 - `feat/producao-sem-mocks` (a partir de `feat/integracao-matching`): CORS por variável de ambiente (D056), políticas padrão do scorecard fora do perfil dev (D057) e front sem mocks (ADR-011 do front). Auditoria front x back em `UNIO-front/docs/integracao/auditoria-front-back.md`.
 - `feat/integracao-matching` (a partir de `feat/avaliacao-popularidade`): descoberta, interesse, match, salvos, reunião só com match e administrador (D045 a D055; ADR-008 a ADR-010 do front)
@@ -198,7 +202,7 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 - Popularidade no ranking do back, se o produto quiser (hoje só ordena no front, D042)
 - Acesso da moderação (ADMIN) aos comentários das avaliações e prazo de retenção (D043)
 - Texto de consentimento LGPD: avisar que comentários de avaliação são coletados e não exibidos (D043)
-- Notificações de reunião (hoje o front deriva por polling, ADR-005 do front)
+- Notificações de reunião (hoje o front deriva por polling, ADR-005 do front) e "visto" dos interesses recebidos no back, se o produto quiser o mesmo estado em vários aparelhos (hoje fica no navegador, D065)
 - Aplicar os alertas no Azure e rodar o teste de carga; preencher `docs/testes/teste-de-carga.md`
 - RNF07: rodada com beta testers
 - Escala da descoberta: recálculo assíncrono ao salvar o perfil e paginação no banco (D045)
@@ -207,4 +211,4 @@ configurável e versionável. Projeto acadêmico com potencial de virar produto.
 
 ## Fora do MVP (trabalho futuro)
 
-Ver D011, D025, D027 e as pendências da D028, D030, D035, D042, D043, D045, D046 e D052 em `docs/decisoes.md`, e a seção "Fora de escopo desta entrega" depois da D064.
+Ver D011, D025, D027 e as pendências da D028, D030, D035, D042, D043, D045, D046 e D052 em `docs/decisoes.md`, e a seção "Fora de escopo desta entrega" depois da D065.

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   desfazerInteresse,
@@ -8,6 +8,7 @@ import {
   removerSalvo,
   salvar,
 } from "../services/recomendacoesService";
+import { assinarRetribuicoes, avisarRetribuicao } from "../services/interessesRecebidosService";
 import type { AlteracaoRecomendacao, Recomendacao } from "../types/recomendacoes";
 import { useExecucao } from "./useDescoberta";
 import { useToast } from "./useToast";
@@ -65,7 +66,9 @@ export function useAcoesRecomendacao(aoAlterar: (id: string, alteracao: Alteraca
         id,
         async () => {
           const status = await registrarInteresse(rec, user);
-          aoAlterar(id, { statusInteresse: status });
+          aoAlterar(id, { statusInteresse: status, interesseRecebido: false });
+          // O sino tira o interesse recebido dessa pessoa (ADR-015)
+          if (status !== "nenhum") avisarRetribuicao({ id, status });
           if (status === "match") mostrar(`Deu match com ${nome}!`, "match");
           else mostrar(TEXTOS[rec.perfil].enviado(nome), "sucesso");
         },
@@ -90,6 +93,14 @@ export function useAcoesRecomendacao(aoAlterar: (id: string, alteracao: Alteraca
       );
     },
     [aoAlterar, executar, mostrar, user],
+  );
+
+  // Retribuição feita pelo sino (ou por outra tela aberta): atualiza o card
+  // ou o perfil daquela pessoa, se estiver nesta tela
+  useEffect(
+    () =>
+      assinarRetribuicoes(({ id, status }) => aoAlterar(id, { statusInteresse: status, interesseRecebido: false })),
+    [aoAlterar],
   );
 
   return { alternarSalvo, demonstrarInteresse, desfazer, estaOcupado };

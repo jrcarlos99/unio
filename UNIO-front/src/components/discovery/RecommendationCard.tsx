@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { BadgeCheck, Sparkles, Star, type LucideIcon } from "lucide-react";
+import { BadgeCheck, HeartHandshake, Sparkles, Star, type LucideIcon } from "lucide-react";
 import SeloPopularidade from "../popularidade/SeloPopularidade";
 import MatchRing from "./MatchRing";
 
@@ -31,6 +31,8 @@ interface RecommendationCardProps {
   popularidade?: number | null;
   melhorMatch: boolean;
   deuMatch: boolean;
+  // O outro lado demonstrou interesse e eu ainda não retribuí (ADR-015)
+  interesseRecebido?: boolean;
   chips: ChipCard[];
   descricao: string;
   principal: MetricaCard & { icone: LucideIcon };
@@ -91,6 +93,7 @@ export default function RecommendationCard({
   popularidade,
   melhorMatch,
   deuMatch,
+  interesseRecebido = false,
   chips,
   descricao,
   principal,
@@ -123,6 +126,12 @@ export default function RecommendationCard({
           </h3>
           <p className="mt-0.5 text-xs text-deepgreen/75">{subtitulo}</p>
           <SeloPopularidade percentual={popularidade} className="mt-1.5" />
+          {interesseRecebido && !deuMatch && (
+            <p className={`${SELO} mt-1.5 border border-sage bg-sage/20 font-semibold text-deepgreen`}>
+              <HeartHandshake size={12} aria-hidden="true" />
+              Demonstrou interesse em você
+            </p>
+          )}
         </div>
       </div>
 

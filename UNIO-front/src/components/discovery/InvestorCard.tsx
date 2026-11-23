@@ -43,6 +43,7 @@ export default function InvestorCard({
       popularidade={item.popularidade}
       melhorMatch={melhorMatch}
       deuMatch={statusInteresse === "match"}
+      interesseRecebido={item.interesseRecebido}
       chips={[
         ...(segmento1 ? [{ texto: segmento1, estilo: "neutro" as const }] : []),
         ...investidor.estagiosInteresse.slice(0, 1).map((texto) => ({ texto, estilo: "destaque" as const })),
@@ -73,6 +74,7 @@ export default function InvestorCard({
               status={statusInteresse}
               nome={investidor.nome}
               aguardando="Aguardando o investidor"
+              recebido={item.interesseRecebido}
               onInteresse={onInteresse}
               onDesfazer={onDesfazer}
               ocupado={ocupado}

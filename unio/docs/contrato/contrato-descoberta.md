@@ -169,6 +169,54 @@ Armazenamento: `match_interests` (V23), a mesma tabela das rotas `/api/matches` 
 
 `contact.email` só existe aqui (D052).
 
+### Interesses recebidos (D065)
+
+| Método | Caminho | Resposta |
+| --- | --- | --- |
+| GET | `/api/interests/received?limit=&offset=` | página de interesses recebidos ainda não retribuídos |
+| GET | `/api/interests/received/count` | `{ "total": 2 }` (o mesmo total da lista) |
+
+- Só STARTUP e INVESTOR. ADMIN: 403. Sem token: 401. Sem perfil: lista vazia.
+- Do interesse mais recente para o mais antigo. `limit` padrão 20, máximo 100; `offset`
+  negativo vira 0.
+- Só quem demonstrou interesse em mim e ainda não recebeu o meu de volta. Retribuir é o
+  `PUT /api/interests/{userId}` acima, que vira `MATCH` na hora; depois disso o item sai da
+  lista. Se o outro lado desfaz, o item também sai.
+- Contas excluídas ou ocultas pela moderação (D063: PENDENTE, RECUSADO, SUSPENSO) não
+  aparecem.
+- Startup: `segmento`, `estagio` e `localizacao` (cidade e UF) do cadastro. Investidor:
+  segmentos e estágios de interesse separados por vírgula e a região de interesse em
+  `localizacao`.
+- `scoreFinal` e `classification`: último score já gravado do par, sem recalcular (pode vir
+  `null`).
+- Sem `email`, `contact`, documento ou arquivo de pitch (D052).
+
+```json
+{
+  "total": 2, "limit": 20, "offset": 0,
+  "items": [
+    {
+      "userId": 34, "name": "Ana Capital", "role": "INVESTOR",
+      "segmento": "Logística, Fintech", "estagio": "Seed", "localizacao": "Nordeste",
+      "scoreFinal": 78.75, "classification": "FORTE",
+      "interestedAt": "2026-11-22T14:50:00Z"
+    },
+    {
+      "userId": 12, "name": "Tidalog", "role": "STARTUP",
+      "segmento": "Logística", "estagio": "Seed", "localizacao": "Recife, PE",
+      "scoreFinal": null, "classification": null,
+      "interestedAt": "2026-11-20T09:00:00Z"
+    }
+  ]
+}
+```
+
+O exemplo mistura os dois papéis só para mostrar os campos. Na prática a startup só recebe
+interesses de investidores e o investidor, de startups.
+
+`interestsReceived` da popularidade (`GET /api/profile/me/popularity`) continua igual: conta
+todos os interesses recebidos, inclusive os que viraram match.
+
 ## Salvos (`/api/saved`)
 
 | Método | Caminho | Resposta |

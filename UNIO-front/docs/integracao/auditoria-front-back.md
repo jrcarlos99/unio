@@ -70,6 +70,9 @@ Colunas: **Back** = existe no back unido (`feat/unificacao-main`); **Nuvem** = e
 | Tenho interesse | `registrarInteresse` (2 serviços) | PUT | `/api/interests/{targetUserId}` | sim | **não** | → `{status: ENVIADO\|MATCH, matchedAt}` | global (toast) | OK |
 | Desfazer interesse / match | `desfazerInteresse`, `desfazerMatch` | DELETE | `/api/interests/{targetUserId}` | sim | **não** | → `{status, canceledMeetings}` | global (toast) | OK |
 | Meus unios, contato, Visão geral | `listarUnios`, `obterContato`, `contarMatches` | GET | `/api/interests/matches` | sim | **não** | `ConnectionResponse[]` com `contact.email` | global; falha no dashboard = "indisponível" | OK |
+| Sino: interesses recebidos | `listarInteressesRecebidos` | GET | `/api/interests/received?limit=20&offset=0` | sim (D065) | **não** | `{total,limit,offset,items[]}` sem contato | erro na seção do sino com "Tentar novamente"; 403 se ADMIN | OK |
+| Sino (a cada 60 s) e Visão geral da startup | `contarInteressesRecebidos` | GET | `/api/interests/received/count` | sim (D065) | **não** | `{total}` | silencioso no sino; na Visão geral o rodapé volta ao texto padrão | OK |
+| Sino, card e perfil: Também tenho interesse | `retribuirInteresse`, `registrarInteresse` | PUT | `/api/interests/{targetUserId}` | sim | **não** | → `{status: MATCH\|ENVIADO, matchedAt}` | 404 "Este perfil não está mais disponível."; 409 "Crie seu perfil..."; demais: mensagem padrão | OK |
 | Salvar | `salvarStartup`, `salvarInvestidor` | PUT | `/api/saved/{targetUserId}` | sim | **não** | sem corpo → 204 | global (toast) | OK |
 | Remover salvo | `removerSalvo` (2 serviços) | DELETE | `/api/saved/{targetUserId}` | sim | **não** | sem corpo → 204 | global (toast) | OK |
 | Salvos | `listarSalvos` (2 serviços) | GET | `/api/saved` | sim | **não** | `ConnectionResponse[]` | global | OK |
@@ -267,6 +270,37 @@ Fluxo pela API, com o admin do seed e duas contas e2e, banco descartado no final
 | `GET /api/admin/policies/current`, `POST /api/admin/policies`, `GET/POST /api/admin/policies/{id}/criteria`, `PUT/DELETE /api/admin/criteria/{id}` | Configuração do algoritmo sem tela no admin |
 | `POST /api/admin/bootstrap-admin` | Feito por variável de ambiente (D054) |
 
+## Interesses recebidos (2026-11-22)
+
+Branch `feat/moderacao-e-pitch`. Duas operações novas no back (D065), só leitura, sem
+migration; nenhuma rota existente mudou. Retribuir usa o mesmo `PUT /api/interests/{id}`.
+
+| Chamada do front | Operação no back | Existe |
+| --- | --- | --- |
+| `listarInteressesRecebidos` | GET `/api/interests/received` | sim |
+| `contarInteressesRecebidos` | GET `/api/interests/received/count` | sim |
+| `retribuirInteresse` | PUT `/api/interests/{targetUserId}` | sim (D049) |
+
+A etiqueta "Demonstrou interesse em você" dos cards e a faixa do perfil usam o
+`interestStatus: RECEIVED` que a descoberta e o detalhe já devolviam: nenhuma chamada a mais
+por card. O "visto" do sino fica no `localStorage`, por usuário
+(`unio_interesses_vistos_{e-mail}`), como as notificações de reunião.
+
+Fluxo pela API contra um PostgreSQL descartável, com quatro contas e2e (banco apagado no
+final):
+
+| Etapa | Investidor primeiro | Startup primeiro |
+| --- | --- | --- |
+| Demonstra interesse | OK `ENVIADO` | OK `ENVIADO` |
+| O outro lado lista recebidos | OK (1 item, sem e-mail nem documento) | OK (1 item, com `localizacao` "Recife, PE") |
+| Contagem do sino | OK `{total: 1}` | OK `{total: 1}` |
+| Descoberta do outro lado | OK `RECEIVED` | OK `RECEIVED` |
+| Meus unios antes de retribuir | OK (vazio) | OK (vazio) |
+| Retribui pelo PUT de sempre | OK `MATCH` | OK `MATCH` |
+| Recebidos e contagem depois | OK (0 e 0) | OK (0 e 0) |
+| Meus unios dos dois lados | OK (`MATCH`, contato liberado) | OK (`MATCH`, contato liberado) |
+| Sem token | 401 | 401 |
+
 ## URLs chamadas pelo front
 
 Busca final em `src/` por `fetch(`, `axios.`, `new WebSocket`, `EventSource`, `http://` e
@@ -286,5 +320,5 @@ Busca final em `src/` por `fetch(`, `axios.`, `new WebSocket`, `EventSource`, `h
 | P2 | ~~Mensagem do 401 de login~~: resolvida no merge, "Credenciais inválidas" (D062) | Feito | Carol |
 | P3 | Notificações no back (hoje derivadas no front, estado local) | Médio | Squad |
 | P4 | ~~Moderação de cadastros e de conteúdo~~: feita (D063, ADR-013); depende do P1 para chegar à nuvem | Feito | Carol |
-| P5 | Contato além do e-mail, upload de logo, histórico de métricas, data do interesse recebido | Médio | Squad |
+| P5 | Contato além do e-mail, upload de logo, histórico de métricas (a data do interesse recebido já vem em `GET /api/interests/received`, D065) | Médio | Squad |
 | P6 | URL de produção do front: confirmar se está em `UNIO_CORS_ALLOWED_ORIGINS` | Configuração | Carol |

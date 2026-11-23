@@ -59,8 +59,9 @@ export default function PerfilInvestidor() {
   );
 
   const aoAlterar = useCallback(
-    (_id: string, alteracao: AlteracaoRecomendacao) =>
-      alterarDados((atual) => (atual ? { ...atual, ...alteracao } : atual)),
+    // Só o perfil aberto (o sino avisa retribuições de qualquer pessoa)
+    (alterado: string, alteracao: AlteracaoRecomendacao) =>
+      alterarDados((atual) => (atual && atual.investidor.id === alterado ? { ...atual, ...alteracao } : atual)),
     [alterarDados],
   );
   const { alternarSalvo, demonstrarInteresse, desfazer, estaOcupado } = useAcoesRecomendacao(aoAlterar);
@@ -126,7 +127,15 @@ export default function PerfilInvestidor() {
         <LinkVoltar {...VOLTAR} />
       </div>
 
-      <FaixaStatusInteresse id={investidor.id} status={statusInteresse} outroLado="o investidor" />
+      <FaixaStatusInteresse
+        id={investidor.id}
+        status={statusInteresse}
+        outroLado="o investidor"
+        recebido={detalhe.interesseRecebido}
+        nome={investidor.nome}
+        onRetribuir={() => demonstrarInteresse(rec)}
+        ocupado={ocupado}
+      />
 
       {/* Cabeçalho */}
       <section className="rounded-3xl border border-lightgray bg-white p-5 shadow-soft sm:p-7">
@@ -184,6 +193,7 @@ export default function PerfilInvestidor() {
               status={statusInteresse}
               nome={investidor.nome}
               aguardando="Aguardando o investidor"
+              recebido={detalhe.interesseRecebido}
               onInteresse={() => demonstrarInteresse(rec)}
               onDesfazer={() => desfazer(rec)}
               ocupado={ocupado}

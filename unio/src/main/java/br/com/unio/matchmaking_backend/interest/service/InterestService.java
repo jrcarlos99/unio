@@ -12,10 +12,14 @@ import br.com.unio.matchmaking_backend.interest.dto.ContactDto;
 import br.com.unio.matchmaking_backend.interest.dto.InterestResponse;
 import br.com.unio.matchmaking_backend.interest.dto.InterestStatus;
 import br.com.unio.matchmaking_backend.interest.dto.InterestWithdrawResponse;
+import br.com.unio.matchmaking_backend.interest.dto.ReceivedInterestCountResponse;
+import br.com.unio.matchmaking_backend.interest.dto.ReceivedInterestPageResponse;
+import br.com.unio.matchmaking_backend.interest.dto.ReceivedInterestResponse;
 import br.com.unio.matchmaking_backend.interest.entity.UserSaved;
 import br.com.unio.matchmaking_backend.interest.repository.UserSavedRepository;
 import br.com.unio.matchmaking_backend.match.entity.MatchInterest;
 import br.com.unio.matchmaking_backend.match.repository.MatchInterestRepository;
+import br.com.unio.matchmaking_backend.profile.entity.Startup;
 import br.com.unio.matchmaking_backend.profile.repository.InvestorRepository;
 import br.com.unio.matchmaking_backend.profile.repository.StartupRepository;
 import br.com.unio.matchmaking_backend.scorecard.calculation.MatchScore;
@@ -58,6 +62,8 @@ public class InterestService {
     static final String UNMATCH_CANCEL_REASON = "Match desfeito";
     static final String OWN_PROFILE_REQUIRED = "Crie seu perfil antes de demonstrar interesse ou salvar perfis";
     static final String TARGET_NOT_FOUND = "Perfil não encontrado";
+    static final int DEFAULT_RECEIVED_LIMIT = 20;
+    static final int MAX_RECEIVED_LIMIT = 100;
 
     private final MatchInterestRepository interestRepository;
     private final UserSavedRepository savedRepository;
@@ -124,6 +130,97 @@ public class InterestService {
         result.sort(Comparator.comparing(ConnectionResponse::matchedAt,
                 Comparator.nullsLast(Comparator.reverseOrder())));
         return result;
+    }
+
+    // ============================================================
+    // Interesses recebidos (D065)
+    // ============================================================
+
+    /**
+     * Interesses que outras pessoas demonstraram no usuário e que ele ainda não retribuiu, do
+     * mais recente para o mais antigo. Só contas ativas (moderação D063 e exclusão de conta) e
+     * com perfil, como nas outras listas. Sem contato (D052).
+     */
+    @Transactional(readOnly = true)
+    public ReceivedInterestPageResponse received(AuthUser authUser, Integer limit, Integer offset) {
+        User me = participantService.requireCommunicatingUser(authUser);
+        List<PendingReceived> pending = pendingReceived(me);
+
+        int pageLimit = limit == null || limit <= 0 ? DEFAULT_RECEIVED_LIMIT : Math.min(limit, MAX_RECEIVED_LIMIT);
+        int pageOffset = offset == null ? 0 : Math.max(0, offset);
+        List<ReceivedInterestResponse> items = pending.stream()
+                .skip(pageOffset)
+                .limit(pageLimit)
+                .map(item -> toReceived(me, item))
+                .toList();
+        return new ReceivedInterestPageResponse(pending.size(), pageLimit, pageOffset, items);
+    }
+
+    /** Mesmo total de {@link #received}, sem montar os itens (sino do front). */
+    @Transactional(readOnly = true)
+    public ReceivedInterestCountResponse receivedCount(AuthUser authUser) {
+        User me = participantService.requireCommunicatingUser(authUser);
+        return new ReceivedInterestCountResponse(pendingReceived(me).size());
+    }
+
+    private List<PendingReceived> pendingReceived(User me) {
+        Set<Long> sentTo = interestRepository.findActiveSentBy(me.getId()).stream()
+                .map(row -> otherSide(row, me.getId()))
+                .collect(Collectors.toSet());
+
+        List<PendingReceived> result = new ArrayList<>();
+        for (MatchInterest row : interestRepository.findActiveReceivedBy(me.getId())) {
+            Long likerId = row.getLikedByUserId();
+            if (sentTo.contains(likerId)) {
+                continue;
+            }
+            User other = activeCandidate(me, likerId);
+            if (other != null) {
+                result.add(new PendingReceived(other, row));
+            }
+        }
+        result.sort(Comparator.comparing((PendingReceived item) -> item.row().getCreatedAt(),
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(item -> item.row().getId(), Comparator.reverseOrder()));
+        return result;
+    }
+
+    private ReceivedInterestResponse toReceived(User me, PendingReceived item) {
+        User other = item.user();
+        Optional<MatchScore> score = latestScore(me, other);
+        String segmento;
+        String estagio;
+        String localizacao;
+        if (other.getRole() == Role.STARTUP) {
+            Startup startup = startupRepository.findById(other.getId()).orElse(null);
+            segmento = startup == null ? null : startup.getSegmento();
+            estagio = startup == null ? null : startup.getEstagio();
+            localizacao = startup == null ? null : startup.getLocalizacao();
+        } else {
+            PublicProfileDto investor = investorRepository.findById(other.getId())
+                    .map(profileMapper::of).orElse(null);
+            segmento = investor == null ? null : joined(investor.segmentosInteresse());
+            estagio = investor == null ? null : joined(investor.estagiosInteresse());
+            localizacao = investor == null ? null : investor.regiaoInteresse();
+        }
+        return new ReceivedInterestResponse(
+                other.getId(),
+                participantService.displayName(other),
+                other.getRole().name(),
+                segmento,
+                estagio,
+                localizacao,
+                score.map(MatchScore::getTotalScore).orElse(null),
+                score.map(MatchScore::getClassification).orElse(null),
+                item.row().getCreatedAt());
+    }
+
+    /** Segmentos ou estágios do investidor numa linha: "Logística, Fintech" (null se vazio). */
+    private static String joined(List<String> values) {
+        return values == null || values.isEmpty() ? null : String.join(", ", values);
+    }
+
+    private record PendingReceived(User user, MatchInterest row) {
     }
 
     // ============================================================

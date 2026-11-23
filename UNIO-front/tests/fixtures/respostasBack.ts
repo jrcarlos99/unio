@@ -10,6 +10,7 @@ import type {
   PaginaModeracaoBack,
 } from "../../src/services/moderacao.mapping.ts";
 import type { PitchPublicationBack, PublishedPitchBack } from "../../src/services/pitchPublicacao.mapping.ts";
+import type { PaginaInteressesRecebidosBack } from "../../src/types/interesses.ts";
 
 // popularity/dto/PopularityResponse (GET /api/profile/me/popularity)
 export const POPULARIDADE_BACK: PopularityBack = {
@@ -214,4 +215,36 @@ export const PITCH_PUBLICADO_BACK: PublishedPitchBack = {
   videoUrl: "https://youtu.be/dQw4w9WgXcQ",
   leanCanvas: ENVIO_PITCH_BACK.leanCanvas,
   publishedAt: "2026-11-22T10:00:00Z",
+};
+
+// D065: interest/dto/ReceivedInterestPageResponse (GET /api/interests/received).
+// Sem e-mail, documento nem arquivo de pitch: o back não manda.
+export const INTERESSES_RECEBIDOS_BACK: PaginaInteressesRecebidosBack = {
+  total: 3,
+  limit: 2,
+  offset: 0,
+  items: [
+    {
+      userId: 34,
+      name: "Ana Capital",
+      role: "INVESTOR",
+      segmento: "Logística, Fintech",
+      estagio: "Seed",
+      localizacao: "Nordeste",
+      scoreFinal: 78.75,
+      classification: "FORTE",
+      interestedAt: "2026-11-22T14:50:00Z",
+    },
+    {
+      userId: 12,
+      name: "Tidalog",
+      role: "STARTUP",
+      segmento: "Logística",
+      estagio: "Seed",
+      localizacao: "Recife, PE",
+      scoreFinal: null,
+      classification: null,
+      interestedAt: "2026-11-20T09:00:00Z",
+    },
+  ],
 };

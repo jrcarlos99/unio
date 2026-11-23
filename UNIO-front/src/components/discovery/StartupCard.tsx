@@ -39,6 +39,7 @@ export default function StartupCard({
       popularidade={item.popularidade}
       melhorMatch={melhorMatch}
       deuMatch={statusInteresse === "match"}
+      interesseRecebido={item.interesseRecebido}
       chips={[
         { texto: startup.segmento, estilo: "neutro" },
         { texto: startup.estagio, estilo: "destaque" },
@@ -54,6 +55,7 @@ export default function StartupCard({
               id={startup.id}
               status={statusInteresse}
               nome={startup.nome}
+              recebido={item.interesseRecebido}
               onInteresse={onInteresse}
               onDesfazer={onDesfazer}
               ocupado={ocupado}

@@ -120,6 +120,8 @@ export interface StartupRecomendada {
   startup: StartupDescoberta;
   compatibilidade: Compatibilidade;
   statusInteresse: StatusInteresse;
+  // O outro lado demonstrou interesse e eu ainda não retribuí (ADR-015)
+  interesseRecebido?: boolean;
   salvo: boolean;
   // Popularidade visível em % (RF10). Nula abaixo do mínimo de avaliações:
   // sem selo. Nunca é somada à compatibilidade exibida.

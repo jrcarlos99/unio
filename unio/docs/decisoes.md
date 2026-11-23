@@ -2035,6 +2035,63 @@ da exclusão), `moderation/service/ModerationPrivacyData.java` (novo),
 migration. Teste: `ExportacaoModeracaoIntegrationTest`.
 
 
+## D065: Interesses recebidos para o sino e para retribuir
+
+Autora: Carol
+Data: 2026-11-22
+Status: Aceita
+
+**Contexto:** quem recebia um "Tenho interesse" não era avisado. O sino do front só mostrava
+reuniões e avaliações, e nenhuma rota listava os interesses recebidos: `InterestController`
+tinha só PUT e DELETE do interesse, `GET /api/interests/matches` e os salvos. A descoberta já
+devolvia `interestStatus: RECEIVED`, mas só dentro da lista de recomendações. Os dados
+existem em `match_interests` (D058): quem demonstrou (`liked_by_user_id`), o par e a data
+(`created_at`).
+
+**Alternativas:**
+
+- (a) Tabela de notificações no back, com "lida" por usuário (migration V32).
+- (b) Rotas de leitura sobre `match_interests`, sem migration; o "visto" fica no navegador,
+  como já acontece com as notificações de reunião (ADR-005 e ADR-011 do front).
+- (c) O front montar a lista a partir da descoberta (`RECEIVED`), sem rota nova.
+
+**Decisão:** (b).
+
+- `GET /api/interests/received?limit=&offset=` (STARTUP ou INVESTOR): interesses ativos que
+  outras pessoas demonstraram no usuário e que ele ainda não retribuiu, do mais recente para
+  o mais antigo (desempate pelo id). Página `{ total, limit, offset, items }`, `limit` padrão
+  20 e máximo 100, `offset` negativo vira 0.
+- Item: `userId`, `name`, `role`, `segmento`, `estagio`, `localizacao`, `scoreFinal`,
+  `classification` e `interestedAt`. Startup: segmento, estágio e cidade e UF como estão no
+  cadastro. Investidor: segmentos e estágios de interesse numa linha (separados por vírgula)
+  e a região de interesse. O score é o último já gravado do par (o mesmo de Meus unios e
+  dos salvos); não recalcula, então pode vir nulo. Nunca e-mail, telefone, documento ou
+  arquivo de pitch: o contato só sai depois do match (D052).
+- `GET /api/interests/received/count` devolve `{ total }`, o mesmo total da lista, para o
+  sino atualizar sem baixar a lista.
+- Mesmas regras de visibilidade das outras listas de interesse: o outro lado precisa estar
+  ativo (não excluído e não oculto pela moderação, D063: PENDENTE, RECUSADO ou SUSPENSO), ter
+  o papel complementar e ter perfil. Retribuir ou o outro lado desfazer tira o item da lista.
+- Retribuir continua sendo `PUT /api/interests/{targetUserId}` (D049), que já vira MATCH
+  quando o outro lado tinha demonstrado. Nenhuma rota existente mudou.
+- ADMIN recebe 403 (o `@PreAuthorize` do controller); sem token, 401. Usuário sem perfil
+  recebe lista vazia, como em `/api/interests/matches` e `/api/saved` (ninguém consegue
+  demonstrar interesse em quem não tem perfil).
+- `interestsReceived` da popularidade (D053) já vinha com a contagem real de
+  `match_interests` e não mudou. Ele conta todos os interesses recebidos, inclusive os que
+  viraram match; a rota nova conta só os que aguardam resposta.
+
+**Justificativa:** os dados já existem e a regra de match não muda, então (a) criaria uma
+segunda fonte de verdade e uma migration sem necessidade. (c) obrigaria o front a baixar as
+recomendações para montar o sino e não traria a data do interesse.
+
+**Impacto:** `interest/controller/InterestController.java` (duas rotas novas),
+`interest/service/InterestService.java` (métodos `received` e `receivedCount`),
+`interest/dto/ReceivedInterestResponse.java`, `ReceivedInterestPageResponse.java` e
+`ReceivedInterestCountResponse.java` (novos). Sem migration. Teste:
+`InteressesRecebidosIntegrationTest` (8 casos). Front: ADR-015.
+
+
 ## Fora de escopo desta entrega (registrado, não implementado)
 
 - Chat (`/api/conversations`): o produto decidiu que não há chat; o contato é externo,

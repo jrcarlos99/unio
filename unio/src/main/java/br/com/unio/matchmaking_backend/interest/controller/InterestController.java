@@ -4,6 +4,8 @@ import br.com.unio.matchmaking_backend.auth.service.AuthUser;
 import br.com.unio.matchmaking_backend.interest.dto.ConnectionResponse;
 import br.com.unio.matchmaking_backend.interest.dto.InterestResponse;
 import br.com.unio.matchmaking_backend.interest.dto.InterestWithdrawResponse;
+import br.com.unio.matchmaking_backend.interest.dto.ReceivedInterestCountResponse;
+import br.com.unio.matchmaking_backend.interest.dto.ReceivedInterestPageResponse;
 import br.com.unio.matchmaking_backend.interest.service.InterestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -55,6 +58,26 @@ public class InterestController {
                     + "match: a finalidade é o contato externo após o match. Telefone e WhatsApp não existem.")
     public ResponseEntity<List<ConnectionResponse>> matches(@AuthenticationPrincipal AuthUser authUser) {
         return ResponseEntity.ok(interestService.matches(authUser));
+    }
+
+    @GetMapping("/interests/received")
+    @Operation(summary = "Interesses recebidos ainda não correspondidos",
+            description = "D065. Quem demonstrou interesse no usuário logado e ainda não teve o interesse "
+                    + "retribuído, do mais recente para o mais antigo. Some quando o usuário retribui (vira "
+                    + "match) ou quando o outro lado desfaz. Contas ocultas pela moderação (D063) ou excluídas "
+                    + "não aparecem. Sem e-mail, documento ou arquivo de pitch (D052). limit padrão 20, máximo "
+                    + "100. Retribuir é o PUT /api/interests/{targetUserId}.")
+    public ResponseEntity<ReceivedInterestPageResponse> received(@AuthenticationPrincipal AuthUser authUser,
+                                                                 @RequestParam(required = false) Integer limit,
+                                                                 @RequestParam(required = false) Integer offset) {
+        return ResponseEntity.ok(interestService.received(authUser, limit, offset));
+    }
+
+    @GetMapping("/interests/received/count")
+    @Operation(summary = "Quantos interesses recebidos ainda não foram correspondidos",
+            description = "D065. O mesmo total de GET /api/interests/received, sem a lista (para o sino).")
+    public ResponseEntity<ReceivedInterestCountResponse> receivedCount(@AuthenticationPrincipal AuthUser authUser) {
+        return ResponseEntity.ok(interestService.receivedCount(authUser));
     }
 
     @PutMapping("/saved/{targetUserId}")

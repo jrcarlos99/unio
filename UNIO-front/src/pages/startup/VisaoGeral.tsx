@@ -33,6 +33,7 @@ import { useCarregamento } from "../../hooks/useDescoberta";
 import { useSessaoReunioes } from "../../hooks/useReunioes";
 import { useToast } from "../../hooks/useToast";
 import { obterContextoStartup, obterResumo } from "../../services/dashboardStartupService";
+import { contarInteressesRecebidos } from "../../services/interessesRecebidosService";
 import { aplicarFiltrosInvestidores, listarInvestidoresRecomendados } from "../../services/investidoresService";
 
 const QTD_RECOMENDADOS = 3;
@@ -84,12 +85,14 @@ export default function VisaoGeral() {
   const popularidade = usePopularidade(sessao);
 
   const carregar = useCallback(async () => {
-    const [resumo, contexto, investidores] = await Promise.all([
+    const [resumo, contexto, investidores, aguardandoResposta] = await Promise.all([
       obterResumo(user),
       obterContextoStartup(user),
       listarInvestidoresRecomendados(user),
+      // Interesses recebidos ainda não retribuídos (ADR-015); falha sozinha
+      contarInteressesRecebidos().catch(() => null),
     ]);
-    return { resumo, contexto, investidores };
+    return { resumo, contexto, investidores, aguardandoResposta };
   }, [user]);
   const { carregando, erro, dados, recarregar } = useCarregamento(carregar, "Não foi possível carregar a visão geral.");
 
@@ -115,7 +118,7 @@ export default function VisaoGeral() {
       />
     );
   } else {
-    const { resumo, contexto, investidores } = dados;
+    const { resumo, contexto, investidores, aguardandoResposta } = dados;
     const { metricas } = resumo;
     const variacao = metricas.variacaoVisualizacoes;
     const IconeVariacao = variacao !== null && variacao < 0 ? TrendingDown : TrendingUp;
@@ -151,7 +154,15 @@ export default function VisaoGeral() {
             rotulo="Investidores interessados"
             valor={valorOuTraco(metricas.interessados)}
             icone={Bookmark}
-            rodape={metricas.interessados === null ? "Indisponível no momento" : "demonstraram interesse em você"}
+            rodape={
+              metricas.interessados === null
+                ? "Indisponível no momento"
+                : aguardandoResposta
+                  ? `demonstraram interesse em você, ${aguardandoResposta} ${
+                      aguardandoResposta === 1 ? "aguarda" : "aguardam"
+                    } sua resposta`
+                  : "demonstraram interesse em você"
+            }
           />
           <MetricCard
             rotulo="Matches"
