@@ -29,7 +29,7 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
   // Sem limite, uma requisição pendurada deixava o botão em "CADASTRANDO..."
   // pra sempre. Passado esse tempo, a tela recebe um erro e libera o botão.
-  timeout: 20000,
+  timeout: 120000,
 });
 
 // Lê o "exp" (segundos) do JWT. Não valida a assinatura (papel do back): só
