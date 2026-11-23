@@ -40,6 +40,13 @@ jobs:
           java-version: '21'
           distribution: 'microsoft'
 
+      # PASSO NOVO: Cria o usuário ia_reader no banco temporário
+      - name: Create ia_reader role in test database
+        run: |
+          PGPASSWORD=unio psql -h localhost -p 5432 -U unio -d unio_test -c "CREATE ROLE ia_reader WITH LOGIN PASSWORD 'senha_forte_ia';"
+        env:
+          PGPASSWORD: unio
+
       - name: Build with Maven
         run: mvn clean install
         working-directory: ./unio
