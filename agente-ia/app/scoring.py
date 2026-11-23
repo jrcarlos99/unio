@@ -18,6 +18,7 @@ FACTOR_LABELS: dict[str, str] = {
     "geography_fit": "Região",
     "strategic_complementarity": "Complementaridade estratégica",
 }
+MIN_EVIDENCE_COVERAGE = 60
 
 if sum(FACTOR_WEIGHTS.values()) != 100:
     raise RuntimeError("Os pesos dos fatores de recomendação devem somar 100%.")
@@ -59,7 +60,7 @@ def finalize_assessment(draft: RecommendationDraft) -> tuple[int | None, int, li
             applied_weight += weight
 
     coverage = applied_weight
-    if applied_weight == 0:
+    if applied_weight < MIN_EVIDENCE_COVERAGE:
         return None, coverage, factors
 
     # Reescala apenas pelos pesos de critérios com evidência disponível.

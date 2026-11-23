@@ -22,7 +22,7 @@ Os dados vêm dos perfis e do onboarding armazenados no PostgreSQL do sistema. S
 
 O backend mantém apenas as chaves de onboarding relevantes para análise. São descartados consentimento, e-mail e outros campos que não representam preferência de investimento. A LLM recebe IDs técnicos para devolver os candidatos avaliados; o nome de exibição e o perfil público são anexados pelo serviço Python depois da resposta e não são usados no prompt como critério.
 
-Campos ausentes ou sem evidência recebem `score: null`. Eles não são tratados como nota zero e não entram no denominador. O total é reescalado pelos pesos dos fatores com evidência; `dataCoverage` informa a soma dos pesos considerados. Sem qualquer evidência, o total é nulo e a classificação é `DADOS_INSUFICIENTES`.
+Campos ausentes ou sem evidência recebem `score: null`. Eles não são tratados como nota zero e não entram no denominador. O total é reescalado pelos pesos dos fatores com evidência; `dataCoverage` informa a soma dos pesos considerados. Para evitar uma nota aparentemente precisa baseada em poucos fatores, o agente só publica o total quando a cobertura alcança pelo menos 60%. Abaixo desse limite, o total é nulo e a classificação é `DADOS_INSUFICIENTES`.
 
 ## Pesos e fórmula
 
@@ -35,11 +35,11 @@ Campos ausentes ou sem evidência recebem `score: null`. Eles não são tratados
 | Complementaridade estratégica | 10% | Considera modelo de negócio, necessidades, disponibilidade, risco e formas de apoio descritas. |
 | **Total** | **100%** | |
 
-Para os fatores com evidência, `compatibilidade = arredondar(soma(nota × peso) / soma dos pesos disponíveis)`. A nota de cada fator é de 0 a 100. Pesos são pontos percentuais; o total exibido também fica entre 0 e 100.
+Para os fatores com evidência, `compatibilidade = arredondar(soma(nota × peso) / soma dos pesos disponíveis)`, desde que a cobertura seja de pelo menos 60%. A nota de cada fator é de 0 a 100. Pesos são pontos percentuais; o total exibido também fica entre 0 e 100. A cobertura é a soma dos pesos dos fatores com nota numérica, inclusive uma nota 0; dados sem evidência precisam ser `null`, nunca 0.
 
 Exemplo demonstrativo, não resultado de usuário: notas 100, 80, 60, 100 e 70 produzem `30 + 16 + 15 + 15 + 7 = 83%`. Se região não tiver evidência, o resultado é `6.800 / 85 = 80%`, com cobertura de dados de 85%.
 
-Faixas: 85–100 Excelente; 70–84 Forte; 55–69 Moderado; 40–54 Fraco; 0–39 Sem match. Sem evidência, a classificação é Dados insuficientes.
+Faixas: 85–100 Excelente; 70–84 Forte; 55–69 Moderado; 40–54 Fraco; 0–39 Sem match. Com menos de 60% de cobertura, a classificação é Dados insuficientes, independentemente da média parcial.
 
 ## Implementação e resposta
 
@@ -55,7 +55,7 @@ Não registrar números de qualidade antes de executar a avaliação. Para a apr
 - se a soma ponderada reproduz o total;
 - se perfis mais relevantes aparecem antes dos menos relevantes;
 - se justificativas apontam campos reais e não inventam dados;
-- se campos ausentes reduzem a cobertura e não são tratados como incompatibilidade;
+- se campos ausentes reduzem a cobertura e não são tratados como incompatibilidade, e se abaixo de 60% o total fica indisponível;
 - se lista e perfil exibem o mesmo total, classificação e justificativas;
 - se a volta do perfil reutiliza o resultado e salvar/interesse continuam funcionando.
 
