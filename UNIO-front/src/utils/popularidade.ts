@@ -52,14 +52,14 @@ export function variacaoPercentual(atual: number, anterior: number): number {
 // O bônus NUNCA é somado ao número de compatibilidade exibido no card: esta
 // função só reordena e devolve os mesmos itens, sem alterá-los. Popularidade
 // nula (abaixo do mínimo) não ganha bônus nem perde posição por isso.
-export function chaveOrdenacao(compatibilidade: number, popularidade: number | null | undefined): number {
+export function chaveOrdenacao(compatibilidade: number | null, popularidade: number | null | undefined): number {
   const bonus = typeof popularidade === "number" ? (popularidade / 100) * BONUS_MAXIMO_POPULARIDADE : 0;
-  return compatibilidade + bonus;
+  return (compatibilidade ?? -1) + bonus;
 }
 
 export function ordenarComPopularidade<T>(
   lista: readonly T[],
-  compatibilidadeDe: (item: T) => number,
+  compatibilidadeDe: (item: T) => number | null,
   popularidadeDe: (item: T) => number | null | undefined,
 ): T[] {
   return [...lista].sort((a, b) => {

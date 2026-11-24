@@ -142,7 +142,7 @@ export default function HomeInvestidor() {
 
       <GradeRecomendacoes
         titulo="Startups para você"
-        selo="Recomendadas pelo algoritmo de tese"
+        selo="Recomendadas pelo agente de IA"
         carregando={carregando}
         erro={erro}
         tituloErro="Não foi possível carregar as recomendações"

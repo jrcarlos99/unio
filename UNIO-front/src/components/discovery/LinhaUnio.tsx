@@ -8,7 +8,7 @@ interface LinhaUnioProps {
   nome: string;
   avatar: ReactNode;
   subtitulo: string;
-  match: number;
+  match: number | null;
   // Popularidade visível em % (selo pequeno); nula: sem selo
   popularidade?: number | null;
   onAbrir: () => void;
