@@ -114,12 +114,12 @@ public class AiRecommendationService {
             String json = toJson(request);
             
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
+                    .connectTimeout(Duration.ofSeconds(30)) // AUMENTADO: de 10s para 30s (Cold start do Render)
                     .build();
 
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(java.net.URI.create(agenteUrl + "/v1/recommendations"))
-                    .timeout(Duration.ofSeconds(60))
+                    .timeout(Duration.ofSeconds(180)) // AUMENTADO: de 60s para 180s (OpenAI pode demorar)
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(json))
