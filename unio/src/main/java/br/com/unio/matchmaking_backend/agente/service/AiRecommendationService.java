@@ -16,19 +16,17 @@ import br.com.unio.matchmaking_backend.agente.dto.AiRecommendation;
 import br.com.unio.matchmaking_backend.interest.dto.InterestStatus;
 import br.com.unio.matchmaking_backend.interest.service.InterestService;
 import br.com.unio.matchmaking_backend.onboarding.entity.OnboardingStatus;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.HashSet;
 import java.util.Set;
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -114,39 +112,36 @@ public class AiRecommendationService {
         AiRecommendationResponse response;
         try {
             String json = toJson(request);
-            URL url = URI.create(agenteUrl + "/v1/recommendations").toURL();
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setConnectTimeout(5_000);
-            connection.setReadTimeout(40_000);
-            connection.setRequestMethod("POST");
-            connection.setDoOutput(true);
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("Accept", "application/json");
-            connection.getOutputStream().write(json.getBytes(StandardCharsets.UTF_8));
+            
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
 
-            int statusCode = connection.getResponseCode();
-            InputStream stream = statusCode >= 400
-                    ? connection.getErrorStream()
-                    : connection.getInputStream();
-            String responseBody = new BufferedReader(
-                    new InputStreamReader(stream, StandardCharsets.UTF_8))
-                    .lines()
-                    .collect(Collectors.joining("\n"));
-            connection.disconnect();
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(agenteUrl + "/v1/recommendations"))
+                    .timeout(Duration.ofSeconds(60))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
 
-            if (statusCode >= 400) {
+            HttpResponse<String> httpResponse = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+            if (httpResponse.statusCode() >= 400) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_GATEWAY,
-                        "O agente de IA retornou erro HTTP " + statusCode
-                                + ": " + responseBody);
+                        "O agente de IA retornou erro HTTP " + httpResponse.statusCode()
+                                + ": " + httpResponse.body());
             }
-            response = objectMapper.readValue(responseBody, AiRecommendationResponse.class);
+            
+            response = objectMapper.readValue(httpResponse.body(), AiRecommendationResponse.class);
+            
         } catch (ResponseStatusException exception) {
             throw exception;
         } catch (Exception exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
-                    "Não foi possível conectar ao agente de IA",
+                    "Não foi possível conectar ao agente de IA: " + exception.getMessage(),
                     exception);
         }
 
@@ -264,7 +259,7 @@ public class AiRecommendationService {
 
     private List<String> csvValues(String value) {
         if (value == null || value.isBlank()) return List.of();
-        return java.util.Arrays.stream(value.split(","))
+        return Arrays.stream(value.split(","))
                 .map(String::trim)
                 .filter(part -> !part.isBlank())
                 .toList();
