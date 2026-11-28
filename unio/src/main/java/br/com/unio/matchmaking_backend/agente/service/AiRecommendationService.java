@@ -57,6 +57,7 @@ public class AiRecommendationService {
     private final ParticipantService participantService;
     private final InterestService interestService;
     private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
 
     @Value("${agente-ia.url:http://localhost:8000}")
     private String agenteUrl;
@@ -112,10 +113,6 @@ public class AiRecommendationService {
         AiRecommendationResponse response;
         try {
             String json = toJson(request);
-            
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(30)) // AUMENTADO: de 10s para 30s (Cold start do Render)
-                    .build();
 
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(java.net.URI.create(agenteUrl + "/v1/recommendations"))
@@ -125,7 +122,7 @@ public class AiRecommendationService {
                     .POST(HttpRequest.BodyPublishers.ofString(json))
                     .build();
 
-            HttpResponse<String> httpResponse = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
             if (httpResponse.statusCode() >= 400) {
                 throw new ResponseStatusException(
